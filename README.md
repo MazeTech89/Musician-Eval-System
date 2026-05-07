@@ -1,2 +1,16 @@
-# Musician-Eval-System
-Intelligent Musician Task Management &amp; Performance Evaluation System (Cybersecurity FYP)
+# Musician Evaluation System
+
+Final-year cybersecurity capstone: an AI-driven musician performance evaluation platform with security-by-design.
+
+## Stack
+- Backend: FastAPI · PostgreSQL · Celery · Redis · Librosa
+- Frontend: React + TypeScript + Vite
+- Infra: Docker · AWS (ECS, S3, RDS)
+- Security: JWT (RS256) · Argon2id · OWASP ASVS L2
+
+## Quick start
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload

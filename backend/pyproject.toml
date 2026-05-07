@@ -1,0 +1,21 @@
+[project]
+name = "Musician-Eval-Backend"
+version = "0.1.0"
+description = "Backend for Musician Evaluation System"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "S", "UP"]
+ignore = ["S101"]  # allow assert in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v --tb=short"
