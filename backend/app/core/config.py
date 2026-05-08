@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Server
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # noqa: S104 - Intentional for Docker/container deployment
     port: int = 8000
 
     # CORS
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://user:password@localhost:5432/musician_eval"
 
     # Security
-    secret_key: str = "your-secret-key-change-in-production"
+    secret_key: str = "your-secret-key-change-in-production"  # noqa: S105 - Default for dev, change in production
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
