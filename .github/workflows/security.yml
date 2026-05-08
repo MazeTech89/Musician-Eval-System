@@ -12,6 +12,8 @@ jobs:
   sast:
     name: SAST (Bandit)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,6 +27,8 @@ jobs:
   sca:
     name: SCA (pip-audit)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,6 +42,8 @@ jobs:
   secrets:
     name: Secret Scanning (gitleaks)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
         with:
