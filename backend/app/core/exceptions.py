@@ -4,8 +4,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 
-class ApplicationException(Exception):
-    """Base application exception."""
+class ApplicationError(Exception):
+    """Base application error."""
 
     def __init__(
         self,
@@ -23,11 +23,11 @@ class ApplicationException(Exception):
         super().__init__(message)
 
 
-class NotFoundException(ApplicationException):
-    """Resource not found exception."""
+class NotFoundError(ApplicationError):
+    """Resource not found error."""
 
     def __init__(self, resource: str) -> None:
-        """Initialize the exception.
+        """Initialize the error.
 
         Args:
             resource: Resource name that was not found
@@ -38,11 +38,11 @@ class NotFoundException(ApplicationException):
         )
 
 
-class ValidationException(ApplicationException):
-    """Validation error exception."""
+class ValidationError(ApplicationError):
+    """Validation error."""
 
     def __init__(self, message: str) -> None:
-        """Initialize the exception.
+        """Initialize the error.
 
         Args:
             message: Validation error message
@@ -60,15 +60,13 @@ def register_exception_handlers(app: FastAPI) -> None:
         app: FastAPI application instance
     """
 
-    @app.exception_handler(ApplicationException)
-    async def application_exception_handler(
-        request: Request, exc: ApplicationException
-    ) -> JSONResponse:
-        """Handle application exceptions.
+    @app.exception_handler(ApplicationError)
+    async def application_error_handler(request: Request, exc: ApplicationError) -> JSONResponse:
+        """Handle application errors.
 
         Args:
             request: Request object
-            exc: Exception instance
+            exc: Error instance
 
         Returns:
             JSON response with error details
