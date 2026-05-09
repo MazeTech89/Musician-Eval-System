@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
+from app.core.database import init_db
 from app.core.exceptions import register_exception_handlers
 
 
@@ -19,6 +20,9 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         debug=settings.debug,
     )
+
+    # Initialize database
+    init_db()
 
     # Register exception handlers
     register_exception_handlers(app)
