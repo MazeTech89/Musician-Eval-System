@@ -77,7 +77,7 @@ Content-Type: application/json
 {
   "username": "john_doe",
   "email": "john@example.com",
-  "password": "SecurePass123!",
+  "password": "YourSecurePassword123!",
   "first_name": "John",
   "last_name": "Doe",
   "role": "musician"
@@ -91,12 +91,13 @@ Content-Type: application/json
 
 {
   "username": "john_doe",
-  "password": "SecurePass123!"
+  "password": "YourSecurePassword123!"
 }
 
 Response:
 {
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...[redacted]",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...[redacted]",
   "token_type": "bearer",
   "expires_in": 1800
 }
@@ -105,7 +106,7 @@ Response:
 #### Protected Request
 ```bash
 GET /api/v1/auth/me
-Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...[redacted]
 ```
 
 ## Implementation Details
