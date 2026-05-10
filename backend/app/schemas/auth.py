@@ -60,7 +60,7 @@ class TokenResponse(BaseModel):
     """Schema for token response."""
 
     access_token: str
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
     token_type: str = "bearer"
     expires_in: int
 
