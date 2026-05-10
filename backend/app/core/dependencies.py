@@ -1,7 +1,7 @@
 """FastAPI dependencies for authentication and authorization."""
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthCredentials, HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -14,7 +14,7 @@ security = HTTPBearer(description="JWT Bearer token")
 
 
 async def get_current_user(
-    credentials: HTTPAuthCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
     """Get the current authenticated user.
