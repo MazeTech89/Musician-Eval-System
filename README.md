@@ -14,3 +14,11 @@ cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
+
+### Frontend
+`ash
+cd frontend
+npm install
+npm run dev
+``n
+The frontend will be available at http://localhost:5173/ and the backend at http://localhost:8000.
