@@ -122,6 +122,12 @@ class User(Base):
 
     # Relationships
     role = relationship("Role", back_populates="users")
+    performances = relationship(
+        "Performance", back_populates="musician", foreign_keys="Performance.musician_id"
+    )
+    evaluations = relationship(
+        "Evaluation", back_populates="evaluator", foreign_keys="Evaluation.evaluator_id"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.username}>"

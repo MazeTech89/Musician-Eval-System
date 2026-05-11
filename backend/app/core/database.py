@@ -37,6 +37,7 @@ def get_db() -> Session:
 
 def init_db() -> None:
     """Initialize database by creating all tables."""
+    from app.models.evaluation import Evaluation, Performance  # noqa: F401
     from app.models.user import Base
 
     Base.metadata.create_all(bind=engine)
