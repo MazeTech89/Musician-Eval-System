@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe -m pip install pytest pytest-asyncio -q)",
+      "Bash(.venv/Scripts/python.exe -c \"from app.main import app; print\\('App loaded successfully'\\)\")",
+      "Bash(.venv/Scripts/python.exe -m pip list)",
+      "Bash(.venv/Scripts/python.exe -m py_compile app/api/v1/evaluations.py app/api/v1/performances.py app/models/evaluation.py app/schemas/evaluation.py)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(.venv/Scripts/python.exe -c \"from app.core.database import engine; print\\('Database engine created:', engine.url\\)\")",
+      "Bash(\"/c/Program Files/Docker/Docker/Docker Desktop.exe\")",
+      "Bash(docker-compose up *)"
+    ]
+  }
+}
