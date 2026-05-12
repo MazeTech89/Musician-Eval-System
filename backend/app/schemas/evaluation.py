@@ -31,8 +31,8 @@ class PerformanceUpdate(BaseModel):
 class PerformanceResponse(PerformanceBase):
     """Performance response schema."""
 
-    id: str
-    musician_id: str
+    id: int
+    musician_id: int
     submitted_at: datetime
     status: str
 
@@ -43,7 +43,7 @@ class PerformanceResponse(PerformanceBase):
 class EvaluationBase(BaseModel):
     """Base evaluation schema."""
 
-    performance_id: str
+    performance_id: int
     score: float | None = Field(None, ge=0, le=100)
     comments: str | None = Field(None, max_length=1000)
 
@@ -65,8 +65,8 @@ class EvaluationUpdate(BaseModel):
 class EvaluationResponse(EvaluationBase):
     """Evaluation response schema."""
 
-    id: str
-    evaluator_id: str
+    id: int
+    evaluator_id: int
     status: str
     created_at: datetime
     updated_at: datetime

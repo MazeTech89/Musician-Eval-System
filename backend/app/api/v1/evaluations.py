@@ -57,7 +57,7 @@ async def get_evaluations(
 
 @router.get("/{evaluation_id}", response_model=EvaluationWithPerformanceResponse)
 async def get_evaluation(
-    evaluation_id: str,
+    evaluation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Evaluation:
@@ -139,7 +139,6 @@ async def create_evaluation(
 
     # Create evaluation
     evaluation = Evaluation(
-        id=f"eval_{current_user.id}_{evaluation_data.performance_id}_{db.query(Evaluation).count() + 1}",
         performance_id=evaluation_data.performance_id,
         evaluator_id=current_user.id,
         score=evaluation_data.score,
@@ -154,7 +153,7 @@ async def create_evaluation(
 
 @router.put("/{evaluation_id}", response_model=EvaluationResponse)
 async def update_evaluation(
-    evaluation_id: str,
+    evaluation_id: int,
     evaluation_update: EvaluationUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -204,7 +203,7 @@ async def update_evaluation(
 
 @router.delete("/{evaluation_id}")
 async def delete_evaluation(
-    evaluation_id: str,
+    evaluation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:

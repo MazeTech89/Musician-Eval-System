@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -24,13 +24,13 @@ class Performance(Base):
 
     __tablename__ = "performances"
 
-    id = Column(String, primary_key=True, index=True)
-    title = Column(String, nullable=False)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String(200), nullable=False)
     description = Column(Text)
-    audio_file_url = Column(String)
-    musician_id = Column(String, ForeignKey("users.id"), nullable=False)
+    audio_file_url = Column(String(500))
+    musician_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     submitted_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String, default="pending")  # pending, approved, rejected
+    status = Column(String(50), default="pending")  # pending, approved, rejected
 
     # Relationships
     musician = relationship("User", back_populates="performances")
@@ -42,9 +42,9 @@ class Evaluation(Base):
 
     __tablename__ = "evaluations"
 
-    id = Column(String, primary_key=True, index=True)
-    performance_id = Column(String, ForeignKey("performances.id"), nullable=False)
-    evaluator_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    performance_id = Column(Integer, ForeignKey("performances.id"), nullable=False)
+    evaluator_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     score = Column(Float, nullable=True)  # 0-100
     comments = Column(Text)
     status = Column(SQLEnum(EvaluationStatus), default=EvaluationStatus.PENDING)

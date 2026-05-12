@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = "your-secret-key-change-in-production"  # noqa: S105 - Default for dev, change in production
-    algorithm: str = "RS256"
+    algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
     # RSA keys for RS256 (should be set in production environment)
