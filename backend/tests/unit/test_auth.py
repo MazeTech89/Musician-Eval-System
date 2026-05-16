@@ -57,12 +57,19 @@ def test_admin_user(setup_test_roles):
     """Create a test admin user."""
     db = setup_test_roles
 
-    # Check if user already exists
+    role = db.query(Role).filter(Role.name == RoleEnum.ADMIN).first()
+
     existing = db.query(User).filter(User.username == "testadmin").first()
     if existing:
+        existing.hashed_password = hash_password("testpassword123")
+        existing.first_name = "Test"
+        existing.last_name = "Admin"
+        existing.role_id = role.id
+        existing.is_active = True
+        existing.last_login = None
+        db.commit()
+        db.refresh(existing)
         return existing
-
-    role = db.query(Role).filter(Role.name == RoleEnum.ADMIN).first()
 
     user = User(
         username="testadmin",
@@ -84,11 +91,19 @@ def test_musician_user(setup_test_roles):
     """Create a test musician user."""
     db = setup_test_roles
 
+    role = db.query(Role).filter(Role.name == RoleEnum.MUSICIAN).first()
+
     existing = db.query(User).filter(User.username == "testmusician").first()
     if existing:
+        existing.hashed_password = hash_password("testpassword123")
+        existing.first_name = "Test"
+        existing.last_name = "Musician"
+        existing.role_id = role.id
+        existing.is_active = True
+        existing.last_login = None
+        db.commit()
+        db.refresh(existing)
         return existing
-
-    role = db.query(Role).filter(Role.name == RoleEnum.MUSICIAN).first()
 
     user = User(
         username="testmusician",
@@ -118,6 +133,12 @@ class TestAuthentication:
             "last_name": "User",
             "role": "musician",
         }
+
+        # Ensure the test user does not already exist in a reused test database.
+        db_session.query(User).filter(
+            (User.username == user_data["username"]) | (User.email == user_data["email"])
+        ).delete()
+        db_session.commit()
 
         response = client.post("/api/v1/auth/register", json=user_data)
 

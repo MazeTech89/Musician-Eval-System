@@ -50,6 +50,15 @@ logs/
 # Audio test files (large)
 backend/uploads/
 backend/temp/
+backend/tmp_pgdata/
+backend/create_test_db.sql
+
+# Frontend test artifacts
+frontend/test-results/
+
+# Local settings
+settings.local.json
+.claude/
 
 # Secrets
 secrets/

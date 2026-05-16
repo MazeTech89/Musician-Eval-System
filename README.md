@@ -10,15 +10,16 @@ Final-year cybersecurity capstone: an AI-driven musician performance evaluation 
 
 ## Quick start
 ```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements-dev.txt
-uvicorn app.main:app --reload
+docker compose up --build
+```
+
+This project uses PostgreSQL and Redis via Docker Compose for the backend.
 
 ### Frontend
-`ash
+```bash
 cd frontend
 npm install
 npm run dev
-``n
+```
+
 The frontend will be available at http://localhost:5173/ and the backend at http://localhost:8000.

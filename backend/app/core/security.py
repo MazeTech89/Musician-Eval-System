@@ -58,6 +58,9 @@ def create_access_token(
     """
     to_encode = data.copy()
 
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
+
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
@@ -89,9 +92,12 @@ def decode_token(token: str) -> TokenData | None:
             settings.secret_key,
             algorithms=[settings.algorithm],
         )
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         username: str = payload.get("username")
         role: str = payload.get("role")
+
+        if isinstance(user_id, str) and user_id.isdigit():
+            user_id = int(user_id)
 
         if user_id is None or username is None or role is None:
             return None
@@ -122,6 +128,9 @@ def create_refresh_token(
         Tuple of (token, expiration_datetime)
     """
     to_encode = data.copy()
+
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
 
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
@@ -161,9 +170,12 @@ def decode_refresh_token(token: str) -> TokenData | None:
         if token_type != "refresh":
             return None
 
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         username: str = payload.get("username")
         role: str = payload.get("role")
+
+        if isinstance(user_id, str) and user_id.isdigit():
+            user_id = int(user_id)
 
         if user_id is None or username is None or role is None:
             return None
