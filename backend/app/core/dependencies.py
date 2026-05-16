@@ -10,11 +10,11 @@ from app.models.user import RoleEnum, User
 from app.services.auth import AuthService, RoleService
 
 # HTTP Bearer scheme
-security = HTTPBearer(description="JWT Bearer token")
+security = HTTPBearer(auto_error=False, description="JWT Bearer token")
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
     """Get the current authenticated user.
@@ -29,23 +29,27 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Authentication credentials were not provided",
+        )
+
     token = credentials.credentials
     token_data = decode_token(token)
 
     if not token_data:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     user = AuthService.get_user_by_id(db, token_data.sub)
 
     if not user or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="User not found or inactive",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return user

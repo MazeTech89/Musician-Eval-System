@@ -2,7 +2,14 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+)
 
 from app.models.user import RoleEnum
 
@@ -43,8 +50,27 @@ class UserResponse(UserBase):
     updated_at: datetime
     last_login: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("role", mode="before")
+    def validate_role(cls, value):
+        if value is None:
+            return None
+        if hasattr(value, "name"):
+            name = value.name
+            if isinstance(name, RoleEnum):
+                return name.value
+            return str(name)
+        return str(value)
+
+    @field_serializer("role")
+    def serialize_role(self, role):
+        if isinstance(role, str):
+            return role
+        if hasattr(role, "name"):
+            name = role.name
+            return name.value if isinstance(name, RoleEnum) else str(name)
+        return str(role)
 
 
 class TokenData(BaseModel):
