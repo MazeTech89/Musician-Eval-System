@@ -9,6 +9,7 @@ React + TypeScript frontend for the Musician Evaluation System.
 - Protected routes
 - Responsive design with Tailwind CSS
 - API integration with backend
+- UI smoke test with Playwright
 
 ## Tech Stack
 
@@ -19,6 +20,16 @@ React + TypeScript frontend for the Musician Evaluation System.
 - Tailwind CSS
 - Axios for API calls
 - Lucide React for icons
+- Playwright for end-to-end smoke testing
+
+## Progress
+
+- ✅ Auth registration and login flow validated
+- ✅ Backend API integration confirmed
+- ✅ Protected route handling verified
+- ✅ Frontend build and smoke test completed
+- ✅ Browser sign-up, login, logout, and protected dashboard flow validated
+- ✅ Frontend documentation updated to reflect current progress and smoke test support
 
 ## Getting Started
 
@@ -56,6 +67,7 @@ src/
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
+- `npm run test:smoke` - Run the Playwright UI smoke test
 
 ## Environment
 
