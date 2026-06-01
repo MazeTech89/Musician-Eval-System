@@ -24,6 +24,7 @@ const AdminPanel: React.FC = () => {
   const [editRole, setEditRole] = useState("musician");
   const [editIsActive, setEditIsActive] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const openEditUser = (userToEdit: User) => {
@@ -70,6 +71,29 @@ const AdminPanel: React.FC = () => {
       setError(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!window.confirm("Delete this user? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingUserId(userId);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await api.delete(`/users/${userId}`);
+      const response = await api.get("/users");
+      setUsers(response.data);
+      setSuccessMessage("User deleted successfully.");
+    } catch (err: unknown) {
+      console.error("Failed to delete user:", err);
+      const message = err instanceof Error ? err.message : "Failed to delete user";
+      setError(message);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -325,6 +349,13 @@ const AdminPanel: React.FC = () => {
                           className="text-indigo-600 hover:text-indigo-900 text-sm"
                         >
                           Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          disabled={deletingUserId === user.id}
+                          className="text-red-600 hover:text-red-900 text-sm"
+                        >
+                          {deletingUserId === user.id ? "Deleting..." : "Delete"}
                         </button>
                       </div>
                     </div>
