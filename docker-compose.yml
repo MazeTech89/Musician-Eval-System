@@ -35,7 +35,7 @@ services:
       dockerfile: Dockerfile
     container_name: musician_eval_backend
     environment:
-      DATABASE_URL: postgresql://user:password@postgres:5432/musician_eval
+      DATABASE_URL: postgresql+psycopg://user:password@postgres:5432/musician_eval
       REDIS_URL: redis://redis:6379
       SECRET_KEY: dev-secret-key-change-in-production
       ALGORITHM: HS256

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     cors_allow_headers: list[str] = ["*"]
 
     # Database
-    database_url: str = "postgresql://user:password@localhost:5432/musician_eval"
+    database_url: str = "postgresql+psycopg://user:password@localhost:5432/musician_eval"
 
     # Security
     secret_key: str = "your-secret-key-change-in-production"  # noqa: S105 - Default for dev, change in production
