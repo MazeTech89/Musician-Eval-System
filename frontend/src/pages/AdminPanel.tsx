@@ -17,6 +17,61 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editEmail, setEditEmail] = useState("");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editRole, setEditRole] = useState("musician");
+  const [editIsActive, setEditIsActive] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const openEditUser = (userToEdit: User) => {
+    setEditingUser(userToEdit);
+    setEditEmail(userToEdit.email);
+    setEditFirstName(userToEdit.first_name ?? "");
+    setEditLastName(userToEdit.last_name ?? "");
+    setEditRole(userToEdit.role);
+    setEditIsActive(userToEdit.is_active);
+    setSuccessMessage(null);
+    setError(null);
+  };
+
+  const closeEdit = () => {
+    setEditingUser(null);
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.put(`/users/${editingUser.id}`, {
+        email: editEmail,
+        first_name: editFirstName || null,
+        last_name: editLastName || null,
+        role: editRole,
+        is_active: editIsActive,
+      });
+
+      const response = await api.get("/users");
+      setUsers(response.data);
+      setSuccessMessage("User updated successfully.");
+      closeEdit();
+    } catch (err: unknown) {
+      console.error("Failed to update user:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to update user";
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!user || user.role !== "admin") {
@@ -122,6 +177,109 @@ const AdminPanel: React.FC = () => {
                 Manage system users and their roles
               </p>
             </div>
+            {successMessage && (
+              <div className="px-4 py-4 sm:px-6">
+                <div className="rounded-md bg-green-50 p-4">
+                  <p className="text-sm text-green-700">{successMessage}</p>
+                </div>
+              </div>
+            )}
+            {editingUser && (
+              <div className="px-4 py-4 sm:px-6 bg-gray-50 border-t border-b border-gray-200">
+                <div className="mb-4">
+                  <h4 className="text-md font-semibold text-gray-900">
+                    Edit user: {editingUser.username}
+                  </h4>
+                  <p className="text-sm text-gray-500">
+                    Update email, name, role, or active status.
+                  </p>
+                </div>
+                <form onSubmit={handleUpdateUser} className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Email
+                      </label>
+                      <input
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        type="email"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Role
+                      </label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      >
+                        <option value="musician">Musician</option>
+                        <option value="evaluator">Evaluator</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        First Name
+                      </label>
+                      <input
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        type="text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Last Name
+                      </label>
+                      <input
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        type="text"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={editIsActive}
+                        onChange={(e) => setEditIsActive(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Active
+                    </label>
+                  </div>
+                  {error && (
+                    <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {saving ? "Saving..." : "Save changes"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeEdit}
+                      className="inline-flex justify-center rounded-md border border-gray-300 bg-white py-2 px-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
             <ul className="divide-y divide-gray-200">
               {users.map((user) => (
                 <li key={user.id}>
@@ -162,7 +320,10 @@ const AdminPanel: React.FC = () => {
                         >
                           {user.is_active ? "Active" : "Inactive"}
                         </span>
-                        <button className="text-indigo-600 hover:text-indigo-900 text-sm">
+                        <button
+                          onClick={() => openEditUser(user)}
+                          className="text-indigo-600 hover:text-indigo-900 text-sm"
+                        >
                           Edit
                         </button>
                       </div>

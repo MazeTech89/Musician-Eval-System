@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Evaluations from "./pages/Evaluations";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
+import Performances from "./pages/Performances";
 import "./App.css";
 
 function App() {
@@ -30,6 +31,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Evaluations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/performances"
+              element={
+                <ProtectedRoute>
+                  <Performances />
                 </ProtectedRoute>
               }
             />

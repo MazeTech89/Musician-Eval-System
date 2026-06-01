@@ -71,7 +71,12 @@ const Dashboard: React.FC = () => {
               <p className="text-gray-600 mb-4">
                 Upload your musical performance
               </p>
-              <span className="text-gray-400">Coming soon</span>
+              <Link
+                to="/performances"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
+                Submit Performance
+              </Link>
             </div>
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-2">My Evaluations</h3>
