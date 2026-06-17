@@ -25,6 +25,7 @@ const AdminPanel: React.FC = () => {
   const [editIsActive, setEditIsActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [confirmDeleteUserId, setConfirmDeleteUserId] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const openEditUser = (userToEdit: User) => {
@@ -35,6 +36,17 @@ const AdminPanel: React.FC = () => {
     setEditRole(userToEdit.role);
     setEditIsActive(userToEdit.is_active);
     setSuccessMessage(null);
+    setError(null);
+  };
+
+  const confirmDeleteUser = (userId: number) => {
+    setConfirmDeleteUserId(userId);
+    setError(null);
+    setSuccessMessage(null);
+  };
+
+  const cancelDelete = () => {
+    setConfirmDeleteUserId(null);
     setError(null);
   };
 
@@ -75,10 +87,6 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!window.confirm("Delete this user? This action cannot be undone.")) {
-      return;
-    }
-
     setDeletingUserId(userId);
     setError(null);
     setSuccessMessage(null);
@@ -87,10 +95,12 @@ const AdminPanel: React.FC = () => {
       await api.delete(`/users/${userId}`);
       const response = await api.get("/users");
       setUsers(response.data);
-      setSuccessMessage("User deleted successfully.");
+      setSuccessMessage("User deactivated successfully.");
+      cancelDelete();
     } catch (err: unknown) {
-      console.error("Failed to delete user:", err);
-      const message = err instanceof Error ? err.message : "Failed to delete user";
+      console.error("Failed to deactivate user:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to deactivate user";
       setError(message);
     } finally {
       setDeletingUserId(null);
@@ -205,6 +215,37 @@ const AdminPanel: React.FC = () => {
               <div className="px-4 py-4 sm:px-6">
                 <div className="rounded-md bg-green-50 p-4">
                   <p className="text-sm text-green-700">{successMessage}</p>
+                </div>
+              </div>
+            )}
+            {confirmDeleteUserId !== null && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+                <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Confirm Deactivation
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                    This will deactivate the user and prevent sign-in. Are you sure?
+                  </p>
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={cancelDelete}
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUser(confirmDeleteUserId)}
+                      disabled={deletingUserId === confirmDeleteUserId}
+                      className="inline-flex justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deletingUserId === confirmDeleteUserId
+                        ? "Deactivating..."
+                        : "Deactivate user"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -351,11 +392,10 @@ const AdminPanel: React.FC = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          disabled={deletingUserId === user.id}
+                          onClick={() => confirmDeleteUser(user.id)}
                           className="text-red-600 hover:text-red-900 text-sm"
                         >
-                          {deletingUserId === user.id ? "Deleting..." : "Delete"}
+                          Deactivate
                         </button>
                       </div>
                     </div>
