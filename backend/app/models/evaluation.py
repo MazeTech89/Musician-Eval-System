@@ -19,6 +19,15 @@ class EvaluationStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class AnalysisStatus(str, Enum):
+    """AI analysis status."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class Performance(Base):
     """Performance model."""
 
@@ -35,6 +44,12 @@ class Performance(Base):
     # Relationships
     musician = relationship("User", back_populates="performances")
     evaluations = relationship("Evaluation", back_populates="performance")
+    analysis = relationship(
+        "PerformanceAnalysis",
+        back_populates="performance",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
 
 class Evaluation(Base):
@@ -54,3 +69,24 @@ class Evaluation(Base):
     # Relationships
     performance = relationship("Performance", back_populates="evaluations")
     evaluator = relationship("User", back_populates="evaluations")
+
+
+class PerformanceAnalysis(Base):
+    """AI analysis output for a submitted performance."""
+
+    __tablename__ = "performance_analysis"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    performance_id = Column(Integer, ForeignKey("performances.id"), nullable=False, unique=True)
+    status = Column(SQLEnum(AnalysisStatus), default=AnalysisStatus.PENDING, nullable=False)
+    technique_score = Column(Float, nullable=True)
+    timing_score = Column(Float, nullable=True)
+    intonation_score = Column(Float, nullable=True)
+    overall_ai_score = Column(Float, nullable=True)
+    ai_feedback = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+    analyzed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    performance = relationship("Performance", back_populates="analysis")

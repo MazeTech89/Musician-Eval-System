@@ -1,6 +1,6 @@
 """Performance API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -8,15 +8,19 @@ from app.core.dependencies import get_current_active_user
 from app.models.evaluation import Performance
 from app.models.user import User
 from app.schemas.evaluation import (
+    PerformanceAnalysisResponse,
     PerformanceCreate,
     PerformanceResponse,
     PerformanceUpdate,
+    PerformanceWithAnalysisResponse,
 )
+from app.services.ai_analysis import AIAnalysisService
+from app.workers.analysis_worker import process_performance_analysis
 
 router = APIRouter(prefix="/performances", tags=["performances"])
 
 
-@router.get("/", response_model=list[PerformanceResponse])
+@router.get("/", response_model=list[PerformanceWithAnalysisResponse])
 async def get_performances(
     skip: int = 0,
     limit: int = 100,
@@ -48,7 +52,7 @@ async def get_performances(
     return performances
 
 
-@router.get("/{performance_id}", response_model=PerformanceResponse)
+@router.get("/{performance_id}", response_model=PerformanceWithAnalysisResponse)
 async def get_performance(
     performance_id: int,
     db: Session = Depends(get_db),
@@ -86,9 +90,73 @@ async def get_performance(
     return performance
 
 
+@router.get("/{performance_id}/analysis", response_model=PerformanceAnalysisResponse)
+async def get_performance_analysis(
+    performance_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> object:
+    """Get AI analysis for a performance.
+
+    Musicians can view analyses for their own performances; evaluators/admins/moderators
+    can view all analyses.
+    """
+    performance = db.query(Performance).filter(Performance.id == performance_id).first()
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance not found",
+        )
+
+    if current_user.role.name == "musician" and performance.musician_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    analysis = AIAnalysisService.get_or_create_analysis(db, performance)
+    return analysis
+
+
+@router.post("/{performance_id}/analyze", response_model=PerformanceAnalysisResponse)
+async def analyze_performance(
+    performance_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> object:
+    """Run AI analysis for a performance.
+
+    Allowed roles: musician (own performances), evaluator, moderator, admin.
+    """
+    performance = db.query(Performance).filter(Performance.id == performance_id).first()
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance not found",
+        )
+
+    if current_user.role.name == "musician" and performance.musician_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    if current_user.role.name not in ["musician", "evaluator", "moderator", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to analyze performances",
+        )
+
+    analysis = AIAnalysisService.queue_analysis(db, performance)
+    background_tasks.add_task(process_performance_analysis, performance.id)
+    return analysis
+
+
 @router.post("/", response_model=PerformanceResponse, status_code=status.HTTP_201_CREATED)
 async def create_performance(
     performance_data: PerformanceCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Performance:
@@ -123,6 +191,9 @@ async def create_performance(
     db.add(performance)
     db.commit()
     db.refresh(performance)
+
+    AIAnalysisService.queue_analysis(db, performance)
+    background_tasks.add_task(process_performance_analysis, performance.id)
     return performance
 
 

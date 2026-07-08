@@ -11,6 +11,20 @@ interface Performance {
   audio_file_url: string | null;
   submitted_at: string;
   status: string;
+  analysis?: PerformanceAnalysis | null;
+}
+
+interface PerformanceAnalysis {
+  id: number;
+  performance_id: number;
+  status: string;
+  technique_score: number | null;
+  timing_score: number | null;
+  intonation_score: number | null;
+  overall_ai_score: number | null;
+  ai_feedback: string | null;
+  analyzed_at: string | null;
+  error_message: string | null;
 }
 
 const Performances: React.FC = () => {
@@ -23,8 +37,16 @@ const Performances: React.FC = () => {
   const [description, setDescription] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [analyzingPerformanceId, setAnalyzingPerformanceId] = useState<
+    number | null
+  >(null);
 
   const canCreate = user?.role === "musician" || user?.role === "admin";
+  const canAnalyze =
+    user?.role === "musician" ||
+    user?.role === "admin" ||
+    user?.role === "evaluator" ||
+    user?.role === "moderator";
 
   useEffect(() => {
     if (isLoading) {
@@ -52,6 +74,46 @@ const Performances: React.FC = () => {
     fetchPerformances();
   }, [user, isLoading]);
 
+  useEffect(() => {
+    const activeAnalysisIds = performances
+      .filter((performance) => {
+        const status = performance.analysis?.status;
+        return status === "running" || status === "pending";
+      })
+      .map((performance) => performance.id);
+
+    if (activeAnalysisIds.length === 0) {
+      return;
+    }
+
+    const interval = window.setInterval(async () => {
+      const updates = await Promise.all(
+        activeAnalysisIds.map(async (performanceId) => {
+          try {
+            const response = await api.get(`/performances/${performanceId}/analysis`);
+            return {
+              performanceId,
+              analysis: response.data as PerformanceAnalysis,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      setPerformances((prev) =>
+        prev.map((performance) => {
+          const update = updates.find(
+            (item) => item?.performanceId === performance.id,
+          );
+          return update ? { ...performance, analysis: update.analysis } : performance;
+        }),
+      );
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [performances]);
+
   const handleCreatePerformance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !audioUrl) return;
@@ -69,12 +131,31 @@ const Performances: React.FC = () => {
       setDescription("");
       setAudioUrl("");
       setShowForm(false);
+      setError(null);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Failed to create performance";
       setError(message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAnalyzePerformance = async (performanceId: number) => {
+    setAnalyzingPerformanceId(performanceId);
+    setError(null);
+    try {
+      const response = await api.post(`/performances/${performanceId}/analyze`);
+      const analysis = response.data as PerformanceAnalysis;
+      setPerformances((prev) =>
+        prev.map((p) => (p.id === performanceId ? { ...p, analysis } : p)),
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to analyze performance";
+      setError(message);
+    } finally {
+      setAnalyzingPerformanceId(null);
     }
   };
 
@@ -240,6 +321,54 @@ const Performances: React.FC = () => {
                               View audio
                             </a>
                           </div>
+
+                          {canAnalyze && (
+                            <div className="mt-3">
+                              <button
+                                onClick={() =>
+                                  handleAnalyzePerformance(performance.id)
+                                }
+                                disabled={
+                                  analyzingPerformanceId === performance.id
+                                }
+                                className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 py-1.5 px-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {analyzingPerformanceId === performance.id
+                                  ? "Analyzing..."
+                                  : "Run AI Analysis"}
+                              </button>
+                            </div>
+                          )}
+
+                          {performance.analysis && (
+                            <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                              <div className="font-semibold">
+                                AI Analysis: {performance.analysis.status}
+                              </div>
+                              {performance.analysis.overall_ai_score !==
+                                null && (
+                                <div className="mt-1">
+                                  Overall:{" "}
+                                  {performance.analysis.overall_ai_score} |
+                                  Technique:{" "}
+                                  {performance.analysis.technique_score} |
+                                  Timing: {performance.analysis.timing_score} |
+                                  Intonation:{" "}
+                                  {performance.analysis.intonation_score}
+                                </div>
+                              )}
+                              {performance.analysis.ai_feedback && (
+                                <div className="mt-1">
+                                  {performance.analysis.ai_feedback}
+                                </div>
+                              )}
+                              {performance.analysis.error_message && (
+                                <div className="mt-1 text-red-700">
+                                  {performance.analysis.error_message}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500 text-right">
                           <div>Musician ID: {performance.musician_id}</div>

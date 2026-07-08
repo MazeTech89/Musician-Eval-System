@@ -38,7 +38,7 @@ def get_db() -> Session:
 def init_db() -> None:
     """Initialize database by creating all tables and seeding default data."""
     from app.core.init_db import init_roles_and_permissions
-    from app.models.evaluation import Evaluation, Performance  # noqa: F401
+    from app.models.evaluation import Evaluation, Performance, PerformanceAnalysis  # noqa: F401
     from app.models.user import Base
 
     Base.metadata.create_all(bind=engine)
