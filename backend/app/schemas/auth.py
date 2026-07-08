@@ -29,6 +29,16 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     role: RoleEnum
 
+    @field_validator("role", mode="before")
+    @classmethod
+    def normalize_role(cls, v: str | RoleEnum) -> str:
+        """Normalize role to lowercase to accept both uppercase and lowercase input."""
+        if isinstance(v, RoleEnum):
+            return v
+        if isinstance(v, str):
+            return v.lower()
+        return v
+
 
 class UserUpdate(BaseModel):
     """Schema for updating a user."""
@@ -38,6 +48,18 @@ class UserUpdate(BaseModel):
     last_name: str | None = Field(None, max_length=100)
     is_active: bool | None = None
     role: RoleEnum | None = None
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def normalize_role(cls, v: str | RoleEnum | None) -> str | None:
+        """Normalize role to lowercase to accept both uppercase and lowercase input."""
+        if v is None:
+            return v
+        if isinstance(v, RoleEnum):
+            return v
+        if isinstance(v, str):
+            return v.lower()
+        return v
 
 
 class UserResponse(UserBase):
