@@ -36,10 +36,13 @@ class Performance(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(200), nullable=False)
     description = Column(Text)
-    audio_file_url = Column(String(500))
+    audio_file_url = Column(String(500))  # URL for backward compatibility
+    audio_s3_key = Column(String(500), nullable=True, unique=True)  # S3 object key
     musician_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     submitted_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String(50), default="pending")  # pending, approved, rejected
+    file_size_bytes = Column(Integer, nullable=True)  # File size in bytes
+    uploaded_at = Column(DateTime, nullable=True)  # When file was uploaded
 
     # Relationships
     musician = relationship("User", back_populates="performances")

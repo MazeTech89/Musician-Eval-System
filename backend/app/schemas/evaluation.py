@@ -35,9 +35,22 @@ class PerformanceResponse(PerformanceBase):
     musician_id: int
     submitted_at: datetime
     status: str
+    audio_s3_key: str | None = None
+    file_size_bytes: int | None = None
+    uploaded_at: datetime | None = None
 
     class Config:
         from_attributes = True
+
+
+class AudioUploadResponse(BaseModel):
+    """Response for successful audio file upload."""
+
+    performance_id: int
+    s3_key: str
+    file_url: str
+    file_size: int
+    message: str = "Audio file uploaded successfully"
 
 
 class PerformanceAnalysisResponse(BaseModel):
