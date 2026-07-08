@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     s3_max_file_size_mb: int = 50  # Max 50MB audio files
     s3_allowed_audio_formats: list[str] = ["mp3", "wav", "flac", "m4a", "aac"]
     s3_signed_url_expiry_seconds: int = 3600  # 1 hour
+    s3_endpoint_url: str = ""  # MinIO endpoint for local development
 
     # Redis Configuration
     redis_url: str = "redis://localhost:6379"
@@ -54,11 +55,15 @@ class Settings(BaseSettings):
 
     def get_s3_config(self) -> dict:
         """Get AWS S3 configuration for boto3."""
-        return {
+        config = {
             "region_name": self.aws_region,
             "aws_access_key_id": self.aws_access_key_id,
             "aws_secret_access_key": self.aws_secret_access_key,
         }
+        # Add endpoint URL for MinIO or S3-compatible services (local development)
+        if self.s3_endpoint_url:
+            config["endpoint_url"] = self.s3_endpoint_url
+        return config
 
 
 settings = Settings()

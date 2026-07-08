@@ -12,6 +12,7 @@ Tests:
 
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -23,12 +24,16 @@ load_dotenv(".env.local")
 # Configuration
 API_BASE_URL = "http://localhost:8000/api/v1"
 TEST_AUDIO_FILE = "test_audio.wav"
+
+# Use timestamp to make test user unique
+TIMESTAMP = int(datetime.now().timestamp())
 TEST_USER = {
-    "username": "testmusician",
-    "email": "test@example.com",
+    "username": f"testmusician_{TIMESTAMP}",
+    "email": f"test_{TIMESTAMP}@example.com",
     "password": "TestPass123!",
     "first_name": "Test",
     "last_name": "Musician",
+    "role": "musician",
 }
 
 
