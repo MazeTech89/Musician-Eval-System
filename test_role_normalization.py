@@ -2,8 +2,9 @@
 """Test role normalization fix."""
 
 import json
-import requests
 import time
+
+import requests
 
 time.sleep(2)  # Wait for backend to fully restart
 

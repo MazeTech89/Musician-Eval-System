@@ -29,14 +29,58 @@ const Register: React.FC = () => {
     setIsLoading(true);
     setError("");
 
+    // Client-side validation to catch common errors early
+    if (!formData.username || formData.username.length < 3) {
+      setError("Username must be at least 3 characters");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.email || !formData.email.includes("@")) {
+      setError("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.password || formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.role) {
+      setError("Please select a role");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       await api.post("/auth/register", formData);
       navigate("/login");
     } catch (err: unknown) {
       console.error("Registration failed", err);
-      const message =
-        err instanceof Error ? err.message : "Registration failed";
-      setError(message || "Registration failed");
+      let errorMessage = "Registration failed";
+
+      // Extract validation error details from 422 responses
+      if (err instanceof Error && "response" in err) {
+        const response = (err as any).response;
+        if (response?.status === 422 && response?.data?.detail) {
+          // Pydantic validation errors are returned as an array
+          const details = response.data.detail;
+          if (Array.isArray(details) && details.length > 0) {
+            const firstError = details[0];
+            const fieldName = Array.isArray(firstError.loc)
+              ? firstError.loc[firstError.loc.length - 1]
+              : "unknown";
+            errorMessage = `${fieldName}: ${firstError.msg}`;
+          }
+        } else if (response?.data?.detail) {
+          // Business logic errors have detail as a string
+          errorMessage = response.data.detail;
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
