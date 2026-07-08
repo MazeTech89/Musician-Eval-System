@@ -1,10 +1,11 @@
 """Evaluation API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
+from app.core.rate_limit import API_RATE_LIMIT, limiter
 from app.models.evaluation import Evaluation
 from app.models.user import User
 from app.schemas.evaluation import (
@@ -18,7 +19,9 @@ router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 
 
 @router.get("/", response_model=list[EvaluationWithPerformanceResponse])
+@limiter.limit(API_RATE_LIMIT)
 async def get_evaluations(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -56,7 +59,9 @@ async def get_evaluations(
 
 
 @router.get("/{evaluation_id}", response_model=EvaluationWithPerformanceResponse)
+@limiter.limit(API_RATE_LIMIT)
 async def get_evaluation(
+    request: Request,
     evaluation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -101,7 +106,9 @@ async def get_evaluation(
 
 
 @router.post("/", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(API_RATE_LIMIT)
 async def create_evaluation(
+    request: Request,
     evaluation_data: EvaluationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -152,7 +159,9 @@ async def create_evaluation(
 
 
 @router.put("/{evaluation_id}", response_model=EvaluationResponse)
+@limiter.limit(API_RATE_LIMIT)
 async def update_evaluation(
+    request: Request,
     evaluation_id: int,
     evaluation_update: EvaluationUpdate,
     db: Session = Depends(get_db),
@@ -202,7 +211,9 @@ async def update_evaluation(
 
 
 @router.delete("/{evaluation_id}")
+@limiter.limit(API_RATE_LIMIT)
 async def delete_evaluation(
+    request: Request,
     evaluation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

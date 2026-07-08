@@ -1,10 +1,11 @@
 """Authentication API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin
+from app.core.rate_limit import AUTH_RATE_LIMIT, limiter
 from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
@@ -21,13 +22,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(AUTH_RATE_LIMIT)
 async def register(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
 ) -> User:
     """Register a new user.
 
     Args:
+        request: FastAPI request object
         user_data: User registration data
         db: Database session
 
@@ -48,13 +52,16 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
 async def login(
+    request: Request,
     credentials: LoginRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """Login and get access token.
 
     Args:
+        request: FastAPI request object
         credentials: Login credentials
         db: Database session
 
@@ -77,14 +84,17 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit(AUTH_RATE_LIMIT)
 async def refresh_token(
-    request: RefreshTokenRequest,
+    request: Request,
+    refresh_request: RefreshTokenRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """Refresh access token using refresh token.
 
     Args:
-        request: Refresh token request
+        request: FastAPI request object
+        refresh_request: Refresh token request
         db: Database session
 
     Returns:
@@ -93,7 +103,7 @@ async def refresh_token(
     Raises:
         HTTPException: If refresh token is invalid or expired
     """
-    token = AuthService.refresh_access_token(db, request.refresh_token)
+    token = AuthService.refresh_access_token(db, refresh_request.refresh_token)
 
     if not token:
         raise HTTPException(
@@ -157,7 +167,9 @@ async def update_me(
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
+@limiter.limit("10/hour")  # Very strict: only 10 per hour for security
 async def change_password(
+    request: Request,
     password_data: PasswordChangeRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -165,6 +177,7 @@ async def change_password(
     """Change current user password.
 
     Args:
+        request: FastAPI request object
         password_data: Password change data
         current_user: Current authenticated user
         db: Database session

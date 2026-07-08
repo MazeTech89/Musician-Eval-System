@@ -2,11 +2,21 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
+from app.core.rate_limit import API_RATE_LIMIT, UPLOAD_RATE_LIMIT, limiter
 from app.models.evaluation import Performance
 from app.models.user import User
 from app.schemas.evaluation import (
@@ -25,7 +35,9 @@ router = APIRouter(prefix="/performances", tags=["performances"])
 
 
 @router.get("/", response_model=list[PerformanceWithAnalysisResponse])
+@limiter.limit(API_RATE_LIMIT)
 async def get_performances(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -57,7 +69,9 @@ async def get_performances(
 
 
 @router.post("/{performance_id}/upload-audio", response_model=AudioUploadResponse)
+@limiter.limit(UPLOAD_RATE_LIMIT)
 async def upload_performance_audio(
+    request: Request,
     performance_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
