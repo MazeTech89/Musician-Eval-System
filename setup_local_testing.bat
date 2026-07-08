@@ -120,7 +120,9 @@ echo.
 REM Create test audio file if it doesn't exist
 if not exist "test_audio.wav" (
     echo Creating test audio file...
-    python3 -c "import wave, struct; sample_rate = 44100; duration_ms = 100; num_samples = int(sample_rate * duration_ms / 1000); wav = wave.open('test_audio.wav', 'w'); wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(sample_rate); wav.writeframes(struct.pack('<h', 0) * num_samples); wav.close(); print('OK - Test audio file created: test_audio.wav')"
+    python -c "import wave, struct; sample_rate = 44100; duration_ms = 100; num_samples = int(sample_rate * duration_ms / 1000); wav = wave.open('test_audio.wav', 'w'); wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(sample_rate); wav.writeframes(struct.pack('<h', 0) * num_samples); wav.close(); print('OK - Test audio file created: test_audio.wav')"
+) else (
+    echo OK - Test audio file already exists
 )
 
 echo.
