@@ -64,7 +64,7 @@ services:
       AWS_ACCESS_KEY_ID: minioadmin
       AWS_SECRET_ACCESS_KEY: minioadmin
       S3_ENDPOINT_URL: http://minio:9000
-      S3_BUCKET_NAME: development-musician-eval-uploads
+      S3_BUCKET_NAME: musician-eval-uploads
     ports:
       - "8000:8000"
     depends_on:
