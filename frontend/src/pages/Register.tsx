@@ -37,7 +37,8 @@ const Register: React.FC = () => {
     role: "musician",
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength | null>(null);
+  const [passwordStrength, setPasswordStrength] =
+    useState<PasswordStrength | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -81,8 +82,7 @@ const Register: React.FC = () => {
 
       case "password":
         if (!value) return "Password is required";
-        if (value.length < 8)
-          return "Password must be at least 8 characters";
+        if (value.length < 8) return "Password must be at least 8 characters";
         if (!/[A-Z]/.test(value))
           return "Password must contain at least one uppercase letter";
         if (!/[0-9]/.test(value))
@@ -91,12 +91,14 @@ const Register: React.FC = () => {
 
       case "first_name":
         if (!value.trim()) return "First name is required";
-        if (value.length > 100) return "First name must not exceed 100 characters";
+        if (value.length > 100)
+          return "First name must not exceed 100 characters";
         return undefined;
 
       case "last_name":
         if (!value.trim()) return "Last name is required";
-        if (value.length > 100) return "Last name must not exceed 100 characters";
+        if (value.length > 100)
+          return "Last name must not exceed 100 characters";
         return undefined;
 
       case "role":
@@ -164,22 +166,34 @@ const Register: React.FC = () => {
       console.error("Registration failed", err);
       let errorMessage = "Registration failed";
 
-      // Extract validation error details from 422 responses
+      // Extract error details from API response
       if (err instanceof Error && "response" in err) {
         const response = (err as any).response;
-        if (response?.status === 422 && response?.data?.detail) {
-          // Pydantic validation errors are returned as an array
+
+        // Handle 422 Pydantic validation errors (array of field errors)
+        if (response?.status === 422 && Array.isArray(response?.data?.detail)) {
           const details = response.data.detail;
-          if (Array.isArray(details) && details.length > 0) {
+          if (details.length > 0) {
             const firstError = details[0];
             const fieldName = Array.isArray(firstError.loc)
               ? firstError.loc[firstError.loc.length - 1]
               : "unknown";
             errorMessage = `${fieldName}: ${firstError.msg}`;
           }
-        } else if (response?.data?.detail) {
-          // Business logic errors have detail as a string
-          errorMessage = response.data.detail;
+        }
+        // Handle 400/422 errors with detail as string
+        else if (response?.data?.detail) {
+          errorMessage = String(response.data.detail);
+        }
+        // Handle generic error message
+        else if (response?.data?.message) {
+          errorMessage = String(response.data.message);
+        }
+        // Handle errors array
+        else if (Array.isArray(response?.data?.errors)) {
+          errorMessage = response.data.errors
+            .map((e: any) => e.msg || e)
+            .join("; ");
         }
       }
 
@@ -356,7 +370,9 @@ const Register: React.FC = () => {
                     <span className="text-xs font-medium text-gray-700">
                       Password Strength:
                     </span>
-                    <span className={`text-xs font-bold ${passwordStrength.color}`}>
+                    <span
+                      className={`text-xs font-bold ${passwordStrength.color}`}
+                    >
                       {passwordStrength.message}
                     </span>
                   </div>
@@ -414,7 +430,7 @@ const Register: React.FC = () => {
               disabled={
                 isLoading ||
                 Object.keys(fieldErrors).some(
-                  (key) => fieldErrors[key as keyof FieldErrors]
+                  (key) => fieldErrors[key as keyof FieldErrors],
                 )
               }
               className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
