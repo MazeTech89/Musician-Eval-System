@@ -120,23 +120,7 @@ echo.
 REM Create test audio file if it doesn't exist
 if not exist "test_audio.wav" (
     echo Creating test audio file...
-    python3 << 'PYEOF'
-import wave
-import struct
-
-sample_rate = 44100
-duration_ms = 100
-num_samples = int(sample_rate * duration_ms / 1000)
-
-with wave.open("test_audio.wav", "w") as wav_file:
-    wav_file.setnchannels(1)  # Mono
-    wav_file.setsampwidth(2)  # 16-bit
-    wav_file.setframerate(sample_rate)
-    silence = struct.pack("<h", 0) * num_samples
-    wav_file.writeframes(silence)
-
-print("OK - Test audio file created: test_audio.wav")
-PYEOF
+    python3 -c "import wave, struct; sample_rate = 44100; duration_ms = 100; num_samples = int(sample_rate * duration_ms / 1000); wav = wave.open('test_audio.wav', 'w'); wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(sample_rate); wav.writeframes(struct.pack('<h', 0) * num_samples); wav.close(); print('OK - Test audio file created: test_audio.wav')"
 )
 
 echo.
