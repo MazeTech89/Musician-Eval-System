@@ -18,10 +18,13 @@ class S3StorageService:
 
     def __init__(self):
         """Initialize S3 client and bucket configuration."""
-        self.s3_client = boto3.client("s3", **settings.get_s3_config())
+        s3_config = settings.get_s3_config()
+        logger.info(f"Initializing S3StorageService with config: {s3_config}")
+        self.s3_client = boto3.client("s3", **s3_config)
         self.bucket_name = settings.s3_bucket_name_with_env
         self.allowed_formats = settings.s3_allowed_audio_formats
         self.max_file_size = settings.s3_max_file_size_mb * 1024 * 1024  # Convert to bytes
+        logger.info(f"S3 bucket name: {self.bucket_name}")
 
     def _validate_file(self, file: UploadFile) -> tuple[bool, str]:
         """Validate uploaded file format and size.
@@ -71,6 +74,9 @@ class S3StorageService:
 
             # Read file content
             file_content = await file.read()
+            logger.info(
+                f"Uploading file to S3 - Bucket: {self.bucket_name}, Key: {s3_key}, Size: {len(file_content)} bytes"
+            )
 
             # Upload to S3
             self.s3_client.put_object(
