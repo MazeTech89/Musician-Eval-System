@@ -183,34 +183,19 @@ const Performances: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Performances
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              {canCreate && (
-                <button
-                  onClick={() => setShowForm(!showForm)}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-                >
-                  {showForm ? "Cancel" : "New Performance"}
-                </button>
-              )}
-              <Link to="/" className="text-indigo-600 hover:text-indigo-500">
-                Dashboard
-              </Link>
-            </div>
-          </div>
+    <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div className="px-4 py-6 sm:px-0">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Performances</h2>
+          {canCreate && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+            >
+              {showForm ? "Cancel" : "New Performance"}
+            </button>
+          )}
         </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
           {error && (
             <div className="mb-6 bg-red-100 border border-red-300 text-red-700 rounded-md p-4">
               {error}
@@ -381,8 +366,8 @@ const Performances: React.FC = () => {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 

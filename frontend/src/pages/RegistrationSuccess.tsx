@@ -50,7 +50,8 @@ const RegistrationSuccess: React.FC = () => {
           </h2>
 
           <p className="text-gray-600 text-sm">
-            Your account has been successfully created. You're all set to start using the Musician Evaluation System.
+            Your account has been successfully created. You're all set to start
+            using the Musician Evaluation System.
           </p>
 
           {/* Account Details */}
@@ -120,7 +121,10 @@ const RegistrationSuccess: React.FC = () => {
         <div className="text-center pt-6 border-t border-gray-200">
           <p className="text-xs text-gray-500">
             Already have an account?{" "}
-            <Link to="/login" className="text-indigo-600 hover:text-indigo-500 font-medium">
+            <Link
+              to="/login"
+              className="text-indigo-600 hover:text-indigo-500 font-medium"
+            >
               Sign in here
             </Link>
           </p>

@@ -160,16 +160,27 @@ const Register: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await api.post("/auth/register", formData);
+      const response = await api.post("/auth/register", formData);
+      console.log("Registration successful, response:", response);
       // Navigate to success page with registration details
+      console.log("Navigating to /registration-success with state:", {
+        username: formData.username,
+        email: formData.email,
+      });
       navigate("/registration-success", {
         state: {
           username: formData.username,
           email: formData.email,
         },
       });
+      console.log("Navigation called");
     } catch (err: unknown) {
-      console.error("Registration failed", err);
+      console.error("Registration error caught:", err);
+      console.error("Error type:", typeof err);
+      console.error("Error instanceof Error:", err instanceof Error);
+      if (err instanceof Error) {
+        console.error("Error message:", err.message);
+      }
       let errorMessage = "Registration failed";
 
       // Extract error details from API response

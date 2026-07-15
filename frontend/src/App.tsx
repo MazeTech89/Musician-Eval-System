@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import Navigation from "./components/Navigation";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
@@ -15,11 +16,15 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <Navigation />
         <div className="min-h-screen bg-gray-50">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/registration-success" element={<RegistrationSuccess />} />
+            <Route
+              path="/registration-success"
+              element={<RegistrationSuccess />}
+            />
             <Route
               path="/"
               element={
