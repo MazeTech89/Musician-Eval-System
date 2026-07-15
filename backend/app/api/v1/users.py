@@ -1,10 +1,11 @@
 """User management API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin
+from app.core.rate_limit import API_RATE_LIMIT, limiter
 from app.models.user import User
 from app.schemas.auth import UserResponse, UserUpdate
 
@@ -12,7 +13,9 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/", response_model=list[UserResponse])
+@limiter.limit(API_RATE_LIMIT)
 async def get_users(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -34,7 +37,9 @@ async def get_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
+@limiter.limit(API_RATE_LIMIT)
 async def get_user(
+    request: Request,
     user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin),
@@ -62,7 +67,9 @@ async def get_user(
 
 
 @router.put("/{user_id}", response_model=UserResponse)
+@limiter.limit(API_RATE_LIMIT)
 async def update_user(
+    request: Request,
     user_id: str,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
@@ -99,7 +106,9 @@ async def update_user(
 
 
 @router.delete("/{user_id}")
+@limiter.limit(API_RATE_LIMIT)
 async def delete_user(
+    request: Request,
     user_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin),

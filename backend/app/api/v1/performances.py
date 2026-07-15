@@ -1,23 +1,43 @@
 """Performance API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
+from app.core.rate_limit import API_RATE_LIMIT, UPLOAD_RATE_LIMIT, limiter
 from app.models.evaluation import Performance
 from app.models.user import User
 from app.schemas.evaluation import (
+    AudioUploadResponse,
+    PerformanceAnalysisResponse,
     PerformanceCreate,
     PerformanceResponse,
     PerformanceUpdate,
+    PerformanceWithAnalysisResponse,
 )
+from app.services.ai_analysis import AIAnalysisService
+from app.services.s3_storage import get_s3_service
+from app.workers.analysis_worker import process_performance_analysis
 
 router = APIRouter(prefix="/performances", tags=["performances"])
 
 
-@router.get("/", response_model=list[PerformanceResponse])
+@router.get("/", response_model=list[PerformanceWithAnalysisResponse])
+@limiter.limit(API_RATE_LIMIT)
 async def get_performances(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -48,7 +68,86 @@ async def get_performances(
     return performances
 
 
-@router.get("/{performance_id}", response_model=PerformanceResponse)
+@router.post("/{performance_id}/upload-audio", response_model=AudioUploadResponse)
+@limiter.limit(UPLOAD_RATE_LIMIT)
+async def upload_performance_audio(
+    request: Request,
+    performance_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> AudioUploadResponse:
+    """Upload audio file for a performance.
+
+    Musicians can upload audio for their own performances.
+    Admins can upload audio for any performance.
+
+    Args:
+        performance_id: Performance ID
+        file: Audio file to upload
+        db: Database session
+        current_user: Current authenticated user
+
+    Returns:
+        AudioUploadResponse with S3 key and URL
+
+    Raises:
+        HTTPException: If performance not found, access denied, or upload fails
+    """
+    performance = db.query(Performance).filter(Performance.id == performance_id).first()
+
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance not found",
+        )
+
+    # Check permissions
+    if current_user.role.name == "musician":
+        if performance.musician_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Can only upload audio for your own performances",
+            )
+    elif current_user.role.name not in ["admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only musicians and admins can upload audio",
+        )
+
+    try:
+        s3_service = get_s3_service()
+        upload_result = await s3_service.upload_audio(file, performance_id)
+
+        # Update performance with S3 metadata
+        performance.audio_s3_key = upload_result["s3_key"]
+        performance.audio_file_url = upload_result["file_url"]
+        performance.file_size_bytes = upload_result["file_size"]
+        performance.uploaded_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(performance)
+
+        return AudioUploadResponse(
+            performance_id=performance_id,
+            s3_key=upload_result["s3_key"],
+            file_url=upload_result["file_url"],
+            file_size=upload_result["file_size"],
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload audio file: {str(e)}",
+        )
+
+
+@router.get("/{performance_id}", response_model=PerformanceWithAnalysisResponse)
 async def get_performance(
     performance_id: int,
     db: Session = Depends(get_db),
@@ -86,9 +185,73 @@ async def get_performance(
     return performance
 
 
+@router.get("/{performance_id}/analysis", response_model=PerformanceAnalysisResponse)
+async def get_performance_analysis(
+    performance_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> object:
+    """Get AI analysis for a performance.
+
+    Musicians can view analyses for their own performances; evaluators/admins/moderators
+    can view all analyses.
+    """
+    performance = db.query(Performance).filter(Performance.id == performance_id).first()
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance not found",
+        )
+
+    if current_user.role.name == "musician" and performance.musician_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    analysis = AIAnalysisService.get_or_create_analysis(db, performance)
+    return analysis
+
+
+@router.post("/{performance_id}/analyze", response_model=PerformanceAnalysisResponse)
+async def analyze_performance(
+    performance_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> object:
+    """Run AI analysis for a performance.
+
+    Allowed roles: musician (own performances), evaluator, moderator, admin.
+    """
+    performance = db.query(Performance).filter(Performance.id == performance_id).first()
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance not found",
+        )
+
+    if current_user.role.name == "musician" and performance.musician_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+
+    if current_user.role.name not in ["musician", "evaluator", "moderator", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to analyze performances",
+        )
+
+    analysis = AIAnalysisService.queue_analysis(db, performance)
+    background_tasks.add_task(process_performance_analysis, performance.id)
+    return analysis
+
+
 @router.post("/", response_model=PerformanceResponse, status_code=status.HTTP_201_CREATED)
 async def create_performance(
     performance_data: PerformanceCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Performance:
@@ -123,6 +286,9 @@ async def create_performance(
     db.add(performance)
     db.commit()
     db.refresh(performance)
+
+    AIAnalysisService.queue_analysis(db, performance)
+    background_tasks.add_task(process_performance_analysis, performance.id)
     return performance
 
 

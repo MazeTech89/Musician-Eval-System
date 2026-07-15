@@ -45,10 +45,22 @@ class AuthService:
         if existing_user:
             raise ValueError("User with this username or email already exists")
 
-        # Get or create role
-        role = db.query(Role).filter(Role.name == user_data.role).first()
+        # Get or create role - convert to lowercase to match RoleEnum values
+        role_name_str = (
+            user_data.role.lower()
+            if isinstance(user_data.role, str)
+            else user_data.role.value.lower()
+        )
+
+        # Convert to RoleEnum and query by enum value
+        try:
+            role_enum = RoleEnum(role_name_str)
+        except ValueError:
+            raise ValueError(f"Role {role_name_str} is not valid")
+
+        role = db.query(Role).filter(Role.name == role_enum).first()
         if not role:
-            raise ValueError(f"Role {user_data.role} not found")
+            raise ValueError(f"Role {role_name_str} not found")
 
         # Create user
         user = User(
@@ -164,9 +176,22 @@ class AuthService:
 
         # Handle role update
         if "role" in update_data:
-            role = db.query(Role).filter(Role.name == update_data["role"]).first()
+            # Convert role to lowercase to match RoleEnum values
+            role_name_str = (
+                update_data["role"].lower()
+                if isinstance(update_data["role"], str)
+                else update_data["role"].value.lower()
+            )
+
+            # Convert to RoleEnum and query by enum value
+            try:
+                role_enum = RoleEnum(role_name_str)
+            except ValueError:
+                raise ValueError(f"Role {role_name_str} is not valid")
+
+            role = db.query(Role).filter(Role.name == role_enum).first()
             if not role:
-                raise ValueError(f"Role {update_data['role']} not found")
+                raise ValueError(f"Role {role_name_str} not found")
             update_data["role_id"] = role.id
             del update_data["role"]
 

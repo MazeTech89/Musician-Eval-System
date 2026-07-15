@@ -35,6 +35,48 @@ class PerformanceResponse(PerformanceBase):
     musician_id: int
     submitted_at: datetime
     status: str
+    audio_s3_key: str | None = None
+    file_size_bytes: int | None = None
+    uploaded_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class AudioUploadResponse(BaseModel):
+    """Response for successful audio file upload."""
+
+    performance_id: int
+    s3_key: str
+    file_url: str
+    file_size: int
+    message: str = "Audio file uploaded successfully"
+
+
+class PerformanceAnalysisResponse(BaseModel):
+    """AI analysis response schema."""
+
+    id: int
+    performance_id: int
+    status: str
+    technique_score: float | None = None
+    timing_score: float | None = None
+    intonation_score: float | None = None
+    overall_ai_score: float | None = None
+    ai_feedback: str | None = None
+    error_message: str | None = None
+    analyzed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PerformanceWithAnalysisResponse(PerformanceResponse):
+    """Performance response with optional AI analysis."""
+
+    analysis: PerformanceAnalysisResponse | None = None
 
     class Config:
         from_attributes = True

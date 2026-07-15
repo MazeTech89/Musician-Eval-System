@@ -1,9 +1,9 @@
 import React from "react";
-import { useAuth } from "../contexts/AuthContext";
 import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const Dashboard: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const getDashboardContent = () => {
     switch (user?.role) {
@@ -71,7 +71,12 @@ const Dashboard: React.FC = () => {
               <p className="text-gray-600 mb-4">
                 Upload your musical performance
               </p>
-              <span className="text-gray-400">Coming soon</span>
+              <Link
+                to="/performances"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
+                Submit Performance
+              </Link>
             </div>
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-2">My Evaluations</h3>
@@ -97,43 +102,12 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Musician Evaluation System
-              </h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">
-                Welcome, {user?.first_name}!
-              </span>
-              <Link
-                to="/profile"
-                className="text-indigo-600 hover:text-indigo-500"
-              >
-                Profile
-              </Link>
-              <button
-                onClick={logout}
-                className="text-gray-700 hover:text-gray-900"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
-          {getDashboardContent()}
-        </div>
-      </main>
-    </div>
+    <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <div className="px-4 py-6 sm:px-0">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
+        {getDashboardContent()}
+      </div>
+    </main>
   );
 };
 
