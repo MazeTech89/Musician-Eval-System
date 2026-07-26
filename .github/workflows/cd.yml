@@ -2,11 +2,20 @@ name: CD
 
 on:
   push:
-    branches: [main]
+    branches: [develop, main]
     tags:
       - "v*.*.*"
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: "Target environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
       deploy:
         description: "Run deploy stage after image build"
         required: true
@@ -21,16 +30,56 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
   ECR_REPOSITORY_BACKEND: ${{ vars.ECR_REPOSITORY_BACKEND || 'musician-eval-backend' }}
   ECR_REPOSITORY_FRONTEND: ${{ vars.ECR_REPOSITORY_FRONTEND || 'musician-eval-frontend' }}
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || '' }}
-  ECS_SERVICE_BACKEND: ${{ vars.ECS_SERVICE_BACKEND || '' }}
-  ECS_SERVICE_FRONTEND: ${{ vars.ECS_SERVICE_FRONTEND || '' }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE_BACKEND: ${{ vars.ECS_SERVICE_BACKEND }}
+  ECS_SERVICE_FRONTEND: ${{ vars.ECS_SERVICE_FRONTEND }}
   ECS_BACKEND_CONTAINER_NAME: ${{ vars.ECS_BACKEND_CONTAINER_NAME || 'backend' }}
   ECS_FRONTEND_CONTAINER_NAME: ${{ vars.ECS_FRONTEND_CONTAINER_NAME || 'frontend' }}
 
 jobs:
+  resolve-target:
+    name: Resolve deployment target
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
+      deploy: ${{ steps.resolve.outputs.deploy }}
+    steps:
+      - name: Resolve env, tag, and deploy mode
+        id: resolve
+        shell: bash
+        run: |
+          ENVIRONMENT=""
+          DEPLOY="true"
+          TAG="${GITHUB_SHA::12}"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENVIRONMENT="${{ inputs.target_environment }}"
+            if [ "${{ inputs.deploy }}" != "true" ]; then
+              DEPLOY="false"
+            fi
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            ENVIRONMENT="prod"
+            TAG="${GITHUB_REF_NAME}"
+          elif [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            ENVIRONMENT="test"
+          elif [ "${GITHUB_REF}" = "refs/heads/develop" ]; then
+            ENVIRONMENT="dev"
+          else
+            echo "::error::Unsupported ref for CD: ${GITHUB_REF}"
+            exit 1
+          fi
+
+          echo "environment=$ENVIRONMENT" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "deploy=$DEPLOY" >> "$GITHUB_OUTPUT"
+
   build-and-push:
     name: Build and push container images
     runs-on: ubuntu-latest
+    needs: resolve-target
+    environment:
+      name: ${{ needs.resolve-target.outputs.environment }}
     outputs:
       backend_image: ${{ steps.images.outputs.backend_image }}
       frontend_image: ${{ steps.images.outputs.frontend_image }}
@@ -47,20 +96,10 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Resolve image tag
-        id: tag
-        shell: bash
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build and push backend image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          TAG: ${{ steps.tag.outputs.value }}
+          TAG: ${{ needs.resolve-target.outputs.image_tag }}
         run: |
           docker build -t "$REGISTRY/$ECR_REPOSITORY_BACKEND:$TAG" backend
           docker push "$REGISTRY/$ECR_REPOSITORY_BACKEND:$TAG"
@@ -68,7 +107,7 @@ jobs:
       - name: Build and push frontend image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          TAG: ${{ steps.tag.outputs.value }}
+          TAG: ${{ needs.resolve-target.outputs.image_tag }}
         run: |
           docker build -t "$REGISTRY/$ECR_REPOSITORY_FRONTEND:$TAG" frontend
           docker push "$REGISTRY/$ECR_REPOSITORY_FRONTEND:$TAG"
@@ -77,16 +116,18 @@ jobs:
         id: images
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          TAG: ${{ steps.tag.outputs.value }}
+          TAG: ${{ needs.resolve-target.outputs.image_tag }}
         run: |
           echo "backend_image=$REGISTRY/$ECR_REPOSITORY_BACKEND:$TAG" >> "$GITHUB_OUTPUT"
           echo "frontend_image=$REGISTRY/$ECR_REPOSITORY_FRONTEND:$TAG" >> "$GITHUB_OUTPUT"
 
   deploy:
-    name: Deploy to ECS
+    name: Deploy to ECS (${{ needs.resolve-target.outputs.environment }})
     runs-on: ubuntu-latest
-    needs: build-and-push
-    if: github.event_name != 'workflow_dispatch' || inputs.deploy == true
+    needs: [resolve-target, build-and-push]
+    if: needs.resolve-target.outputs.deploy == 'true'
+    environment:
+      name: ${{ needs.resolve-target.outputs.environment }}
     steps:
       - name: Validate deploy configuration
         shell: bash
