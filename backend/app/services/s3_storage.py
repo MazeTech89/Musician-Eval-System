@@ -44,9 +44,7 @@ def _build_object_key(musician_id: int, filename: str) -> str:
 def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> str:
     """Upload a performance audio file to S3 and return an S3 URI."""
     if not is_s3_configured():
-        raise S3StorageError(
-            "S3 upload is not configured. Set AWS_REGION and S3_BUCKET_NAME."
-        )
+        raise S3StorageError("S3 upload is not configured. Set AWS_REGION and S3_BUCKET_NAME.")
 
     if not settings.s3_bucket_name:
         raise S3StorageError("S3 bucket is not configured.")

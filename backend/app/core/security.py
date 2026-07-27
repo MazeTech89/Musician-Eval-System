@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from jose import JWTError, jwt
+from jwt import InvalidTokenError, decode, encode
 
 from app.core.config import settings
 from app.schemas.auth import TokenData
@@ -68,7 +68,7 @@ def create_access_token(
 
     to_encode.update({"exp": expire})
 
-    encoded_jwt = jwt.encode(
+    encoded_jwt = encode(
         to_encode,
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -87,7 +87,7 @@ def decode_token(token: str) -> TokenData | None:
         TokenData if valid, None otherwise
     """
     try:
-        payload = jwt.decode(
+        payload = decode(
             token,
             settings.secret_key,
             algorithms=[settings.algorithm],
@@ -107,7 +107,7 @@ def decode_token(token: str) -> TokenData | None:
             username=username,
             role=role,
         )
-    except JWTError:
+    except InvalidTokenError:
         return None
 
 
@@ -140,7 +140,7 @@ def create_refresh_token(
 
     to_encode.update({"exp": expire, "type": "refresh"})
 
-    encoded_jwt = jwt.encode(
+    encoded_jwt = encode(
         to_encode,
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -159,7 +159,7 @@ def decode_refresh_token(token: str) -> TokenData | None:
         TokenData if valid, None otherwise
     """
     try:
-        payload = jwt.decode(
+        payload = decode(
             token,
             settings.secret_key,
             algorithms=[settings.algorithm],
@@ -185,5 +185,5 @@ def decode_refresh_token(token: str) -> TokenData | None:
             username=username,
             role=role,
         )
-    except JWTError:
+    except InvalidTokenError:
         return None

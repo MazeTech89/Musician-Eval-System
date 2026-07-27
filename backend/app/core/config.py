@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Server
-    host: str = "0.0.0.0"  # noqa: S104 - Intentional for Docker/container deployment
+    host: str = "0.0.0.0"  # nosec B104 - Intentional for Docker/container deployment
     port: int = 8000
 
     # CORS
