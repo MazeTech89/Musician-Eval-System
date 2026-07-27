@@ -1,0 +1,96 @@
+"""Tests for performance audio uploads."""
+
+from datetime import datetime
+
+from fastapi.testclient import TestClient
+
+from app.core.database import get_db
+from app.core.dependencies import get_current_active_user
+from app.main import app
+from app.models.user import RoleEnum
+
+
+class _DummyRole:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class _DummyUser:
+    def __init__(self, user_id: int, role: str) -> None:
+        self.id = user_id
+        self.role = _DummyRole(role)
+
+
+class _DummyDB:
+    def add(self, obj) -> None:  # noqa: ANN001
+        self._obj = obj
+
+    def commit(self) -> None:
+        return None
+
+    def refresh(self, obj) -> None:  # noqa: ANN001
+        obj.id = 999
+        obj.submitted_at = datetime.utcnow()
+
+
+def _override_db():
+    yield _DummyDB()
+
+
+def test_upload_audio_creates_performance(monkeypatch) -> None:
+    """Uploading valid audio should create a performance with S3 URI."""
+
+    async def _override_user():
+        return _DummyUser(user_id=7, role=RoleEnum.MUSICIAN.value)
+
+    def _mock_upload(audio_file, musician_id: int) -> str:  # noqa: ANN001
+        assert musician_id == 7
+        assert audio_file.filename == "sample.wav"
+        return "s3://test-bucket/performances/7/sample.wav"
+
+    monkeypatch.setattr(
+        "app.api.v1.performances.upload_performance_audio_to_s3",
+        _mock_upload,
+    )
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_active_user] = _override_user
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/performances/upload-audio",
+        data={"title": "My take", "description": "Practice recording"},
+        files={"audio_file": ("sample.wav", b"wav-bytes", "audio/wav")},
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "My take"
+    assert data["description"] == "Practice recording"
+    assert data["audio_file_url"] == "s3://test-bucket/performances/7/sample.wav"
+    assert data["musician_id"] == 7
+    assert data["status"] == "pending"
+
+
+def test_upload_audio_rejects_invalid_content_type() -> None:
+    """Uploading unsupported content type should fail with 400."""
+
+    async def _override_user():
+        return _DummyUser(user_id=7, role=RoleEnum.MUSICIAN.value)
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_active_user] = _override_user
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/performances/upload-audio",
+        data={"title": "Bad upload"},
+        files={"audio_file": ("script.txt", b"not-audio", "text/plain")},
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Unsupported audio file type"

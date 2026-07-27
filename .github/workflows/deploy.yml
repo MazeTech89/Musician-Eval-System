@@ -1,0 +1,27 @@
+name: CD — Deploy to Render
+
+# Triggers only after the CI workflow completes successfully on main.
+# This ensures tests, lint, and security scans pass before any deploy.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+jobs:
+  deploy:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    # Only run when CI passed — never deploy on a failed CI run
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Deploy backend
+        run: |
+          curl --fail-with-body -X POST "${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}"
+          echo "Backend deploy triggered."
+
+      - name: Deploy frontend
+        run: |
+          curl --fail-with-body -X POST "${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}"
+          echo "Frontend deploy triggered."

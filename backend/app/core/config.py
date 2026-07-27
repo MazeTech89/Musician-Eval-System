@@ -35,5 +35,12 @@ class Settings(BaseSettings):
     rsa_private_key: str = ""
     rsa_public_key: str = ""
 
+    # AWS S3
+    aws_region: str | None = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    s3_bucket_name: str | None = None
+    s3_endpoint_url: str | None = None
+
 
 settings = Settings()
