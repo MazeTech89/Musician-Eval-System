@@ -1,0 +1,177 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+
+interface UploadResponse {
+  id: number;
+  title: string;
+  description: string | null;
+  audio_file_url: string | null;
+  status: string;
+}
+
+const UploadPerformance: React.FC = () => {
+  const { user } = useAuth();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const canUpload = user?.role === "musician" || user?.role === "admin";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!audioFile) {
+      setError("Please choose an audio file to upload.");
+      return;
+    }
+
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      setError("You are not authenticated. Please log in again.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("audio_file", audioFile);
+
+      const baseUrl = import.meta.env.VITE_API_URL ?? "/api/v1";
+      const response = await fetch(`${baseUrl}/performances/upload-audio`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = (await response.json()) as UploadResponse | { detail?: string };
+
+      if (!response.ok) {
+        const message = "detail" in data ? data.detail : "Upload failed";
+        throw new Error(message || "Upload failed");
+      }
+
+      const upload = data as UploadResponse;
+      setSuccess(
+        `Uploaded successfully: ${upload.title}. Status: ${upload.status}.`,
+      );
+      setTitle("");
+      setDescription("");
+      setAudioFile(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      setError(message || "Upload failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!canUpload) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-3xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white shadow rounded-lg p-6">
+            <h1 className="text-xl font-semibold text-gray-900">Upload Performance</h1>
+            <p className="mt-3 text-gray-600">
+              Only musicians and admins can upload performances.
+            </p>
+            <Link to="/" className="mt-4 inline-block text-indigo-600 hover:text-indigo-500">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            <h1 className="text-xl font-semibold text-gray-900">Upload Performance</h1>
+            <Link to="/" className="text-indigo-600 hover:text-indigo-500">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow rounded-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                Title
+              </label>
+              <input
+                id="title"
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                placeholder="Performance title"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Description (optional)
+              </label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                rows={4}
+                placeholder="Add notes about this performance"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="audio-file" className="block text-sm font-medium text-gray-700 mb-1">
+                Audio file
+              </label>
+              <input
+                id="audio-file"
+                type="file"
+                required
+                accept="audio/*"
+                onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+              />
+            </div>
+
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            {success ? <p className="text-sm text-green-600">{success}</p> : null}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {isSubmitting ? "Uploading..." : "Upload performance"}
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default UploadPerformance;
+
