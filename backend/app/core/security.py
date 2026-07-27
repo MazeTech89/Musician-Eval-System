@@ -2,9 +2,10 @@
 
 from datetime import UTC, datetime, timedelta
 
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError
 
 from app.core.config import settings
 from app.schemas.auth import TokenData
@@ -107,7 +108,7 @@ def decode_token(token: str) -> TokenData | None:
             username=username,
             role=role,
         )
-    except JWTError:
+    except InvalidTokenError:
         return None
 
 
@@ -167,7 +168,7 @@ def decode_refresh_token(token: str) -> TokenData | None:
 
         # Verify token type
         token_type = payload.get("type")
-        if token_type != "refresh":
+        if token_type != "refresh":  # noqa: S105 - JWT token type discriminator, not a credential
             return None
 
         user_id = payload.get("sub")
@@ -185,5 +186,5 @@ def decode_refresh_token(token: str) -> TokenData | None:
             username=username,
             role=role,
         )
-    except JWTError:
+    except InvalidTokenError:
         return None

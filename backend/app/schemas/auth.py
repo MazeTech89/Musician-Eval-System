@@ -53,7 +53,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator("role", mode="before")
-    def validate_role(cls, value):
+    def validate_role(cls, value):  # noqa: N805 - Pydantic validator classmethod-style signature
         if value is None:
             return None
         if hasattr(value, "name"):

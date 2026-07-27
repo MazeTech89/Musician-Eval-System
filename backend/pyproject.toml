@@ -10,7 +10,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B", "S", "UP"]
-ignore = ["S101"]  # allow assert in tests
+ignore = ["S101", "B008", "B904"]  # allow assert in tests and FastAPI dependency patterns
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S"]
