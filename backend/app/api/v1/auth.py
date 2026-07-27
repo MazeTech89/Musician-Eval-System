@@ -44,7 +44,7 @@ async def register(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -153,7 +153,7 @@ async def update_me(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
@@ -187,7 +187,7 @@ async def change_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.get("/users", response_model=list[UserResponse])
@@ -277,7 +277,7 @@ async def update_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
