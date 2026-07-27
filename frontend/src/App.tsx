@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Evaluations from "./pages/Evaluations";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
+import UploadPerformance from "./pages/UploadPerformance";
 import "./App.css";
 
 function App() {
@@ -38,6 +39,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/performances/upload"
+              element={
+                <ProtectedRoute>
+                  <UploadPerformance />
                 </ProtectedRoute>
               }
             />
