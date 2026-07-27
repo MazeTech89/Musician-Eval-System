@@ -1,6 +1,6 @@
 """Performance API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,8 +12,19 @@ from app.schemas.evaluation import (
     PerformanceResponse,
     PerformanceUpdate,
 )
+from app.services.s3_storage import S3StorageError, upload_performance_audio_to_s3
 
 router = APIRouter(prefix="/performances", tags=["performances"])
+
+ALLOWED_AUDIO_CONTENT_TYPES = {
+    "audio/mpeg",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/ogg",
+    "audio/webm",
+    "audio/mp4",
+    "audio/flac",
+}
 
 
 @router.get("/", response_model=list[PerformanceResponse])
@@ -116,6 +127,56 @@ async def create_performance(
         title=performance_data.title,
         description=performance_data.description,
         audio_file_url=performance_data.audio_file_url,
+        musician_id=current_user.id,
+        status="pending",
+    )
+
+    db.add(performance)
+    db.commit()
+    db.refresh(performance)
+    return performance
+
+
+@router.post(
+    "/upload-audio",
+    response_model=PerformanceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_performance_with_audio_upload(
+    title: str = Form(...),
+    description: str | None = Form(None),
+    audio_file: UploadFile = File(...),  # noqa: B008
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Performance:
+    """Upload an audio file to S3 and create a performance record."""
+    if current_user.role.name not in ["musician", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only musicians and admins can create performances",
+        )
+
+    if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported audio file type",
+        )
+
+    try:
+        audio_file_url = upload_performance_audio_to_s3(
+            audio_file=audio_file,
+            musician_id=current_user.id,
+        )
+    except S3StorageError as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(err),
+        ) from err
+
+    performance = Performance(
+        title=title,
+        description=description,
+        audio_file_url=audio_file_url,
         musician_id=current_user.id,
         status="pending",
     )
