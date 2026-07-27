@@ -1,0 +1,76 @@
+## Render Blueprint — Musician Evaluation System
+## Docs: https://render.com/docs/blueprint-spec
+##
+## Setup steps:
+##   1. Push this file to your GitHub repo (main branch)
+##   2. Go to https://dashboard.render.com → New → Blueprint
+##   3. Connect your repo — Render will create all services below
+##   4. After deploy, copy each service's Deploy Hook URL from its Render dashboard
+##      Settings → Deploy Hook → copy the URL
+##   5. Add these as GitHub repository secrets:
+##        RENDER_DEPLOY_HOOK_BACKEND  → backend service deploy hook URL
+##        RENDER_DEPLOY_HOOK_FRONTEND → frontend service deploy hook URL
+##   6. Set secret env vars manually in each service's Render dashboard:
+##        Backend → Environment:
+##          AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME, AWS_REGION
+##          RSA_PRIVATE_KEY, RSA_PUBLIC_KEY  (if using RS256 in production)
+
+services:
+  # ── Backend (FastAPI) ──────────────────────────────────────────────────────
+  - type: web
+    name: musician-eval-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: musician-eval-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: musician-eval-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: DEBUG
+        value: false
+      - key: CORS_ORIGINS
+        value: '["https://musician-eval-frontend.onrender.com"]'
+      # Set these manually in the Render dashboard (do not commit real values):
+      # AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME
+      # RSA_PRIVATE_KEY, RSA_PUBLIC_KEY
+
+  # ── Frontend (React/Vite static site) ─────────────────────────────────────
+  - type: web
+    name: musician-eval-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # After deploying backend, replace with your actual backend Render URL:
+      # e.g. https://musician-eval-backend.onrender.com/api/v1
+      - key: VITE_API_URL
+        value: https://musician-eval-backend.onrender.com/api/v1
+
+# ── Managed PostgreSQL ────────────────────────────────────────────────────────
+databases:
+  - name: musician-eval-db
+    databaseName: musician_eval
+    user: musician_eval_user
+    plan: free
+
+# ── Managed Redis ─────────────────────────────────────────────────────────────
+redis:
+  - name: musician-eval-redis
+    plan: free
