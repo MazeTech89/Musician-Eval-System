@@ -3,6 +3,8 @@
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, engine
+from app.models.challenge import AnalysisResult, Assignment, ReferenceTrack, Submission  # noqa: F401
+from app.models.evaluation import Evaluation, Performance  # noqa: F401
 from app.models.user import Base, Permission, PermissionEnum, Role, RoleEnum
 
 
@@ -101,14 +103,14 @@ def init_roles_and_permissions(db: Session) -> None:
                 existing_role.permissions.append(permission_map[perm_enum])
 
     db.commit()
-    print("✓ Roles and permissions initialized successfully")
+    print("Roles and permissions initialized successfully")
 
 
 def init_database() -> None:
     """Initialize the database with all tables and default data."""
     # Create tables
     Base.metadata.create_all(bind=engine)
-    print("✓ Database tables created successfully")
+    print("Database tables created successfully")
 
     # Initialize roles and permissions
     db = SessionLocal()
@@ -120,4 +122,4 @@ def init_database() -> None:
 
 if __name__ == "__main__":
     init_database()
-    print("✓ Database initialization completed")
+    print("Database initialization completed")

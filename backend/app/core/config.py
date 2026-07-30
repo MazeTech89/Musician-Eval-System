@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     rsa_public_key: str = ""
 
     # AWS S3
+    use_local_upload_storage: bool = True
+    local_upload_dir: str = "uploads"
     aws_region: str | None = None
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None

@@ -1,9 +1,6 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: musician_eval_db
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -20,7 +17,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: musician_eval_redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -33,7 +29,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: musician_eval_backend
     environment:
       DATABASE_URL: postgresql://user:password@postgres:5432/musician_eval
       REDIS_URL: redis://redis:6379
@@ -55,7 +50,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: musician_eval_frontend
     environment:
       VITE_API_URL: http://localhost:8000/api/v1
     ports:

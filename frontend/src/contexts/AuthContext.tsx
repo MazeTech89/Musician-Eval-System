@@ -5,6 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { isAxiosError } from "axios";
 import api from "../api/axios";
 
 interface User {
@@ -86,7 +87,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       const profileResponse = await api.get("/auth/me");
       setUser(profileResponse.data);
-    } catch (error) {
+    } catch (error: unknown) {
+      if (isAxiosError(error) && error.response?.status === 401) {
+        throw new Error("Invalid credentials");
+      }
       throw new Error("Login failed");
     }
   };

@@ -122,6 +122,9 @@ class User(Base):
 
     # Relationships
     role = relationship("Role", back_populates="users")
+    reference_tracks = relationship("ReferenceTrack", back_populates="uploaded_by")
+    created_assignments = relationship("Assignment", back_populates="created_by")
+    submissions = relationship("Submission", back_populates="musician")
     performances = relationship(
         "Performance", back_populates="musician", foreign_keys="Performance.musician_id"
     )

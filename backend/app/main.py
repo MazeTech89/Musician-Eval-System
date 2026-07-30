@@ -1,7 +1,10 @@
 """FastAPI application factory and configuration."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
@@ -26,6 +29,11 @@ def create_app() -> FastAPI:
 
     # Register exception handlers
     register_exception_handlers(app)
+
+    if settings.use_local_upload_storage:
+        uploads_dir = Path(settings.local_upload_dir)
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
     # Add CORS middleware
     app.add_middleware(
