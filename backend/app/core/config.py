@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Server
-    host: str = "0.0.0.0"  # noqa: S104 - Intentional for Docker/container deployment
+    host: str = "127.0.0.1"
     port: int = 8000
 
     # CORS
@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # RSA keys for RS256 (should be set in production environment)
     rsa_private_key: str = ""
     rsa_public_key: str = ""
+
+    # Upload storage
+    use_local_upload_storage: bool = True
+    local_upload_dir: str = "uploads"
 
     # AWS S3
     aws_region: str | None = None
