@@ -96,10 +96,7 @@ The staging environment is designed to validate the current MVP exactly as it wo
    - `musician-eval-staging-frontend`
    - `musician-eval-staging-db`
    - `musician-eval-staging-redis`
-4. Copy the staging service deploy hooks into GitHub Actions secrets:
-   - `RENDER_STAGING_DEPLOY_HOOK_BACKEND`
-   - `RENDER_STAGING_DEPLOY_HOOK_FRONTEND`
-5. Create/push the `staging` branch
+4. Create/push the `staging` branch
 
 #### Staging deploy flow
 ```
@@ -107,7 +104,7 @@ Push to staging
     ↓
 GitHub Actions CI + Docker smoke
     ↓ pass
-Built-in staging deploy job in ci.yml
+Render auto-deploys the updated staging branch
     ↓
 Render deploys staging backend + frontend
 ```
@@ -117,7 +114,6 @@ Render deploys staging backend + frontend
 CI/CD is handled by GitHub Actions:
 - **CI** (`ci.yml`) — runs tests, lint, security scans on every push/PR to `main` and `staging`
 - **Docker smoke test** (`ci.yml`) — boots the isolated test stack and verifies backend/frontend reachability
-- **Staging deploy job** (`ci.yml`) — deploys to Render after CI passes on `staging`
 - **CD** (`deploy.yml`) — deploys to Render automatically after CI passes on `main`
 
 #### One-time production setup
