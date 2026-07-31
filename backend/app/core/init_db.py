@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+import app.models.evaluation  # noqa: F401
 from app.core.database import SessionLocal, engine
 from app.models.user import Base, Permission, PermissionEnum, Role, RoleEnum
 

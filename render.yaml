@@ -43,6 +43,8 @@ services:
         value: 7
       - key: DEBUG
         value: false
+      - key: USE_LOCAL_UPLOAD_STORAGE
+        value: false
       - key: CORS_ORIGINS
         value: '["https://musician-eval-frontend.onrender.com"]'
       # Set these manually in the Render dashboard (do not commit real values):

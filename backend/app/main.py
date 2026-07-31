@@ -1,7 +1,10 @@
 """FastAPI application factory and configuration."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import router as api_v1_router
 from app.core.config import settings
@@ -35,6 +38,12 @@ def create_app() -> FastAPI:
         allow_methods=settings.cors_allow_methods,
         allow_headers=settings.cors_allow_headers,
     )
+
+    upload_dir = Path(settings.local_upload_dir)
+    if not upload_dir.is_absolute():
+        upload_dir = Path.cwd() / upload_dir
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
     # Include API routers
     app.include_router(api_v1_router)

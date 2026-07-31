@@ -2,15 +2,17 @@
 
 from datetime import UTC, datetime, timedelta
 
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 
 from app.core.config import settings
 from app.schemas.auth import TokenData
 
 # Password hashing
 password_hasher = PasswordHasher()
+REFRESH_TOKEN_TYPE = "refresh"
 
 
 def hash_password(password: str) -> str:
@@ -107,7 +109,7 @@ def decode_token(token: str) -> TokenData | None:
             username=username,
             role=role,
         )
-    except JWTError:
+    except InvalidTokenError:
         return None
 
 
@@ -166,8 +168,8 @@ def decode_refresh_token(token: str) -> TokenData | None:
         )
 
         # Verify token type
-        token_type = payload.get("type")
-        if token_type != "refresh":
+        payload_token_type = payload.get("type")
+        if payload_token_type != REFRESH_TOKEN_TYPE:
             return None
 
         user_id = payload.get("sub")
@@ -185,5 +187,5 @@ def decode_refresh_token(token: str) -> TokenData | None:
             username=username,
             role=role,
         )
-    except JWTError:
+    except InvalidTokenError:
         return None

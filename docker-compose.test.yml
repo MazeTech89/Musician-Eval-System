@@ -1,27 +1,28 @@
+name: musician-eval-test
+
 services:
-  # Development environment
   postgres:
     image: postgres:15-alpine
-    container_name: musician_eval_db
+    container_name: musician_eval_test_db
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: musician_eval
+      POSTGRES_DB: musician_eval_test
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d musician_eval"]
+      test: ["CMD-SHELL", "pg_isready -U user -d musician_eval_test"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: musician_eval_redis
+    container_name: musician_eval_test_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,18 +33,18 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: musician_eval_backend
+    container_name: musician_eval_test_backend
     environment:
-      DATABASE_URL: postgresql://user:password@postgres:5432/musician_eval
+      DATABASE_URL: postgresql+psycopg2://user:password@postgres:5432/musician_eval_test
       REDIS_URL: redis://redis:6379
-      SECRET_KEY: dev-secret-key-change-in-production
+      SECRET_KEY: test-secret-key
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      DEBUG: "true"
+      DEBUG: "false"
       USE_LOCAL_UPLOAD_STORAGE: "true"
-      LOCAL_UPLOAD_DIR: /app/uploads
+      LOCAL_UPLOAD_DIR: /app/uploads-test
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,20 +52,20 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-      - backend_uploads:/app/uploads
+      - backend_test_uploads:/app/uploads-test
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: musician_eval_frontend
+    container_name: musician_eval_test_frontend
     environment:
-      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_API_URL: http://localhost:8001/api/v1
     ports:
-      - "5173:5173"
+      - "5174:5173"
     depends_on:
       - backend
 
 volumes:
-  postgres_data:
-  backend_uploads:
+  postgres_test_data:
+  backend_test_uploads:

@@ -1,6 +1,7 @@
 """Tests for performance audio uploads."""
 
 from datetime import datetime
+from io import BytesIO
 
 from fastapi.testclient import TestClient
 
@@ -8,6 +9,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.main import app
 from app.models.user import RoleEnum
+from app.services.s3_storage import upload_performance_audio_to_s3
 
 
 class _DummyRole:
@@ -94,3 +96,24 @@ def test_upload_audio_rejects_invalid_content_type() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Unsupported audio file type"
+
+
+def test_local_upload_storage_fallback_writes_to_disk(tmp_path, monkeypatch) -> None:
+    """Local storage should persist uploads to disk when enabled."""
+    from app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "use_local_upload_storage", True)
+    monkeypatch.setattr(config_module.settings, "local_upload_dir", str(tmp_path))
+
+    class _DummyUploadFile:
+        def __init__(self) -> None:
+            self.filename = "demo.wav"
+            self.content_type = "audio/wav"
+            self.file = BytesIO(b"wav-bytes")
+
+    uploaded_path = upload_performance_audio_to_s3(_DummyUploadFile(), 12)
+
+    assert uploaded_path.startswith("/uploads/")
+    saved_file = tmp_path / uploaded_path.split("/", 2)[-1]
+    assert saved_file.exists()
+    assert saved_file.read_bytes() == b"wav-bytes"

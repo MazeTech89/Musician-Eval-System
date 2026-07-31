@@ -15,6 +15,48 @@ docker compose up --build
 
 This project uses PostgreSQL and Redis via Docker Compose for the backend.
 
+## Environments
+
+This branch is set up around three environments:
+
+### 1. Development
+- File: [docker-compose.yml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/docker-compose.yml)
+- Purpose: local day-to-day development
+- Characteristics:
+  - hot local frontend against Dockerized backend/services
+  - local upload storage enabled
+  - debug enabled
+  - ports: frontend `5173`, backend `8000`, postgres `5432`, redis `6379`
+
+Run it with:
+```bash
+docker compose up --build
+```
+
+### 2. Test
+- File: [docker-compose.test.yml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/docker-compose.test.yml)
+- Purpose: isolated local test/staging-like validation without clashing with dev
+- Characteristics:
+  - separate database volume and ports
+  - debug disabled
+  - separate upload directory
+  - ports: frontend `5174`, backend `8001`, postgres `5433`, redis `6380`
+
+Run it with:
+```bash
+docker compose -f docker-compose.test.yml up --build
+```
+
+### 3. Production
+- File: [render.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.yaml)
+- Purpose: hosted deployment
+- Characteristics:
+  - Dockerized backend on Render
+  - static frontend on Render
+  - managed PostgreSQL and Redis
+  - local upload storage disabled
+  - expected to use S3-compatible object storage for audio files
+
 ### Frontend
 ```bash
 cd frontend
@@ -24,10 +66,11 @@ npm run dev
 
 The frontend will be available at http://localhost:5173/ and the backend at http://localhost:8000.
 
-## Deployment (Render)
+## Deployment (Render / Production)
 
 CI/CD is handled by GitHub Actions:
 - **CI** (`ci.yml`) — runs tests, lint, security scans on every push/PR to `main`
+- **Docker smoke test** (`ci.yml`) — boots the isolated test stack and verifies backend/frontend reachability
 - **CD** (`deploy.yml`) — deploys to Render automatically after CI passes on `main`
 
 ### One-time Render setup
