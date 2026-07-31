@@ -4,6 +4,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.evaluation import (
+    EvaluationResponse,
+    PerformanceResponse,
+    SimilarityAnalysisResponse,
+)
+
 
 class ReferenceTrackBase(BaseModel):
     """Base schema for reference tracks."""
@@ -83,3 +89,11 @@ class AssignmentWithReferenceResponse(AssignmentResponse):
 
     class Config:
         from_attributes = True
+
+
+class AssignmentSubmissionResponse(BaseModel):
+    """Response for a musician submission against an assignment."""
+
+    performance: PerformanceResponse
+    evaluation: EvaluationResponse
+    analysis: SimilarityAnalysisResponse

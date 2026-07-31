@@ -67,11 +67,16 @@ const Dashboard: React.FC = () => {
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Submit Performance</h3>
+              <h3 className="text-lg font-semibold mb-2">My Assignments</h3>
               <p className="text-gray-600 mb-4">
-                Upload your musical performance
+                View active assignments and upload a performance
               </p>
-              <span className="text-gray-400">Coming soon</span>
+              <Link
+                to="/assignments"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
+                Open Assignments
+              </Link>
             </div>
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-2">My Evaluations</h3>

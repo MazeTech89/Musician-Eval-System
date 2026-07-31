@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from app.core.database import SessionLocal
 from app.core.security import create_access_token, hash_password
 from app.main import app
-from app.models.evaluation import Performance
+from app.models.evaluation import Evaluation, Performance
 from app.models.user import Role, RoleEnum, User
 
 client = TestClient(app)
@@ -197,5 +197,79 @@ def test_analyze_performance_with_assignment(
         performance = db.query(Performance).filter(Performance.id == performance_id).first()
         assert performance is not None
         assert performance.assignment_id == assignment_id
+    finally:
+        db.close()
+
+
+def test_musician_can_submit_assignment_and_receive_score(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Musicians can upload a recording against an assignment and receive a score."""
+    reference_path = tmp_path / "assignment-reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Assignment reference", "description": "Reference for submission"},
+            files={"audio_file": ("assignment-reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+
+    assert reference_response.status_code == 201
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Week 2 assignment",
+            "description": "Submit against this reference",
+            "reference_track_id": reference_response.json()["id"],
+        },
+        headers=_auth_headers(admin_user),
+    )
+
+    assert assignment_response.status_code == 201
+    assignment_id = assignment_response.json()["id"]
+
+    list_response = client.get("/api/v1/assignments", headers=_auth_headers(musician_user))
+    assert list_response.status_code == 200
+    assert any(item["id"] == assignment_id for item in list_response.json())
+
+    performance_path = tmp_path / "submission.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        submission_response = client.post(
+            f"/api/v1/assignments/{assignment_id}/submissions",
+            data={
+                "title": "My assignment submission",
+                "description": "Recorded at home",
+            },
+            files={"audio_file": ("submission.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    assert submission_response.status_code == 201
+    submission_payload = submission_response.json()
+    assert submission_payload["analysis"]["score"] > 90.0
+
+    db = SessionLocal()
+    try:
+        performance = (
+            db.query(Performance)
+            .filter(Performance.id == submission_payload["performance"]["id"])
+            .first()
+        )
+        evaluation = (
+            db.query(Evaluation)
+            .filter(Evaluation.id == submission_payload["evaluation"]["id"])
+            .first()
+        )
+        assert performance is not None
+        assert performance.assignment_id == assignment_id
+        assert evaluation is not None
+        assert evaluation.performance_id == performance.id
     finally:
         db.close()
