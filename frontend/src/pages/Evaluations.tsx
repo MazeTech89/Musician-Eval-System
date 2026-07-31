@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -7,6 +7,7 @@ interface Performance {
   title: string;
   description: string | null;
   musician_id: number;
+  assignment_id: number | null;
   submitted_at: string;
   status: string;
 }
@@ -84,6 +85,9 @@ const Evaluations: React.FC = () => {
   const [assignmentAnalysisResult, setAssignmentAnalysisResult] = useState<AnalysisResult | null>(null);
 
   const isEvaluator = user?.role === "evaluator" || user?.role === "admin";
+  const assignmentById = useMemo(() => {
+    return new Map(assignments.map((assignment) => [assignment.id, assignment]));
+  }, [assignments]);
 
   useEffect(() => {
     if (isLoading) {
@@ -689,6 +693,13 @@ const Evaluations: React.FC = () => {
                             </div>
                             <div className="text-sm text-gray-500">
                               {evaluation.comments || "No comments"}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              Assignment:{" "}
+                              {evaluation.performance.assignment_id
+                                ? assignmentById.get(evaluation.performance.assignment_id)?.title ||
+                                  `Assignment #${evaluation.performance.assignment_id}`
+                                : "Direct review"}
                             </div>
                             <div className="text-xs text-gray-400 mt-1">
                               Status: {evaluation.status}

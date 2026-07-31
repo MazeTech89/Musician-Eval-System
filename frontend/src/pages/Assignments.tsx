@@ -47,6 +47,10 @@ interface Evaluation {
   updated_at: string;
 }
 
+interface EvaluationHistory extends Evaluation {
+  performance: Performance;
+}
+
 interface SubmissionResponse {
   performance: Performance;
   evaluation: Evaluation;
@@ -70,6 +74,7 @@ const Assignments: React.FC = () => {
   const [description, setDescription] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submissionResult, setSubmissionResult] = useState<SubmissionResponse | null>(null);
+  const [historyEvaluations, setHistoryEvaluations] = useState<EvaluationHistory[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -79,9 +84,13 @@ const Assignments: React.FC = () => {
 
     const fetchAssignments = async () => {
       try {
-        const response = await api.get("/assignments");
-        setAssignments(response.data);
-        setSelectedAssignmentId((current) => current || response.data[0]?.id || "");
+        const [assignmentResponse, evaluationResponse] = await Promise.all([
+          api.get("/assignments"),
+          api.get("/evaluations"),
+        ]);
+        setAssignments(assignmentResponse.data);
+        setHistoryEvaluations(evaluationResponse.data);
+        setSelectedAssignmentId((current) => current || assignmentResponse.data[0]?.id || "");
       } catch (err: unknown) {
         console.error("Failed to fetch assignments:", err);
         setError(err instanceof Error ? err.message : "Failed to load assignments");
@@ -97,6 +106,17 @@ const Assignments: React.FC = () => {
     () => assignments.find((assignment) => assignment.id === selectedAssignmentId),
     [assignments, selectedAssignmentId],
   );
+
+  const assignmentNameById = useMemo(() => {
+    return new Map(assignments.map((assignment) => [assignment.id, assignment.title]));
+  }, [assignments]);
+
+  const rankedHistory = useMemo(() => {
+    return [...historyEvaluations].sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+    );
+  }, [historyEvaluations]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -131,6 +151,8 @@ const Assignments: React.FC = () => {
         },
       );
       setSubmissionResult(response.data);
+      const historyResponse = await api.get("/evaluations");
+      setHistoryEvaluations(historyResponse.data);
       setTitle("");
       setDescription("");
       setAudioFile(null);
@@ -298,6 +320,55 @@ const Assignments: React.FC = () => {
               </div>
             </section>
           ) : null}
+
+          <section className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Your submission history
+            </h2>
+            {rankedHistory.length === 0 ? (
+              <p className="text-gray-600">No submissions yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {rankedHistory.map((evaluation) => (
+                  <div
+                    key={evaluation.id}
+                    className="rounded-lg border border-gray-200 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {evaluation.performance.title}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Assignment:{" "}
+                          {evaluation.performance.assignment_id
+                            ? assignmentNameById.get(evaluation.performance.assignment_id) ||
+                              `Assignment #${evaluation.performance.assignment_id}`
+                            : "Unassigned"}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Submitted: {new Date(evaluation.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-semibold text-indigo-600">
+                          {evaluation.score !== null
+                            ? `${evaluation.score.toFixed(1)} / 100`
+                            : "Pending"}
+                        </div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500">
+                          {evaluation.status}
+                        </div>
+                      </div>
+                    </div>
+                    {evaluation.comments ? (
+                      <p className="mt-3 text-sm text-gray-600">{evaluation.comments}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </div>
