@@ -117,3 +117,28 @@ def test_local_upload_storage_fallback_writes_to_disk(tmp_path, monkeypatch) -> 
     saved_file = tmp_path / uploaded_path.split("/", 2)[-1]
     assert saved_file.exists()
     assert saved_file.read_bytes() == b"wav-bytes"
+
+
+def test_s3_fallback_to_local_storage_when_config_missing(tmp_path, monkeypatch) -> None:
+    """Uploads should fall back to local storage when S3 configuration is incomplete."""
+    from app.core import config as config_module
+
+    monkeypatch.setattr(config_module.settings, "use_local_upload_storage", False)
+    monkeypatch.setattr(config_module.settings, "aws_region", None)
+    monkeypatch.setattr(config_module.settings, "aws_access_key_id", None)
+    monkeypatch.setattr(config_module.settings, "aws_secret_access_key", None)
+    monkeypatch.setattr(config_module.settings, "s3_bucket_name", None)
+    monkeypatch.setattr(config_module.settings, "local_upload_dir", str(tmp_path))
+
+    class _DummyUploadFile:
+        def __init__(self) -> None:
+            self.filename = "demo.wav"
+            self.content_type = "audio/wav"
+            self.file = BytesIO(b"wav-bytes")
+
+    uploaded_path = upload_performance_audio_to_s3(_DummyUploadFile(), 12)
+
+    assert uploaded_path.startswith("/uploads/")
+    saved_file = tmp_path / uploaded_path.split("/", 2)[-1]
+    assert saved_file.exists()
+    assert saved_file.read_bytes() == b"wav-bytes"

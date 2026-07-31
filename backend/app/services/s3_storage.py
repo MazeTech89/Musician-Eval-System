@@ -72,7 +72,7 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
         return upload_performance_audio_to_local_storage(audio_file, musician_id)
 
     if not is_s3_configured():
-        raise S3StorageError("S3 upload is not configured. Set AWS_REGION and S3_BUCKET_NAME.")
+        return upload_performance_audio_to_local_storage(audio_file, musician_id)
 
     if not settings.s3_bucket_name:
         raise S3StorageError("S3 bucket is not configured.")
