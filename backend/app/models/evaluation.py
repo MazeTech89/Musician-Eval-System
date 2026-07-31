@@ -29,11 +29,13 @@ class Performance(Base):
     description = Column(Text)
     audio_file_url = Column(String(500))
     musician_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    assignment_id = Column(Integer, ForeignKey("assignments.id"), nullable=True, index=True)
     submitted_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String(50), default="pending")  # pending, approved, rejected
 
     # Relationships
     musician = relationship("User", back_populates="performances")
+    assignment = relationship("Assignment", back_populates="performances")
     evaluations = relationship("Evaluation", back_populates="performance")
 
 

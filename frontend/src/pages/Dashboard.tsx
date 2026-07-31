@@ -12,27 +12,30 @@ const Dashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-2">User Management</h3>
-              <p className="text-gray-600 mb-4">Manage system users and roles</p>
-              <Link to="/admin" className="text-indigo-600 hover:text-indigo-500">
+              <p className="text-gray-600 mb-4">
+                Manage system users and roles
+              </p>
+              <Link
+                to="/admin"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
                 Go to Admin Panel
               </Link>
             </div>
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-2">Evaluations</h3>
               <p className="text-gray-600 mb-4">View all evaluations</p>
-              <Link to="/evaluations" className="text-indigo-600 hover:text-indigo-500">
+              <Link
+                to="/evaluations"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
                 View Evaluations
               </Link>
             </div>
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Upload Performance</h3>
-              <p className="text-gray-600 mb-4">Upload audio to S3 and create performance records</p>
-              <Link
-                to="/performances/upload"
-                className="text-indigo-600 hover:text-indigo-500"
-              >
-                Upload Audio
-              </Link>
+              <h3 className="text-lg font-semibold mb-2">Reports</h3>
+              <p className="text-gray-600 mb-4">System reports and analytics</p>
+              <span className="text-gray-400">Coming soon</span>
             </div>
           </div>
         );
@@ -40,9 +43,16 @@ const Dashboard: React.FC = () => {
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Pending Evaluations</h3>
-              <p className="text-gray-600 mb-4">Review submitted performances</p>
-              <Link to="/evaluations" className="text-indigo-600 hover:text-indigo-500">
+              <h3 className="text-lg font-semibold mb-2">
+                Pending Evaluations
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Review submitted performances
+              </p>
+              <Link
+                to="/evaluations"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
                 Start Evaluating
               </Link>
             </div>
@@ -57,19 +67,26 @@ const Dashboard: React.FC = () => {
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold mb-2">Submit Performance</h3>
-              <p className="text-gray-600 mb-4">Upload your musical performance</p>
+              <h3 className="text-lg font-semibold mb-2">My Assignments</h3>
+              <p className="text-gray-600 mb-4">
+                View active assignments and upload a performance
+              </p>
               <Link
-                to="/performances/upload"
+                to="/assignments"
                 className="text-indigo-600 hover:text-indigo-500"
               >
-                Upload Audio
+                Open Assignments
               </Link>
             </div>
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-semibold mb-2">My Evaluations</h3>
-              <p className="text-gray-600 mb-4">View feedback on your performances</p>
-              <Link to="/evaluations" className="text-indigo-600 hover:text-indigo-500">
+              <p className="text-gray-600 mb-4">
+                View feedback on your performances
+              </p>
+              <Link
+                to="/evaluations"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
                 View Evaluations
               </Link>
             </div>
@@ -90,14 +107,24 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Musician Evaluation System</h1>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Musician Evaluation System
+              </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Welcome, {user?.first_name}!</span>
-              <Link to="/profile" className="text-indigo-600 hover:text-indigo-500">
+              <span className="text-gray-700">
+                Welcome, {user?.first_name}!
+              </span>
+              <Link
+                to="/profile"
+                className="text-indigo-600 hover:text-indigo-500"
+              >
                 Profile
               </Link>
-              <button onClick={logout} className="text-gray-700 hover:text-gray-900">
+              <button
+                onClick={logout}
+                className="text-gray-700 hover:text-gray-900"
+              >
                 Logout
               </button>
             </div>

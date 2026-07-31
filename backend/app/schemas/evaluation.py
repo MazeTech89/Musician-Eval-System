@@ -11,6 +11,7 @@ class PerformanceBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: str | None = Field(None, max_length=1000)
     audio_file_url: str | None = None
+    assignment_id: int | None = None
 
 
 class PerformanceCreate(PerformanceBase):
@@ -82,3 +83,13 @@ class EvaluationWithPerformanceResponse(EvaluationResponse):
 
     class Config:
         from_attributes = True
+
+
+class SimilarityAnalysisResponse(BaseModel):
+    """Response schema for audio similarity analysis."""
+
+    performance_id: int
+    score: float
+    reference_filename: str
+    created_evaluation_id: int
+    breakdown: dict[str, float]

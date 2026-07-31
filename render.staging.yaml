@@ -1,0 +1,67 @@
+## Render Blueprint - Musician Evaluation System (Staging)
+## Uses the current MVP storage model: backend-served uploads on a persistent disk.
+## This keeps staging close to the working local flow while production can later
+## move fully to S3-compatible object storage.
+
+services:
+  - type: web
+    runtime: docker
+    name: musician-eval-staging-backend
+    branch: staging
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/v1/health
+    disk:
+      name: staging-uploads
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: musician-eval-staging-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: musician-eval-staging-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: 7
+      - key: DEBUG
+        value: false
+      - key: USE_LOCAL_UPLOAD_STORAGE
+        value: true
+      - key: LOCAL_UPLOAD_DIR
+        value: /var/data/uploads
+      - key: CORS_ORIGINS
+        value: '["https://musician-eval-staging-frontend.onrender.com"]'
+
+  - type: web
+    runtime: static
+    name: musician-eval-staging-frontend
+    branch: staging
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://musician-eval-staging-backend.onrender.com/api/v1
+
+  - type: redis
+    name: musician-eval-staging-redis
+    ipAllowList: []
+
+databases:
+  - name: musician-eval-staging-db
+    databaseName: musician_eval_staging
+    user: musician_eval_staging_user

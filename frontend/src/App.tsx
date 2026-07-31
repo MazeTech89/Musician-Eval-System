@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Assignments from "./pages/Assignments";
 import Evaluations from "./pages/Evaluations";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
@@ -31,6 +32,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Evaluations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assignments"
+              element={
+                <ProtectedRoute>
+                  <Assignments />
                 </ProtectedRoute>
               }
             />

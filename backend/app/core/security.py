@@ -2,15 +2,17 @@
 
 from datetime import UTC, datetime, timedelta
 
+import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from jwt import InvalidTokenError, decode, encode
+from jwt import InvalidTokenError
 
 from app.core.config import settings
 from app.schemas.auth import TokenData
 
 # Password hashing
 password_hasher = PasswordHasher()
+REFRESH_TOKEN_TYPE = "refresh"
 
 
 def hash_password(password: str) -> str:
@@ -68,7 +70,7 @@ def create_access_token(
 
     to_encode.update({"exp": expire})
 
-    encoded_jwt = encode(
+    encoded_jwt = jwt.encode(
         to_encode,
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -87,7 +89,7 @@ def decode_token(token: str) -> TokenData | None:
         TokenData if valid, None otherwise
     """
     try:
-        payload = decode(
+        payload = jwt.decode(
             token,
             settings.secret_key,
             algorithms=[settings.algorithm],
@@ -140,7 +142,7 @@ def create_refresh_token(
 
     to_encode.update({"exp": expire, "type": "refresh"})
 
-    encoded_jwt = encode(
+    encoded_jwt = jwt.encode(
         to_encode,
         settings.secret_key,
         algorithm=settings.algorithm,
@@ -159,15 +161,15 @@ def decode_refresh_token(token: str) -> TokenData | None:
         TokenData if valid, None otherwise
     """
     try:
-        payload = decode(
+        payload = jwt.decode(
             token,
             settings.secret_key,
             algorithms=[settings.algorithm],
         )
 
         # Verify token type
-        token_type = payload.get("type")
-        if token_type != "refresh":
+        payload_token_type = payload.get("type")
+        if payload_token_type != REFRESH_TOKEN_TYPE:
             return None
 
         user_id = payload.get("sub")
