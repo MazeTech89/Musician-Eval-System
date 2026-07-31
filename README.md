@@ -17,7 +17,7 @@ This project uses Docker Compose for local development and Docker-based validati
 
 ## Environments
 
-This project is set up around three environments:
+This project is set up around four environments:
 
 ### 1. Development
 - File: [docker-compose.yml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/docker-compose.yml)
@@ -47,7 +47,18 @@ Run it with:
 docker compose -f docker-compose.test.yml up --build
 ```
 
-### 3. Production
+### 3. Staging
+- File: [render.staging.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.staging.yaml)
+- Purpose: real hosted MVP validation before production promotion
+- Characteristics:
+  - dedicated `staging` branch deploy target
+  - Dockerized backend on Render
+  - static frontend on Render
+  - managed PostgreSQL and Redis
+  - persistent disk on the backend for uploaded audio so the current MVP flow works without S3
+  - intended for real browser/user validation of the current assignment-scoring flow
+
+### 4. Production
 - File: [render.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.yaml)
 - Purpose: hosted deployment
 - Characteristics:
@@ -67,14 +78,49 @@ npm run dev
 
 The frontend will be available at http://localhost:5173/ and the backend at http://localhost:8000.
 
-## Deployment (Render / Production)
+## Deployment
+
+### Staging (Render)
+
+The staging environment is designed to validate the current MVP exactly as it works today:
+- backend uploads are stored on a Render persistent disk
+- the frontend talks to the staging backend
+- the deploy path is driven by the `staging` branch
+
+#### One-time staging setup
+
+1. Push this repo to GitHub, including [render.staging.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.staging.yaml)
+2. In Render, create a **new Blueprint** and point it at `render.staging.yaml`
+3. Render will create:
+   - `musician-eval-staging-backend`
+   - `musician-eval-staging-frontend`
+   - `musician-eval-staging-db`
+   - `musician-eval-staging-redis`
+4. Copy the staging service deploy hooks into GitHub Actions secrets:
+   - `RENDER_STAGING_DEPLOY_HOOK_BACKEND`
+   - `RENDER_STAGING_DEPLOY_HOOK_FRONTEND`
+5. Create/push the `staging` branch
+
+#### Staging deploy flow
+```
+Push to staging
+    ↓
+GitHub Actions CI + Docker smoke
+    ↓ pass
+Built-in staging deploy job in ci.yml
+    ↓
+Render deploys staging backend + frontend
+```
+
+### Production (Render)
 
 CI/CD is handled by GitHub Actions:
-- **CI** (`ci.yml`) — runs tests, lint, security scans on every push/PR to `main`
+- **CI** (`ci.yml`) — runs tests, lint, security scans on every push/PR to `main` and `staging`
 - **Docker smoke test** (`ci.yml`) — boots the isolated test stack and verifies backend/frontend reachability
+- **Staging deploy job** (`ci.yml`) — deploys to Render after CI passes on `staging`
 - **CD** (`deploy.yml`) — deploys to Render automatically after CI passes on `main`
 
-### One-time Render setup
+#### One-time production setup
 
 1. Push this repo to GitHub (including `render.yaml`)
 2. Go to [Render Dashboard](https://dashboard.render.com) → **New → Blueprint**
@@ -87,7 +133,7 @@ CI/CD is handled by GitHub Actions:
 6. Set sensitive env vars manually in the Render dashboard (never commit these):
    - Backend service → **Environment**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `AWS_REGION`
 
-### Deploy flow
+#### Production deploy flow
 ```
 Push to main
     ↓
