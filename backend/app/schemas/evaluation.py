@@ -82,3 +82,13 @@ class EvaluationWithPerformanceResponse(EvaluationResponse):
 
     class Config:
         from_attributes = True
+
+
+class SimilarityAnalysisResponse(BaseModel):
+    """Response schema for audio similarity analysis."""
+
+    performance_id: int
+    score: float
+    reference_filename: str
+    created_evaluation_id: int
+    breakdown: dict[str, float]
