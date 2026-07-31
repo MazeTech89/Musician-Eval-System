@@ -1,17 +1,23 @@
 """Performance API routes."""
 
+import tempfile
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
-from app.models.evaluation import Performance
+from app.models.evaluation import Evaluation, EvaluationStatus, Performance
 from app.models.user import User
 from app.schemas.evaluation import (
     PerformanceCreate,
     PerformanceResponse,
     PerformanceUpdate,
+    SimilarityAnalysisResponse,
 )
+from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import S3StorageError, upload_performance_audio_to_s3
 
 router = APIRouter(prefix="/performances", tags=["performances"])
@@ -25,6 +31,26 @@ ALLOWED_AUDIO_CONTENT_TYPES = {
     "audio/mp4",
     "audio/flac",
 }
+
+
+def _resolve_local_audio_path(audio_file_url: str) -> Path:
+    """Resolve a locally stored audio file path from the stored URL."""
+    if not audio_file_url:
+        raise ValueError("Performance has no audio file")
+
+    if audio_file_url.startswith("s3://"):
+        raise ValueError("Similarity analysis currently supports local uploads only")
+
+    if audio_file_url.startswith("/uploads/"):
+        upload_dir = Path(settings.local_upload_dir)
+        if not upload_dir.is_absolute():
+            upload_dir = Path.cwd() / upload_dir
+        return upload_dir / Path(audio_file_url).name
+
+    candidate_path = Path(audio_file_url)
+    if not candidate_path.is_absolute():
+        candidate_path = Path.cwd() / candidate_path
+    return candidate_path
 
 
 @router.get("/", response_model=list[PerformanceResponse])
@@ -185,6 +211,99 @@ async def create_performance_with_audio_upload(
     db.commit()
     db.refresh(performance)
     return performance
+
+
+@router.post(
+    "/{performance_id}/analyze-audio",
+    response_model=SimilarityAnalysisResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def analyze_performance_audio(
+    performance_id: int,
+    reference_audio: UploadFile = File(...),  # noqa: B008
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, object]:
+    """Create a similarity evaluation by comparing a performance against a reference audio file."""
+    if current_user.role.name not in ["evaluator", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only evaluators and admins can analyze performances",
+        )
+
+    performance = db.query(Performance).filter(Performance.id == performance_id).first()
+    if not performance:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance not found",
+        )
+
+    if not performance.audio_file_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Performance has no uploaded audio to compare",
+        )
+
+    reference_bytes = await reference_audio.read()
+    if not reference_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reference audio was empty",
+        )
+
+    suffix = Path(reference_audio.filename or "reference.wav").suffix.lower() or ".wav"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp_reference:
+        tmp_reference.write(reference_bytes)
+        temp_reference_path = Path(tmp_reference.name)
+
+    try:
+        candidate_audio_path = _resolve_local_audio_path(performance.audio_file_url)
+        if not candidate_audio_path.exists():
+            raise FileNotFoundError(candidate_audio_path)
+
+        analysis = score_audio_similarity(candidate_audio_path, temp_reference_path)
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Performance audio file could not be found",
+        ) from err
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+    finally:
+        if temp_reference_path.exists():
+            temp_reference_path.unlink(missing_ok=True)
+
+    evaluation = Evaluation(
+        performance_id=performance.id,
+        evaluator_id=current_user.id,
+        score=analysis.score,
+        comments=(
+            "Auto-generated similarity analysis against "
+            f"{reference_audio.filename or 'reference audio'}"
+        ),
+        status=EvaluationStatus.COMPLETED,
+    )
+    db.add(evaluation)
+    db.commit()
+    db.refresh(evaluation)
+
+    return {
+        "performance_id": performance.id,
+        "score": analysis.score,
+        "reference_filename": reference_audio.filename or "reference.wav",
+        "created_evaluation_id": evaluation.id,
+        "breakdown": {
+            "duration_similarity": analysis.duration_similarity,
+            "energy_similarity": analysis.energy_similarity,
+            "peak_similarity": analysis.peak_similarity,
+            "zero_crossing_similarity": analysis.zero_crossing_similarity,
+            "histogram_similarity": analysis.histogram_similarity,
+            "delta_profile_similarity": analysis.delta_profile_similarity,
+        },
+    }
 
 
 @router.put("/{performance_id}", response_model=PerformanceResponse)
