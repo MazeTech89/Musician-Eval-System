@@ -5,7 +5,7 @@ Final-year cybersecurity capstone: an AI-driven musician performance evaluation 
 ## Stack
 - Backend: FastAPI · PostgreSQL · Celery · Redis · Librosa
 - Frontend: React + TypeScript + Vite
-- Infra: Docker · AWS (ECS, S3, RDS)
+- Infra: Docker · Render · S3-compatible storage
 - Security: JWT (RS256) · Argon2id · OWASP ASVS L2
 
 ## Quick start
@@ -13,17 +13,17 @@ Final-year cybersecurity capstone: an AI-driven musician performance evaluation 
 docker compose up --build
 ```
 
-This project uses PostgreSQL and Redis via Docker Compose for the backend.
+This project uses Docker Compose for local development and Docker-based validation.
 
 ## Environments
 
-This branch is set up around three environments:
+This project is set up around three environments:
 
 ### 1. Development
 - File: [docker-compose.yml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/docker-compose.yml)
 - Purpose: local day-to-day development
 - Characteristics:
-  - hot local frontend against Dockerized backend/services
+  - local frontend against Dockerized backend/services
   - local upload storage enabled
   - debug enabled
   - ports: frontend `5173`, backend `8000`, postgres `5432`, redis `6379`
@@ -56,6 +56,7 @@ docker compose -f docker-compose.test.yml up --build
   - managed PostgreSQL and Redis
   - local upload storage disabled
   - expected to use S3-compatible object storage for audio files
+  - deployed from `main` via Render Blueprint / deploy hooks
 
 ### Frontend
 ```bash
