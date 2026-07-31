@@ -195,6 +195,7 @@ const Register: React.FC = () => {
               >
                 <option value="musician">Musician</option>
                 <option value="evaluator">Evaluator</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div>
