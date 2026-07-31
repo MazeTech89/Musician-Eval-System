@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { getApiErrorMessage, validateRequired } from "../utils/form";
 
 interface UploadResponse {
   id: number;
@@ -18,18 +19,29 @@ const UploadPerformance: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; audioFile?: string }>({});
 
   const canUpload = user?.role === "musician" || user?.role === "admin";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-
+    const nextFieldErrors: { title?: string; audioFile?: string } = {};
+    const titleError = validateRequired(title, "Title");
+    if (titleError) {
+      nextFieldErrors.title = titleError;
+    }
     if (!audioFile) {
-      setError("Please choose an audio file to upload.");
+      nextFieldErrors.audioFile = "Please choose an audio file to upload.";
+    }
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setError("Please fix the highlighted fields.");
       return;
     }
+
+    setFieldErrors({});
+    setError("");
+    setSuccess("");
 
     const token = localStorage.getItem("access_token");
     if (!token) {
@@ -43,7 +55,7 @@ const UploadPerformance: React.FC = () => {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
-      formData.append("audio_file", audioFile);
+      formData.append("audio_file", audioFile!);
 
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api/v1";
       const response = await fetch(`${baseUrl}/performances/upload-audio`, {
@@ -57,8 +69,13 @@ const UploadPerformance: React.FC = () => {
       const data = (await response.json()) as UploadResponse | { detail?: string };
 
       if (!response.ok) {
-        const message = "detail" in data ? data.detail : "Upload failed";
-        throw new Error(message || "Upload failed");
+        const detail = "detail" in data ? data.detail : undefined;
+        const message = Array.isArray(detail)
+          ? detail.join(", ")
+          : typeof detail === "string" && detail.trim()
+            ? detail
+            : "Upload failed";
+        throw new Error(message);
       }
 
       const upload = data as UploadResponse;
@@ -69,8 +86,7 @@ const UploadPerformance: React.FC = () => {
       setDescription("");
       setAudioFile(null);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Upload failed";
-      setError(message || "Upload failed");
+      setError(getApiErrorMessage(err, "Upload failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -118,11 +134,16 @@ const UploadPerformance: React.FC = () => {
                 id="title"
                 type="text"
                 required
+                minLength={3}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setFieldErrors((current) => ({ ...current, title: undefined }));
+                }}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
                 placeholder="Performance title"
               />
+              {fieldErrors.title ? <p className="mt-1 text-sm text-red-600">{fieldErrors.title}</p> : null}
             </div>
 
             <div>
@@ -151,9 +172,15 @@ const UploadPerformance: React.FC = () => {
                 type="file"
                 required
                 accept="audio/*"
-                onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  setAudioFile(e.target.files?.[0] ?? null);
+                  setFieldErrors((current) => ({ ...current, audioFile: undefined }));
+                }}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               />
+              {fieldErrors.audioFile ? (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
+              ) : null}
             </div>
 
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -174,4 +201,3 @@ const UploadPerformance: React.FC = () => {
 };
 
 export default UploadPerformance;
-

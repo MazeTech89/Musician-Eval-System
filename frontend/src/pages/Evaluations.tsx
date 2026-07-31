@@ -1,6 +1,11 @@
 import React, { useMemo, useState, useEffect } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  getApiErrorMessage,
+  validateRequired,
+  validateScore,
+} from "../utils/form";
 
 interface Performance {
   id: number;
@@ -75,14 +80,18 @@ const Evaluations: React.FC = () => {
   const [newReferenceTrackDescription, setNewReferenceTrackDescription] = useState("");
   const [referenceTrackFile, setReferenceTrackFile] = useState<File | null>(null);
   const [creatingReferenceTrack, setCreatingReferenceTrack] = useState(false);
+  const [referenceTrackError, setReferenceTrackError] = useState<string | null>(null);
   const [newAssignmentTitle, setNewAssignmentTitle] = useState("");
   const [newAssignmentDescription, setNewAssignmentDescription] = useState("");
   const [selectedReferenceTrackId, setSelectedReferenceTrackId] = useState<number>(0);
   const [creatingAssignment, setCreatingAssignment] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number>(0);
   const [assignmentAnalysisLoading, setAssignmentAnalysisLoading] = useState(false);
   const [assignmentAnalysisError, setAssignmentAnalysisError] = useState<string | null>(null);
   const [assignmentAnalysisResult, setAssignmentAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [evaluationFormError, setEvaluationFormError] = useState<string | null>(null);
+  const [analysisFormError, setAnalysisFormError] = useState<string | null>(null);
 
   const isEvaluator = user?.role === "evaluator" || user?.role === "admin";
   const assignmentById = useMemo(() => {
@@ -133,8 +142,15 @@ const Evaluations: React.FC = () => {
 
   const handleCreateEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPerformance || score < 0 || score > 100) return;
+    const nextError = !selectedPerformance
+      ? "Select a performance."
+      : validateScore(score);
+    if (nextError) {
+      setEvaluationFormError(nextError);
+      return;
+    }
 
+    setEvaluationFormError(null);
     setSubmitting(true);
     try {
       await api.post("/evaluations", {
@@ -150,9 +166,7 @@ const Evaluations: React.FC = () => {
       setComments("");
     } catch (err: unknown) {
       console.error("Failed to create evaluation:", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to create evaluation";
-      setError(message);
+      setEvaluationFormError(getApiErrorMessage(err, "Failed to create evaluation"));
     } finally {
       setSubmitting(false);
     }
@@ -160,8 +174,16 @@ const Evaluations: React.FC = () => {
 
   const handleAnalyzePerformance = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPerformance || !referenceFile) return;
+    if (!selectedPerformance) {
+      setAnalysisFormError("Select a performance.");
+      return;
+    }
+    if (!referenceFile) {
+      setAnalysisFormError("Choose a reference audio file.");
+      return;
+    }
 
+    setAnalysisFormError(null);
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
@@ -184,9 +206,7 @@ const Evaluations: React.FC = () => {
       setComments("");
     } catch (err: unknown) {
       console.error("Failed to analyze performance:", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to analyze performance";
-      setAnalysisError(message);
+      setAnalysisFormError(getApiErrorMessage(err, "Failed to analyze performance"));
     } finally {
       setAnalysisLoading(false);
     }
@@ -194,8 +214,17 @@ const Evaluations: React.FC = () => {
 
   const handleCreateReferenceTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newReferenceTrackTitle || !referenceTrackFile) return;
+    const titleError = validateRequired(newReferenceTrackTitle, "Title");
+    if (titleError) {
+      setReferenceTrackError(titleError);
+      return;
+    }
+    if (!referenceTrackFile) {
+      setReferenceTrackError("Choose a reference audio file.");
+      return;
+    }
 
+    setReferenceTrackError(null);
     setCreatingReferenceTrack(true);
     try {
       const formData = new FormData();
@@ -213,9 +242,9 @@ const Evaluations: React.FC = () => {
       setReferenceTrackFile(null);
     } catch (err: unknown) {
       console.error("Failed to create reference track:", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to create reference track";
-      setError(message);
+      setReferenceTrackError(
+        getApiErrorMessage(err, "Failed to create reference track"),
+      );
     } finally {
       setCreatingReferenceTrack(false);
     }
@@ -223,8 +252,17 @@ const Evaluations: React.FC = () => {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAssignmentTitle || !selectedReferenceTrackId) return;
+    const titleError = validateRequired(newAssignmentTitle, "Assignment title");
+    if (titleError) {
+      setAssignmentError(titleError);
+      return;
+    }
+    if (!selectedReferenceTrackId) {
+      setAssignmentError("Select a reference track.");
+      return;
+    }
 
+    setAssignmentError(null);
     setCreatingAssignment(true);
     try {
       const formData = new FormData();
@@ -242,8 +280,7 @@ const Evaluations: React.FC = () => {
       setSelectedReferenceTrackId(0);
     } catch (err: unknown) {
       console.error("Failed to create assignment:", err);
-      const message = err instanceof Error ? err.message : "Failed to create assignment";
-      setError(message);
+      setAssignmentError(getApiErrorMessage(err, "Failed to create assignment"));
     } finally {
       setCreatingAssignment(false);
     }
@@ -251,7 +288,14 @@ const Evaluations: React.FC = () => {
 
   const handleAnalyzeWithAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPerformance || !selectedAssignmentId) return;
+    if (!selectedPerformance) {
+      setAssignmentAnalysisError("Select a performance.");
+      return;
+    }
+    if (!selectedAssignmentId) {
+      setAssignmentAnalysisError("Select an assignment.");
+      return;
+    }
 
     setAssignmentAnalysisLoading(true);
     setAssignmentAnalysisError(null);
@@ -266,9 +310,9 @@ const Evaluations: React.FC = () => {
       setSelectedAssignmentId(0);
     } catch (err: unknown) {
       console.error("Failed to analyze with assignment:", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to analyze with assignment";
-      setAssignmentAnalysisError(message);
+      setAssignmentAnalysisError(
+        getApiErrorMessage(err, "Failed to analyze with assignment"),
+      );
     } finally {
       setAssignmentAnalysisLoading(false);
     }
@@ -354,10 +398,14 @@ const Evaluations: React.FC = () => {
                 <h2 className="text-lg font-semibold mb-4">Create Evaluation</h2>
                 <form onSubmit={handleCreateEvaluation}>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="create-evaluation-performance"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Performance
                     </label>
                     <select
+                      id="create-evaluation-performance"
                       value={selectedPerformance}
                       onChange={(e) => setSelectedPerformance(Number(e.target.value))}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -372,13 +420,18 @@ const Evaluations: React.FC = () => {
                     </select>
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="create-evaluation-score"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Score (0-100)
                     </label>
                     <input
+                      id="create-evaluation-score"
                       type="number"
                       min="0"
                       max="100"
+                      step="0.1"
                       value={score}
                       onChange={(e) => setScore(Number(e.target.value))}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -386,10 +439,14 @@ const Evaluations: React.FC = () => {
                     />
                   </div>
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="create-evaluation-comments"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       Comments
                     </label>
                     <textarea
+                      id="create-evaluation-comments"
                       value={comments}
                       onChange={(e) => setComments(e.target.value)}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -403,6 +460,9 @@ const Evaluations: React.FC = () => {
                   >
                     {submitting ? "Submitting..." : "Submit Evaluation"}
                   </button>
+                  {evaluationFormError && (
+                    <p className="mt-4 text-sm text-red-600">{evaluationFormError}</p>
+                  )}
                 </form>
               </div>
             )}
@@ -413,10 +473,14 @@ const Evaluations: React.FC = () => {
               </h2>
               <form onSubmit={handleAnalyzePerformance}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="analysis-performance"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Performance
                   </label>
                   <select
+                    id="analysis-performance"
                     value={selectedPerformance}
                     onChange={(e) => setSelectedPerformance(Number(e.target.value))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -431,10 +495,14 @@ const Evaluations: React.FC = () => {
                   </select>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="analysis-reference-file"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Reference audio
                   </label>
                   <input
+                    id="analysis-reference-file"
                     type="file"
                     accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/webm,audio/mp4,audio/flac"
                     onChange={(e) => setReferenceFile(e.target.files?.[0] ?? null)}
@@ -450,7 +518,11 @@ const Evaluations: React.FC = () => {
                   {analysisLoading ? "Analyzing..." : "Run similarity analysis"}
                 </button>
               </form>
-              {analysisError && <p className="mt-4 text-sm text-red-600">{analysisError}</p>}
+              {(analysisFormError || analysisError) && (
+                <p className="mt-4 text-sm text-red-600">
+                  {analysisFormError || analysisError}
+                </p>
+              )}
               {analysisResult && (
                 <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
                   <p className="font-semibold">
@@ -479,10 +551,14 @@ const Evaluations: React.FC = () => {
               <h2 className="text-lg font-semibold mb-4">Manage reusable reference tracks</h2>
               <form onSubmit={handleCreateReferenceTrack}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="reference-track-title"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Title
                   </label>
                   <input
+                    id="reference-track-title"
                     type="text"
                     value={newReferenceTrackTitle}
                     onChange={(e) => setNewReferenceTrackTitle(e.target.value)}
@@ -491,10 +567,14 @@ const Evaluations: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="reference-track-description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Description
                   </label>
                   <textarea
+                    id="reference-track-description"
                     value={newReferenceTrackDescription}
                     onChange={(e) => setNewReferenceTrackDescription(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -502,10 +582,14 @@ const Evaluations: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="reference-track-audio"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Reference audio file
                   </label>
                   <input
+                    id="reference-track-audio"
                     type="file"
                     accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/webm,audio/mp4,audio/flac"
                     onChange={(e) => setReferenceTrackFile(e.target.files?.[0] ?? null)}
@@ -520,6 +604,9 @@ const Evaluations: React.FC = () => {
                 >
                   {creatingReferenceTrack ? "Saving..." : "Save reference track"}
                 </button>
+                {referenceTrackError && (
+                  <p className="mt-4 text-sm text-red-600">{referenceTrackError}</p>
+                )}
               </form>
               {referenceTracks.length > 0 && (
                 <div className="mt-4">
@@ -540,10 +627,14 @@ const Evaluations: React.FC = () => {
               <h2 className="text-lg font-semibold mb-4">Create an assignment from a reference track</h2>
               <form onSubmit={handleCreateAssignment}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="assignment-title"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Assignment title
                   </label>
                   <input
+                    id="assignment-title"
                     type="text"
                     value={newAssignmentTitle}
                     onChange={(e) => setNewAssignmentTitle(e.target.value)}
@@ -552,10 +643,14 @@ const Evaluations: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="assignment-description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Description
                   </label>
                   <textarea
+                    id="assignment-description"
                     value={newAssignmentDescription}
                     onChange={(e) => setNewAssignmentDescription(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -563,10 +658,14 @@ const Evaluations: React.FC = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="assignment-reference-track"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Reference track
                   </label>
                   <select
+                    id="assignment-reference-track"
                     value={selectedReferenceTrackId}
                     onChange={(e) => setSelectedReferenceTrackId(Number(e.target.value))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -587,6 +686,7 @@ const Evaluations: React.FC = () => {
                 >
                   {creatingAssignment ? "Saving..." : "Save assignment"}
                 </button>
+                {assignmentError && <p className="mt-4 text-sm text-red-600">{assignmentError}</p>}
               </form>
               {assignments.length > 0 && (
                 <div className="mt-4">
@@ -607,10 +707,14 @@ const Evaluations: React.FC = () => {
               <h2 className="text-lg font-semibold mb-4">Analyze a performance with an assignment</h2>
               <form onSubmit={handleAnalyzeWithAssignment}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="assignment-analysis-performance"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Performance
                   </label>
                   <select
+                    id="assignment-analysis-performance"
                     value={selectedPerformance}
                     onChange={(e) => setSelectedPerformance(Number(e.target.value))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
@@ -625,10 +729,14 @@ const Evaluations: React.FC = () => {
                   </select>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="assignment-analysis-assignment"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Assignment
                   </label>
                   <select
+                    id="assignment-analysis-assignment"
                     value={selectedAssignmentId}
                     onChange={(e) => setSelectedAssignmentId(Number(e.target.value))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"

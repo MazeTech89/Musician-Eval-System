@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import { getApiErrorMessage, validateRequired } from "../utils/form";
 
 interface ReferenceTrack {
   id: number;
@@ -75,6 +76,7 @@ const Assignments: React.FC = () => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submissionResult, setSubmissionResult] = useState<SubmissionResponse | null>(null);
   const [historyEvaluations, setHistoryEvaluations] = useState<EvaluationHistory[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<{ assignment?: string; audioFile?: string }>({});
 
   useEffect(() => {
     if (!user) {
@@ -93,7 +95,7 @@ const Assignments: React.FC = () => {
         setSelectedAssignmentId((current) => current || assignmentResponse.data[0]?.id || "");
       } catch (err: unknown) {
         console.error("Failed to fetch assignments:", err);
-        setError(err instanceof Error ? err.message : "Failed to load assignments");
+        setError(getApiErrorMessage(err, "Failed to load assignments"));
       } finally {
         setLoading(false);
       }
@@ -122,15 +124,32 @@ const Assignments: React.FC = () => {
     event.preventDefault();
 
     if (!selectedAssignmentId) {
-      setError("Select an assignment first.");
+      setFieldErrors((current) => ({ ...current, assignment: "Select an assignment first." }));
+      setError("Please fix the highlighted fields.");
       return;
     }
 
     if (!audioFile) {
-      setError("Choose an audio file to upload.");
+      setFieldErrors((current) => ({ ...current, audioFile: "Choose an audio file to upload." }));
+      setError("Please fix the highlighted fields.");
       return;
     }
 
+    const nextFieldErrors: { assignment?: string; audioFile?: string } = {};
+    const assignmentError = validateRequired(String(selectedAssignmentId), "Assignment");
+    if (assignmentError) {
+      nextFieldErrors.assignment = assignmentError;
+    }
+    if (!audioFile) {
+      nextFieldErrors.audioFile = "Choose an audio file to upload.";
+    }
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setError("Please fix the highlighted fields.");
+      return;
+    }
+
+    setFieldErrors({});
     setSubmitting(true);
     setError(null);
     setSubmissionResult(null);
@@ -158,7 +177,7 @@ const Assignments: React.FC = () => {
       setAudioFile(null);
     } catch (err: unknown) {
       console.error("Failed to submit assignment performance:", err);
-      setError(err instanceof Error ? err.message : "Failed to submit performance");
+      setError(getApiErrorMessage(err, "Failed to submit performance"));
     } finally {
       setSubmitting(false);
     }
@@ -201,7 +220,10 @@ const Assignments: React.FC = () => {
                   <button
                     key={assignment.id}
                     type="button"
-                    onClick={() => setSelectedAssignmentId(assignment.id)}
+                    onClick={() => {
+                      setSelectedAssignmentId(assignment.id);
+                      setFieldErrors((current) => ({ ...current, assignment: undefined }));
+                    }}
                     className={`text-left rounded-lg border p-4 transition ${
                       selectedAssignmentId === assignment.id
                         ? "border-indigo-500 bg-indigo-50"
@@ -233,14 +255,18 @@ const Assignments: React.FC = () => {
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Assignment</label>
+                <label htmlFor="assignment-select" className="block text-sm font-medium text-gray-700">
+                  Assignment
+                </label>
                 <select
+                  id="assignment-select"
                   value={selectedAssignmentId}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setSelectedAssignmentId(
                       event.target.value ? Number(event.target.value) : "",
-                    )
-                  }
+                    );
+                    setFieldErrors((current) => ({ ...current, assignment: undefined }));
+                  }}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 >
                   <option value="">Select an assignment</option>
@@ -250,11 +276,17 @@ const Assignments: React.FC = () => {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.assignment ? (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.assignment}</p>
+                ) : null}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Submission title</label>
+                <label htmlFor="submission-title" className="block text-sm font-medium text-gray-700">
+                  Submission title
+                </label>
                 <input
+                  id="submission-title"
                   type="text"
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
@@ -264,8 +296,11 @@ const Assignments: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label htmlFor="submission-description" className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
                 <textarea
+                  id="submission-description"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
@@ -275,13 +310,22 @@ const Assignments: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Audio file</label>
+                <label htmlFor="submission-audio-file" className="block text-sm font-medium text-gray-700">
+                  Audio file
+                </label>
                 <input
+                  id="submission-audio-file"
                   type="file"
                   accept="audio/*"
-                  onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    setAudioFile(event.target.files?.[0] ?? null);
+                    setFieldErrors((current) => ({ ...current, audioFile: undefined }));
+                  }}
                   className="mt-1 block w-full text-sm text-gray-500"
                 />
+                {fieldErrors.audioFile ? (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
+                ) : null}
               </div>
 
               <button
