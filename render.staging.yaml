@@ -9,7 +9,6 @@ services:
     name: musician-eval-staging-backend
     branch: staging
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
     healthCheckPath: /api/v1/health
     disk:
       name: staging-uploads

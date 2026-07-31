@@ -21,7 +21,6 @@ services:
     runtime: docker
     name: musician-eval-backend
     dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
     healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_URL
@@ -47,7 +46,8 @@ services:
         value: false
       - key: CORS_ORIGINS
         value: '["https://musician-eval-frontend.onrender.com"]'
-      # Set these manually in the Render dashboard (do not commit real values):
+      # Optional: set these in the Render dashboard to use real S3 uploads.
+      # If they are absent, the backend automatically falls back to local disk storage.
       # AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME
       # RSA_PRIVATE_KEY, RSA_PUBLIC_KEY
 

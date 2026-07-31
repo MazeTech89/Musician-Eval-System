@@ -126,7 +126,7 @@ CI/CD is handled by GitHub Actions:
 5. Add these as GitHub repository secrets (**Settings → Secrets → Actions**):
    - `RENDER_DEPLOY_HOOK_BACKEND`
    - `RENDER_DEPLOY_HOOK_FRONTEND`
-6. Set sensitive env vars manually in the Render dashboard (never commit these):
+6. Optional: set S3 env vars in the Render dashboard to use object storage for audio uploads. If they are not present, the backend automatically falls back to local disk storage for the current MVP flow.
    - Backend service → **Environment**: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`, `AWS_REGION`
 
 #### Production deploy flow
@@ -148,9 +148,11 @@ The backend now includes a minimal S3 upload endpoint:
 
 - `POST /api/v1/performances/upload-audio` (multipart form data: `title`, optional `description`, `audio_file`)
 
-Set these backend environment variables to enable it:
+Set these backend environment variables to enable object-store uploads:
 
 - `AWS_REGION`
 - `S3_BUCKET_NAME`
 - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` (or use IAM role/default credential chain)
 - optional `S3_ENDPOINT_URL` (for LocalStack/custom endpoints)
+
+If these values are not provided, the backend automatically falls back to local disk storage so the MVP flow still works.
