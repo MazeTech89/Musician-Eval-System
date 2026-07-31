@@ -1,7 +1,7 @@
 """Evaluation and performance models for database."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship
 from app.models.user import Base
 
 
-class EvaluationStatus(str, Enum):
+class EvaluationStatus(StrEnum):
     """Evaluation status."""
 
     PENDING = "pending"

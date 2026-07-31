@@ -150,23 +150,22 @@ from app.models.user import RoleEnum, PermissionEnum
 
 router = APIRouter()
 
+
 # Admin-only endpoint
 @router.get("/admin-only")
-async def admin_endpoint(user = Depends(get_current_admin)):
+async def admin_endpoint(user=Depends(get_current_admin)):
     return {"message": "Admin access granted"}
+
 
 # Specific role requirement
 @router.post("/evaluations")
-async def submit_evaluation(
-    user = Depends(require_role(RoleEnum.EVALUATOR, RoleEnum.ADMIN))
-):
+async def submit_evaluation(user=Depends(require_role(RoleEnum.EVALUATOR, RoleEnum.ADMIN))):
     return {"message": "Evaluation submitted"}
+
 
 # Permission-based requirement
 @router.get("/reports")
-async def get_reports(
-    user = Depends(require_permission(PermissionEnum.REPORT_READ))
-):
+async def get_reports(user=Depends(require_permission(PermissionEnum.REPORT_READ))):
     return {"data": "reports"}
 ```
 
@@ -177,14 +176,12 @@ from app.services.auth import AuthService, RoleService
 from app.core.database import get_db
 from sqlalchemy.orm import Session
 
+
 def get_user_by_id(user_id: int, db: Session):
     user = AuthService.get_user_by_id(db, user_id)
     if user:
         permissions = RoleService.get_user_permissions(db, user)
-        return {
-            "user": user,
-            "permissions": permissions
-        }
+        return {"user": user, "permissions": permissions}
     return None
 ```
 
@@ -273,7 +270,7 @@ To add RBAC to existing endpoints:
 2. **Add Authentication**
    ```python
    @router.get("/endpoint")
-   async def my_endpoint(user = Depends(get_current_active_user)):
+   async def my_endpoint(user=Depends(get_current_active_user)):
        # User is authenticated
        pass
    ```
@@ -281,7 +278,7 @@ To add RBAC to existing endpoints:
 3. **Add Authorization**
    ```python
    @router.delete("/endpoint")
-   async def delete_endpoint(user = Depends(require_role(RoleEnum.ADMIN))):
+   async def delete_endpoint(user=Depends(require_role(RoleEnum.ADMIN))):
        # Only admins can access
        pass
    ```

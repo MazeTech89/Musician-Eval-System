@@ -1,7 +1,7 @@
 """User and role models for database."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy import Enum as SQLEnum
@@ -11,7 +11,7 @@ from sqlalchemy.orm import relationship
 Base = declarative_base()
 
 
-class RoleEnum(str, Enum):
+class RoleEnum(StrEnum):
     """Available roles in the system."""
 
     ADMIN = "admin"
@@ -21,7 +21,7 @@ class RoleEnum(str, Enum):
     ANALYST = "analyst"
 
 
-class PermissionEnum(str, Enum):
+class PermissionEnum(StrEnum):
     """Available permissions in the system."""
 
     # User management
