@@ -74,6 +74,12 @@ def _ensure_schema_columns() -> None:
                         )
                     )
 
+        if "is_active" in existing_columns and table.name in {"reference_tracks", "assignments"}:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(f"UPDATE {table.name} SET is_active = TRUE WHERE is_active IS NULL")
+                )
+
 
 def init_db() -> None:
     """Initialize database by creating all tables."""

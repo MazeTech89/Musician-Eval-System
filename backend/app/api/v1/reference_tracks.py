@@ -13,11 +13,16 @@ from app.models.reference_track import Assignment, ReferenceTrack
 from app.models.user import User
 from app.schemas.evaluation import SimilarityAnalysisResponse
 from app.schemas.reference_tracks import (
+    AssignmentSubmissionResponse,
     AssignmentWithReferenceResponse,
     ReferenceTrackResponse,
 )
 from app.services.audio_similarity import score_audio_similarity
-from app.services.s3_storage import S3StorageError, upload_performance_audio_to_s3
+from app.services.s3_storage import (
+    S3StorageError,
+    materialize_audio_file,
+    upload_performance_audio_to_s3,
+)
 
 router = APIRouter(tags=["reference-tracks"])
 
@@ -50,6 +55,80 @@ def _resolve_local_audio_path(audio_file_url: str) -> Path:
     if not candidate_path.is_absolute():
         candidate_path = Path.cwd() / candidate_path
     return candidate_path
+
+
+def _score_assignment_performance(
+    db: Session,
+    assignment: Assignment,
+    performance: Performance,
+    current_user: User,
+) -> tuple[object, Evaluation]:
+    """Score a performance against an assignment reference track."""
+    if not performance.audio_file_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Performance has no uploaded audio to compare",
+        )
+
+    if not assignment.reference_track or not assignment.reference_track.audio_file_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Assignment has no reference audio track",
+        )
+
+    try:
+        reference_audio_path, reference_is_temporary = materialize_audio_file(
+            assignment.reference_track.audio_file_url
+        )
+        candidate_audio_path, candidate_is_temporary = materialize_audio_file(
+            performance.audio_file_url
+        )
+    except S3StorageError as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(err),
+        ) from err
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    try:
+        if not reference_audio_path.exists() or not candidate_audio_path.exists():
+            raise FileNotFoundError
+
+        analysis = score_audio_similarity(reference_audio_path, candidate_audio_path)
+    except FileNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audio file could not be found",
+        ) from err
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+    finally:
+        if reference_is_temporary:
+            reference_audio_path.unlink(missing_ok=True)
+        if candidate_is_temporary:
+            candidate_audio_path.unlink(missing_ok=True)
+
+    performance.assignment_id = assignment.id
+    evaluation = Evaluation(
+        performance_id=performance.id,
+        evaluator_id=current_user.id,
+        score=analysis.score,
+        comments=(
+            "Auto-generated similarity analysis against "
+            f"{assignment.reference_track.title}"
+        ),
+        status=EvaluationStatus.COMPLETED,
+    )
+    db.add(evaluation)
+
+    return analysis, evaluation
 
 
 @router.get("/reference-tracks", response_model=list[ReferenceTrackResponse])
@@ -242,15 +321,14 @@ async def list_assignments(
     current_user: User = Depends(get_current_active_user),
 ) -> list[Assignment]:
     """List assignments."""
-    if current_user.role.name not in ["admin", "evaluator"]:
+    if current_user.role.name not in ["admin", "evaluator", "musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins and evaluators can view assignments",
+            detail="Only admins, evaluators, and musicians can view assignments",
         )
 
-    return (
-        db.query(Assignment).filter(Assignment.is_active.is_(True)).offset(skip).limit(limit).all()
-    )
+    query = db.query(Assignment).filter(Assignment.is_active.is_(True))
+    return query.offset(skip).limit(limit).all()
 
 
 @router.post(
@@ -303,10 +381,10 @@ async def get_assignment(
     current_user: User = Depends(get_current_active_user),
 ) -> Assignment:
     """Get one assignment by ID."""
-    if current_user.role.name not in ["admin", "evaluator"]:
+    if current_user.role.name not in ["admin", "evaluator", "musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins and evaluators can view assignments",
+            detail="Only admins, evaluators, and musicians can view assignments",
         )
 
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
@@ -387,6 +465,94 @@ async def delete_assignment(
 
 
 @router.post(
+    "/assignments/{assignment_id}/submissions",
+    response_model=AssignmentSubmissionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_performance_for_assignment(
+    assignment_id: int,
+    title: str = Form(...),
+    description: str | None = Form(None),
+    audio_file: UploadFile = File(...),  # noqa: B008
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, object]:
+    """Create a performance submission against an assignment and score it immediately."""
+    if current_user.role.name not in ["admin", "musician"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins and musicians can submit performances",
+        )
+
+    assignment = (
+        db.query(Assignment)
+        .filter(Assignment.id == assignment_id)
+        .filter(Assignment.is_active.is_(True))
+        .first()
+    )
+    if not assignment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported audio file type",
+        )
+
+    try:
+        audio_file_url = upload_performance_audio_to_s3(
+            audio_file=audio_file,
+            musician_id=current_user.id,
+        )
+    except S3StorageError as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(err),
+        ) from err
+
+    performance = Performance(
+        title=title,
+        description=description,
+        audio_file_url=audio_file_url,
+        musician_id=current_user.id,
+        assignment_id=assignment.id,
+        status="pending",
+    )
+    db.add(performance)
+    db.flush()
+
+    analysis, evaluation = _score_assignment_performance(
+        db=db,
+        assignment=assignment,
+        performance=performance,
+        current_user=current_user,
+    )
+
+    db.commit()
+    db.refresh(performance)
+    db.refresh(evaluation)
+
+    return {
+        "performance": performance,
+        "evaluation": evaluation,
+        "analysis": {
+            "performance_id": performance.id,
+            "score": analysis.score,
+            "reference_filename": assignment.reference_track.title,
+            "created_evaluation_id": evaluation.id,
+            "breakdown": {
+                "duration_similarity": analysis.duration_similarity,
+                "energy_similarity": analysis.energy_similarity,
+                "peak_similarity": analysis.peak_similarity,
+                "zero_crossing_similarity": analysis.zero_crossing_similarity,
+                "histogram_similarity": analysis.histogram_similarity,
+                "delta_profile_similarity": analysis.delta_profile_similarity,
+            },
+        },
+    }
+
+
+@router.post(
     "/assignments/{assignment_id}/performances/{performance_id}/analyze",
     response_model=SimilarityAnalysisResponse,
     status_code=status.HTTP_201_CREATED,
@@ -417,57 +583,12 @@ async def analyze_performance_with_assignment(
     if not performance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Performance not found")
 
-    if not performance.audio_file_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Performance has no uploaded audio to compare",
-        )
-
-    if not assignment.reference_track or not assignment.reference_track.audio_file_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Assignment has no reference audio track",
-        )
-
-    try:
-        reference_audio_path = _resolve_local_audio_path(assignment.reference_track.audio_file_url)
-        candidate_audio_path = _resolve_local_audio_path(performance.audio_file_url)
-    except ValueError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(err),
-        ) from err
-
-    if not reference_audio_path.exists() or not candidate_audio_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audio file could not be found",
-        )
-
-    try:
-        analysis = score_audio_similarity(reference_audio_path, candidate_audio_path)
-    except FileNotFoundError as err:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audio file could not be found",
-        ) from err
-    except ValueError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(err),
-        ) from err
-
-    performance.assignment_id = assignment.id
-    evaluation = Evaluation(
-        performance_id=performance.id,
-        evaluator_id=current_user.id,
-        score=analysis.score,
-        comments=(
-            "Auto-generated similarity analysis against " f"{assignment.reference_track.title}"
-        ),
-        status=EvaluationStatus.COMPLETED,
+    analysis, evaluation = _score_assignment_performance(
+        db=db,
+        assignment=assignment,
+        performance=performance,
+        current_user=current_user,
     )
-    db.add(evaluation)
     db.commit()
     db.refresh(evaluation)
     db.refresh(performance)

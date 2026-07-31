@@ -125,7 +125,7 @@ const Evaluations: React.FC = () => {
     };
 
     fetchData();
-  }, [user, isEvaluator]);
+  }, [user, isEvaluator, isLoading]);
 
   const handleCreateEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
