@@ -6,6 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import api from "../api/axios";
+import { getApiErrorMessage } from "../utils/form";
 
 interface User {
   id: string;
@@ -87,7 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const profileResponse = await api.get("/auth/me");
       setUser(profileResponse.data);
     } catch (error) {
-      throw new Error("Login failed");
+      throw new Error(getApiErrorMessage(error, "Login failed"));
     }
   };
 
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await api.post("/auth/register", userData);
     } catch (error) {
-      throw new Error("Registration failed");
+      throw new Error(getApiErrorMessage(error, "Registration failed"));
     }
   };
 

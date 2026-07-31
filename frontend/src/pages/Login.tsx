@@ -1,17 +1,35 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { getApiErrorMessage, validateRequired } from "../utils/form";
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const nextFieldErrors: { username?: string; password?: string } = {};
+    const usernameError = validateRequired(username, "Username");
+    const passwordError = validateRequired(password, "Password");
+    if (usernameError) {
+      nextFieldErrors.username = usernameError;
+    }
+    if (passwordError) {
+      nextFieldErrors.password = passwordError;
+    }
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setError("Please fix the highlighted fields.");
+      return;
+    }
+
+    setFieldErrors({});
     setIsLoading(true);
     setError("");
 
@@ -19,9 +37,7 @@ const Login: React.FC = () => {
       await login(username, password);
       navigate("/");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Invalid credentials";
-      setError(message || "Invalid credentials");
+      setError(getApiErrorMessage(err, "Invalid credentials"));
     } finally {
       setIsLoading(false);
     }
@@ -36,30 +52,50 @@ const Login: React.FC = () => {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="rounded-md shadow-sm space-y-4">
             <div>
+              <label htmlFor="login-username" className="block text-sm font-medium text-gray-700 mb-1">
+                Username
+              </label>
               <input
-                id="username"
+                id="login-username"
                 name="username"
                 type="text"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                autoComplete="username"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setFieldErrors((current) => ({ ...current, username: undefined }));
+                }}
               />
+              {fieldErrors.username ? (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.username}</p>
+              ) : null}
             </div>
             <div>
+              <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
               <input
-                id="password"
+                id="login-password"
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                autoComplete="current-password"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldErrors((current) => ({ ...current, password: undefined }));
+                }}
               />
+              {fieldErrors.password ? (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
+              ) : null}
             </div>
           </div>
 
