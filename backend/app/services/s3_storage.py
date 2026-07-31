@@ -1,6 +1,7 @@
-"""S3 storage helpers for performance audio files."""
+"""Storage helpers for performance audio files."""
 
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 import boto3
@@ -17,6 +18,30 @@ class S3StorageError(Exception):
 def is_s3_configured() -> bool:
     """Return whether minimum S3 configuration is present."""
     return bool(settings.s3_bucket_name and settings.aws_region)
+
+
+def _build_local_upload_path(musician_id: int, filename: str) -> Path:
+    """Build a deterministic local path for uploaded audio files."""
+    upload_dir = Path(settings.local_upload_dir)
+    if not upload_dir.is_absolute():
+        upload_dir = Path.cwd() / upload_dir
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    suffix = Path(filename).suffix.lower() or ".bin"
+    file_name = f"{musician_id}_{uuid4().hex}{suffix}"
+    return upload_dir / file_name
+
+
+def upload_performance_audio_to_local_storage(audio_file: UploadFile, musician_id: int) -> str:
+    """Persist uploaded audio to disk and return a local URL."""
+    target_path = _build_local_upload_path(
+        musician_id=musician_id,
+        filename=audio_file.filename or "upload.bin",
+    )
+
+    audio_file.file.seek(0)
+    target_path.write_bytes(audio_file.file.read())
+    return f"/uploads/{target_path.name}"
 
 
 def _build_s3_client():
@@ -42,7 +67,10 @@ def _build_object_key(musician_id: int, filename: str) -> str:
 
 
 def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> str:
-    """Upload a performance audio file to S3 and return an S3 URI."""
+    """Upload a performance audio file to the configured storage backend."""
+    if settings.use_local_upload_storage:
+        return upload_performance_audio_to_local_storage(audio_file, musician_id)
+
     if not is_s3_configured():
         raise S3StorageError("S3 upload is not configured. Set AWS_REGION and S3_BUCKET_NAME.")
 
@@ -65,3 +93,47 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
         raise S3StorageError("Failed to upload audio file to S3.") from err
 
     return f"s3://{settings.s3_bucket_name}/{object_key}"
+
+
+def materialize_audio_file(audio_file_url: str) -> tuple[Path, bool]:
+    """Return a readable local path for a stored audio file.
+
+    The boolean indicates whether the returned path is temporary and should be deleted
+    after use.
+    """
+    if not audio_file_url:
+        raise ValueError("Audio file is missing.")
+
+    if audio_file_url.startswith("s3://"):
+        if not is_s3_configured():
+            raise S3StorageError("S3 download is not configured.")
+
+        object_path = audio_file_url.removeprefix("s3://")
+        bucket_name, _, object_key = object_path.partition("/")
+        if not bucket_name or not object_key:
+            raise S3StorageError("Stored S3 audio reference is invalid.")
+
+        suffix = Path(object_key).suffix.lower() or ".bin"
+        temp_file = NamedTemporaryFile(suffix=suffix, delete=False)
+        temp_file.close()
+
+        s3_client = _build_s3_client()
+        try:
+            with Path(temp_file.name).open("wb") as local_file:
+                s3_client.download_fileobj(bucket_name, object_key, local_file)
+        except (BotoCoreError, ClientError) as err:
+            Path(temp_file.name).unlink(missing_ok=True)
+            raise S3StorageError("Failed to download audio file from S3.") from err
+
+        return Path(temp_file.name), True
+
+    if audio_file_url.startswith("/uploads/"):
+        upload_dir = Path(settings.local_upload_dir)
+        if not upload_dir.is_absolute():
+            upload_dir = Path.cwd() / upload_dir
+        return upload_dir / Path(audio_file_url).name, False
+
+    candidate_path = Path(audio_file_url)
+    if not candidate_path.is_absolute():
+        candidate_path = Path.cwd() / candidate_path
+    return candidate_path, False

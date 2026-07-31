@@ -40,11 +40,11 @@ async def register(
     try:
         user = AuthService.register_user(db, user_data)
         return user
-    except ValueError as e:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail=str(err),
+        ) from err
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -149,11 +149,11 @@ async def update_me(
 
         user = AuthService.update_user(db, current_user, user_data)
         return user
-    except ValueError as e:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail=str(err),
+        ) from err
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
@@ -183,11 +183,11 @@ async def change_password(
             password_data.new_password,
         )
         return {"message": "Password changed successfully"}
-    except ValueError as e:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail=str(err),
+        ) from err
 
 
 @router.get("/users", response_model=list[UserResponse])
@@ -273,11 +273,11 @@ async def update_user(
     try:
         user = AuthService.update_user(db, user, user_data)
         return user
-    except ValueError as e:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
+            detail=str(err),
+        ) from err
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

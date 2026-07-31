@@ -21,6 +21,7 @@ services:
     runtime: docker
     name: musician-eval-backend
     dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_URL
@@ -42,6 +43,8 @@ services:
         value: 7
       - key: DEBUG
         value: false
+      - key: USE_LOCAL_UPLOAD_STORAGE
+        value: false
       - key: CORS_ORIGINS
         value: '["https://musician-eval-frontend.onrender.com"]'
       # Set these manually in the Render dashboard (do not commit real values):
@@ -55,6 +58,10 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       # After deploying backend, replace with your actual backend Render URL:
       # e.g. https://musician-eval-backend.onrender.com/api/v1
@@ -73,4 +80,3 @@ databases:
     databaseName: musician_eval
     user: musician_eval_user
     plan: free
-

@@ -53,6 +53,7 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator("role", mode="before")
+    @classmethod
     def validate_role(cls, value):
         if value is None:
             return None
