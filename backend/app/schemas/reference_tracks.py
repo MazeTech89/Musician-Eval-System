@@ -96,4 +96,5 @@ class AssignmentSubmissionResponse(BaseModel):
 
     performance: PerformanceResponse
     evaluation: EvaluationResponse
-    analysis: SimilarityAnalysisResponse
+    analysis: SimilarityAnalysisResponse | None = None
+    message: str | None = None

@@ -60,13 +60,14 @@ interface EvaluationHistory extends Evaluation {
 interface SubmissionResponse {
   performance: Performance;
   evaluation: Evaluation;
-  analysis: {
+  analysis?: {
     performance_id: number;
     score: number;
     reference_filename: string;
     created_evaluation_id: number;
     breakdown: Record<string, number>;
-  };
+  } | null;
+  message?: string | null;
 }
 
 const Assignments: React.FC = () => {
@@ -358,22 +359,30 @@ const Assignments: React.FC = () => {
             <section className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Latest score</h2>
               <p className="text-gray-700">
-                <span className="font-medium">Score:</span> {submissionResult.analysis.score.toFixed(1)}
-              </p>
-              <p className="text-gray-700">
                 <span className="font-medium">Performance:</span> {submissionResult.performance.title}
               </p>
-              <p className="text-gray-700">
-                <span className="font-medium">Reference:</span> {submissionResult.analysis.reference_filename}
-              </p>
-              <div className="mt-4 grid gap-2 md:grid-cols-2">
-                {Object.entries(submissionResult.analysis.breakdown).map(([label, value]) => (
-                  <div key={label} className="rounded border border-gray-200 p-3">
-                    <div className="text-xs uppercase text-gray-500">{label.replace(/_/g, " ")}</div>
-                    <div className="text-gray-900 font-semibold">{value.toFixed(2)}</div>
+              {submissionResult.analysis ? (
+                <>
+                  <p className="text-gray-700">
+                    <span className="font-medium">Score:</span> {submissionResult.analysis.score.toFixed(1)}
+                  </p>
+                  <p className="text-gray-700">
+                    <span className="font-medium">Reference:</span> {submissionResult.analysis.reference_filename}
+                  </p>
+                  <div className="mt-4 grid gap-2 md:grid-cols-2">
+                    {Object.entries(submissionResult.analysis.breakdown).map(([label, value]) => (
+                      <div key={label} className="rounded border border-gray-200 p-3">
+                        <div className="text-xs uppercase text-gray-500">{label.replace(/_/g, " ")}</div>
+                        <div className="text-gray-900 font-semibold">{value.toFixed(2)}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-amber-700">
+                  {submissionResult.message || "Upload succeeded. Automatic scoring is pending."}
+                </p>
+              )}
             </section>
           ) : null}
 

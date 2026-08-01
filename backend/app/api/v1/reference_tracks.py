@@ -518,12 +518,32 @@ async def submit_performance_for_assignment(
     db.add(performance)
     db.flush()
 
-    analysis, evaluation = _score_assignment_performance(
-        db=db,
-        assignment=assignment,
-        performance=performance,
-        current_user=current_user,
-    )
+    analysis = None
+    fallback_message = None
+    try:
+        analysis, evaluation = _score_assignment_performance(
+            db=db,
+            assignment=assignment,
+            performance=performance,
+            current_user=current_user,
+        )
+    except HTTPException as err:
+        if err.status_code != status.HTTP_404_NOT_FOUND or err.detail != "Audio file could not be found":
+            raise
+
+        fallback_message = (
+            "Upload succeeded, but automatic scoring is pending because the "
+            "assignment reference audio file could not be found. Ask an admin "
+            "to re-upload the reference track."
+        )
+        evaluation = Evaluation(
+            performance_id=performance.id,
+            evaluator_id=assignment.created_by_id or current_user.id,
+            score=None,
+            comments=fallback_message,
+            status=EvaluationStatus.PENDING,
+        )
+        db.add(evaluation)
 
     db.commit()
     db.refresh(performance)
@@ -535,25 +555,31 @@ async def submit_performance_for_assignment(
         evaluation_id=evaluation.id,
         user_id=current_user.id,
         username=current_user.username,
+        scoring_pending=analysis is None,
     )
 
     return {
         "performance": performance,
         "evaluation": evaluation,
-        "analysis": {
-            "performance_id": performance.id,
-            "score": analysis.score,
-            "reference_filename": assignment.reference_track.title,
-            "created_evaluation_id": evaluation.id,
-            "breakdown": {
-                "duration_similarity": analysis.duration_similarity,
-                "energy_similarity": analysis.energy_similarity,
-                "peak_similarity": analysis.peak_similarity,
-                "zero_crossing_similarity": analysis.zero_crossing_similarity,
-                "histogram_similarity": analysis.histogram_similarity,
-                "delta_profile_similarity": analysis.delta_profile_similarity,
-            },
-        },
+        "analysis": (
+            {
+                "performance_id": performance.id,
+                "score": analysis.score,
+                "reference_filename": assignment.reference_track.title,
+                "created_evaluation_id": evaluation.id,
+                "breakdown": {
+                    "duration_similarity": analysis.duration_similarity,
+                    "energy_similarity": analysis.energy_similarity,
+                    "peak_similarity": analysis.peak_similarity,
+                    "zero_crossing_similarity": analysis.zero_crossing_similarity,
+                    "histogram_similarity": analysis.histogram_similarity,
+                    "delta_profile_similarity": analysis.delta_profile_similarity,
+                },
+            }
+            if analysis is not None
+            else None
+        ),
+        "message": fallback_message,
     }
 
 
