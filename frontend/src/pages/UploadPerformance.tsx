@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import AppHeader from "../components/AppHeader";
@@ -18,6 +18,12 @@ interface UploadResponse {
   status: string;
 }
 
+interface PerformanceSummary extends UploadResponse {
+  musician_id: number;
+  assignment_id: number | null;
+  submitted_at: string;
+}
+
 const UploadPerformance: React.FC = () => {
   const { user } = useAuth();
   const [title, setTitle] = useState("");
@@ -27,6 +33,9 @@ const UploadPerformance: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ title?: string; audioFile?: string }>({});
+  const [performances, setPerformances] = useState<PerformanceSummary[]>([]);
+  const [loadingPerformances, setLoadingPerformances] = useState(true);
+  const [deletingPerformanceId, setDeletingPerformanceId] = useState<number | null>(null);
 
   const canUpload = user?.role === "musician" || user?.role === "admin";
   const workflowSteps = user?.role === "musician"
@@ -42,6 +51,31 @@ const UploadPerformance: React.FC = () => {
         "3. Attach the audio file and submit.",
         "4. Review the uploaded item or return to the dashboard.",
       ];
+
+  useEffect(() => {
+    if (!canUpload) {
+      setLoadingPerformances(false);
+      return;
+    }
+
+    const loadPerformances = async () => {
+      try {
+        const response = await api.get<PerformanceSummary[]>("/performances");
+        setPerformances(response.data);
+      } catch (err: unknown) {
+        setError(getApiErrorMessage(err, "Failed to load uploaded performances"));
+      } finally {
+        setLoadingPerformances(false);
+      }
+    };
+
+    loadPerformances();
+  }, [canUpload]);
+
+  const refreshPerformances = async () => {
+    const response = await api.get<PerformanceSummary[]>("/performances");
+    setPerformances(response.data);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,10 +119,33 @@ const UploadPerformance: React.FC = () => {
       setTitle("");
       setDescription("");
       setAudioFile(null);
+      await refreshPerformances();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Upload failed"));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePerformance = async (performanceId: number) => {
+    if (!window.confirm("Delete this uploaded performance?")) {
+      return;
+    }
+
+    setDeletingPerformanceId(performanceId);
+    setError("");
+    setSuccess("");
+
+    try {
+      await api.delete(`/performances/${performanceId}`);
+      setPerformances((current) =>
+        current.filter((performance) => performance.id !== performanceId),
+      );
+      setSuccess("Uploaded performance deleted successfully.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to delete uploaded performance"));
+    } finally {
+      setDeletingPerformanceId(null);
     }
   };
 
@@ -207,6 +264,48 @@ const UploadPerformance: React.FC = () => {
             </button>
           </form>
           </div>
+
+          <section className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {user?.role === "admin" ? "Uploaded performances" : "Your uploaded performances"}
+            </h2>
+            {loadingPerformances ? (
+              <p className="text-sm text-gray-600">Loading uploaded performances...</p>
+            ) : performances.length === 0 ? (
+              <p className="text-sm text-gray-600">
+                No uploaded performances yet. Submit one above to manage it here.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {performances.map((performance) => (
+                  <div
+                    key={performance.id}
+                    className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 p-4"
+                  >
+                    <div>
+                      <div className="font-medium text-gray-900">{performance.title}</div>
+                      <div className="text-sm text-gray-500">
+                        Submitted: {new Date(performance.submitted_at).toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Assignment:{" "}
+                        {performance.assignment_id ? `Assignment #${performance.assignment_id}` : "Direct upload"}
+                      </div>
+                      <div className="text-sm text-gray-500">Status: {performance.status}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeletePerformance(performance.id)}
+                      disabled={deletingPerformanceId === performance.id}
+                      className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deletingPerformanceId === performance.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </div>

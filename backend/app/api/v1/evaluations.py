@@ -207,7 +207,7 @@ async def delete_evaluation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:
-    """Delete evaluation (admins only).
+    """Delete evaluation (owner evaluator or admin).
 
     Args:
         evaluation_id: Evaluation ID
@@ -220,17 +220,22 @@ async def delete_evaluation(
     Raises:
         HTTPException: If evaluation not found or access denied
     """
-    if current_user.role.name != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can delete evaluations",
-        )
-
     evaluation = db.query(Evaluation).filter(Evaluation.id == evaluation_id).first()
     if not evaluation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Evaluation not found",
+        )
+
+    if current_user.role.name == "evaluator" and evaluation.evaluator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    if current_user.role.name not in ["admin", "evaluator"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only evaluators and admins can delete evaluations",
         )
 
     db.delete(evaluation)

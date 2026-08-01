@@ -98,6 +98,31 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
     return f"s3://{settings.s3_bucket_name}/{object_key}"
 
 
+def delete_audio_file(audio_file_url: str | None) -> None:
+    """Delete a stored audio file from the configured backend."""
+    if not audio_file_url:
+        return
+
+    if audio_file_url.startswith("s3://"):
+        if not is_s3_configured():
+            raise S3StorageError("S3 delete is not configured.")
+
+        object_path = audio_file_url.removeprefix("s3://")
+        bucket_name, _, object_key = object_path.partition("/")
+        if not bucket_name or not object_key:
+            raise S3StorageError("Stored S3 audio reference is invalid.")
+
+        s3_client = _build_s3_client()
+        try:
+            s3_client.delete_object(Bucket=bucket_name, Key=object_key)
+        except (BotoCoreError, ClientError) as err:
+            raise S3StorageError("Failed to delete audio file from S3.") from err
+        return
+
+    candidate_path, _ = materialize_audio_file(audio_file_url)
+    candidate_path.unlink(missing_ok=True)
+
+
 def materialize_audio_file(audio_file_url: str) -> tuple[Path, bool]:
     """Return a readable local path for a stored audio file.
 

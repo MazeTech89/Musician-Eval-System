@@ -19,7 +19,11 @@ from app.schemas.evaluation import (
     SimilarityAnalysisResponse,
 )
 from app.services.audio_similarity import score_audio_similarity
-from app.services.s3_storage import S3StorageError, upload_performance_audio_to_s3
+from app.services.s3_storage import (
+    S3StorageError,
+    delete_audio_file,
+    upload_performance_audio_to_s3,
+)
 from app.core.upload_security import validate_audio_upload
 
 router = APIRouter(prefix="/performances", tags=["performances"])
@@ -397,6 +401,17 @@ async def delete_performance(
             detail="Only admins can delete performances",
         )
 
+    audio_file_url = performance.audio_file_url
+    delete_audio_file(audio_file_url)
+    db.query(Evaluation).filter(Evaluation.performance_id == performance.id).delete(
+        synchronize_session=False
+    )
     db.delete(performance)
     db.commit()
+    record_audit_event(
+        "performance.deleted",
+        performance_id=performance_id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
     return {"message": "Performance deleted successfully"}

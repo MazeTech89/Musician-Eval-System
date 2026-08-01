@@ -100,6 +100,10 @@ const Evaluations: React.FC = () => {
   const [assignmentAnalysisResult, setAssignmentAnalysisResult] = useState<AnalysisResult | null>(null);
   const [evaluationFormError, setEvaluationFormError] = useState<string | null>(null);
   const [analysisFormError, setAnalysisFormError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [deletingEvaluationId, setDeletingEvaluationId] = useState<number | null>(null);
+  const [deletingReferenceTrackId, setDeletingReferenceTrackId] = useState<number | null>(null);
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState<number | null>(null);
 
   const isEvaluator = user?.role === "evaluator" || user?.role === "admin";
   const assignmentById = useMemo(() => {
@@ -159,6 +163,7 @@ const Evaluations: React.FC = () => {
     }
 
     setEvaluationFormError(null);
+    setSuccessMessage(null);
     setSubmitting(true);
     try {
       await api.post("/evaluations", {
@@ -172,6 +177,7 @@ const Evaluations: React.FC = () => {
       setSelectedPerformance(0);
       setScore(0);
       setComments("");
+      setSuccessMessage("Evaluation created successfully.");
     } catch (err: unknown) {
       console.error("Failed to create evaluation:", err);
       setEvaluationFormError(getApiErrorMessage(err, "Failed to create evaluation"));
@@ -197,6 +203,7 @@ const Evaluations: React.FC = () => {
     }
 
     setAnalysisFormError(null);
+    setSuccessMessage(null);
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
@@ -214,6 +221,7 @@ const Evaluations: React.FC = () => {
       setReferenceFile(null);
       setScore(0);
       setComments("");
+      setSuccessMessage("Similarity analysis completed successfully.");
     } catch (err: unknown) {
       console.error("Failed to analyze performance:", err);
       setAnalysisFormError(getApiErrorMessage(err, "Failed to analyze performance"));
@@ -243,6 +251,7 @@ const Evaluations: React.FC = () => {
     }
 
     setReferenceTrackError(null);
+    setSuccessMessage(null);
     setCreatingReferenceTrack(true);
     try {
       const formData = new FormData();
@@ -256,6 +265,7 @@ const Evaluations: React.FC = () => {
       setNewReferenceTrackTitle("");
       setNewReferenceTrackDescription("");
       setReferenceTrackFile(null);
+      setSuccessMessage("Reference track saved successfully.");
     } catch (err: unknown) {
       console.error("Failed to create reference track:", err);
       setReferenceTrackError(
@@ -279,6 +289,7 @@ const Evaluations: React.FC = () => {
     }
 
     setAssignmentError(null);
+    setSuccessMessage(null);
     setCreatingAssignment(true);
     try {
       const formData = new FormData();
@@ -294,6 +305,7 @@ const Evaluations: React.FC = () => {
       setNewAssignmentTitle("");
       setNewAssignmentDescription("");
       setSelectedReferenceTrackId(0);
+      setSuccessMessage("Assignment saved successfully.");
     } catch (err: unknown) {
       console.error("Failed to create assignment:", err);
       setAssignmentError(getApiErrorMessage(err, "Failed to create assignment"));
@@ -315,6 +327,7 @@ const Evaluations: React.FC = () => {
 
     setAssignmentAnalysisLoading(true);
     setAssignmentAnalysisError(null);
+    setSuccessMessage(null);
     try {
       const response = await api.post(
         `/assignments/${selectedAssignmentId}/performances/${selectedPerformance}/analyze`,
@@ -324,6 +337,7 @@ const Evaluations: React.FC = () => {
       setEvaluations(evalResponse.data);
       setSelectedPerformance(0);
       setSelectedAssignmentId(0);
+      setSuccessMessage("Assignment analysis completed successfully.");
     } catch (err: unknown) {
       console.error("Failed to analyze with assignment:", err);
       setAssignmentAnalysisError(
@@ -331,6 +345,69 @@ const Evaluations: React.FC = () => {
       );
     } finally {
       setAssignmentAnalysisLoading(false);
+    }
+  };
+
+  const handleDeleteEvaluation = async (evaluationId: number) => {
+    if (!window.confirm("Delete this evaluation?")) {
+      return;
+    }
+
+    setDeletingEvaluationId(evaluationId);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await api.delete(`/evaluations/${evaluationId}`);
+      setEvaluations((current) => current.filter((evaluation) => evaluation.id !== evaluationId));
+      setSuccessMessage("Evaluation deleted successfully.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to delete evaluation"));
+    } finally {
+      setDeletingEvaluationId(null);
+    }
+  };
+
+  const handleDeleteReferenceTrack = async (referenceTrackId: number) => {
+    if (!window.confirm("Delete this reference track?")) {
+      return;
+    }
+
+    setDeletingReferenceTrackId(referenceTrackId);
+    setReferenceTrackError(null);
+    setSuccessMessage(null);
+    try {
+      await api.delete(`/reference-tracks/${referenceTrackId}`);
+      setReferenceTracks((current) => current.filter((track) => track.id !== referenceTrackId));
+      setSelectedReferenceTrackId((current) =>
+        current === referenceTrackId ? 0 : current,
+      );
+      setSuccessMessage("Reference track deleted successfully.");
+    } catch (err: unknown) {
+      setReferenceTrackError(getApiErrorMessage(err, "Failed to delete reference track"));
+    } finally {
+      setDeletingReferenceTrackId(null);
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId: number) => {
+    if (!window.confirm("Delete this assignment? Linked performances will be preserved.")) {
+      return;
+    }
+
+    setDeletingAssignmentId(assignmentId);
+    setAssignmentError(null);
+    setSuccessMessage(null);
+    try {
+      await api.delete(`/assignments/${assignmentId}`);
+      setAssignments((current) =>
+        current.filter((assignment) => assignment.id !== assignmentId),
+      );
+      setSelectedAssignmentId((current) => (current === assignmentId ? 0 : current));
+      setSuccessMessage("Assignment deleted successfully.");
+    } catch (err: unknown) {
+      setAssignmentError(getApiErrorMessage(err, "Failed to delete assignment"));
+    } finally {
+      setDeletingAssignmentId(null);
     }
   };
 
@@ -400,6 +477,13 @@ const Evaluations: React.FC = () => {
       />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {successMessage ? (
+          <section className="px-4 sm:px-0 mb-6">
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+              {successMessage}
+            </div>
+          </section>
+        ) : null}
         <section className="px-4 sm:px-0 mb-6">
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
@@ -657,9 +741,24 @@ const Evaluations: React.FC = () => {
                   <h3 className="text-sm font-semibold text-gray-700">Saved reference tracks</h3>
                   <ul className="mt-2 space-y-2">
                     {referenceTracks.map((track) => (
-                      <li key={track.id} className="rounded border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        <span className="font-medium text-gray-900">{track.title}</span>
-                        {track.description ? ` — ${track.description}` : ""}
+                      <li
+                        key={track.id}
+                        className="flex items-start justify-between gap-4 rounded border border-gray-200 px-3 py-2 text-sm text-gray-600"
+                      >
+                        <div>
+                          <span className="font-medium text-gray-900">{track.title}</span>
+                          {track.description ? ` — ${track.description}` : ""}
+                        </div>
+                        {user?.role === "admin" ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteReferenceTrack(track.id)}
+                            disabled={deletingReferenceTrackId === track.id}
+                            className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            {deletingReferenceTrackId === track.id ? "Deleting..." : "Delete"}
+                          </button>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -737,9 +836,24 @@ const Evaluations: React.FC = () => {
                   <h3 className="text-sm font-semibold text-gray-700">Assignments</h3>
                   <ul className="mt-2 space-y-2">
                     {assignments.map((assignment) => (
-                      <li key={assignment.id} className="rounded border border-gray-200 px-3 py-2 text-sm text-gray-600">
-                        <span className="font-medium text-gray-900">{assignment.title}</span>
-                        {assignment.description ? ` — ${assignment.description}` : ""}
+                      <li
+                        key={assignment.id}
+                        className="flex items-start justify-between gap-4 rounded border border-gray-200 px-3 py-2 text-sm text-gray-600"
+                      >
+                        <div>
+                          <span className="font-medium text-gray-900">{assignment.title}</span>
+                          {assignment.description ? ` — ${assignment.description}` : ""}
+                        </div>
+                        {user?.role === "admin" ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteAssignment(assignment.id)}
+                            disabled={deletingAssignmentId === assignment.id}
+                            className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            {deletingAssignmentId === assignment.id ? "Deleting..." : "Delete"}
+                          </button>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -874,6 +988,16 @@ const Evaluations: React.FC = () => {
                           {new Date(evaluation.created_at).toLocaleDateString()}
                         </div>
                       </div>
+                       {isEvaluator ? (
+                         <button
+                           type="button"
+                           onClick={() => void handleDeleteEvaluation(evaluation.id)}
+                           disabled={deletingEvaluationId === evaluation.id}
+                           className="ml-4 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                         >
+                           {deletingEvaluationId === evaluation.id ? "Deleting..." : "Delete"}
+                         </button>
+                       ) : null}
                     </div>
                   </li>
                 ))}
