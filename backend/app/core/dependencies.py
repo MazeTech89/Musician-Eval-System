@@ -1,6 +1,6 @@
 """FastAPI dependencies for authentication and authorization."""
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ security = HTTPBearer(auto_error=False, description="JWT Bearer token")
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
@@ -29,13 +30,18 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
-    if not credentials:
+    token = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Authentication credentials were not provided",
         )
 
-    token = credentials.credentials
     token_data = decode_token(token)
 
     if not token_data:

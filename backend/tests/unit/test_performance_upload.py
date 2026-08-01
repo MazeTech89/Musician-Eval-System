@@ -2,6 +2,9 @@
 
 from datetime import datetime
 from io import BytesIO
+import math
+import struct
+import wave
 
 from fastapi.testclient import TestClient
 
@@ -18,9 +21,10 @@ class _DummyRole:
 
 
 class _DummyUser:
-    def __init__(self, user_id: int, role: str) -> None:
+    def __init__(self, user_id: int, role: str, username: str = "test-user") -> None:
         self.id = user_id
         self.role = _DummyRole(role)
+        self.username = username
 
 
 class _DummyDB:
@@ -37,6 +41,26 @@ class _DummyDB:
 
 def _override_db():
     yield _DummyDB()
+
+
+def _make_wav_bytes() -> bytes:
+    buffer = BytesIO()
+    sample_rate = 22050
+    duration_seconds = 0.05
+    total_samples = int(sample_rate * duration_seconds)
+    amplitude = 12000
+
+    with wave.open(buffer, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(sample_rate)
+        for sample_index in range(total_samples):
+            sample_value = int(
+                amplitude * math.sin(2 * math.pi * 440 * sample_index / sample_rate)
+            )
+            wav_file.writeframes(struct.pack("<h", sample_value))
+
+    return buffer.getvalue()
 
 
 def test_upload_audio_creates_performance(monkeypatch) -> None:
@@ -62,7 +86,7 @@ def test_upload_audio_creates_performance(monkeypatch) -> None:
     response = client.post(
         "/api/v1/performances/upload-audio",
         data={"title": "My take", "description": "Practice recording"},
-        files={"audio_file": ("sample.wav", b"wav-bytes", "audio/wav")},
+        files={"audio_file": ("sample.wav", _make_wav_bytes(), "audio/wav")},
     )
 
     app.dependency_overrides.clear()
@@ -109,14 +133,14 @@ def test_local_upload_storage_fallback_writes_to_disk(tmp_path, monkeypatch) -> 
         def __init__(self) -> None:
             self.filename = "demo.wav"
             self.content_type = "audio/wav"
-            self.file = BytesIO(b"wav-bytes")
+            self.file = BytesIO(_make_wav_bytes())
 
     uploaded_path = upload_performance_audio_to_s3(_DummyUploadFile(), 12)
 
     assert uploaded_path.startswith("/uploads/")
     saved_file = tmp_path / uploaded_path.split("/", 2)[-1]
     assert saved_file.exists()
-    assert saved_file.read_bytes() == b"wav-bytes"
+    assert saved_file.read_bytes() == _make_wav_bytes()
 
 
 def test_s3_fallback_to_local_storage_when_config_missing(tmp_path, monkeypatch) -> None:
@@ -134,11 +158,33 @@ def test_s3_fallback_to_local_storage_when_config_missing(tmp_path, monkeypatch)
         def __init__(self) -> None:
             self.filename = "demo.wav"
             self.content_type = "audio/wav"
-            self.file = BytesIO(b"wav-bytes")
+            self.file = BytesIO(_make_wav_bytes())
 
     uploaded_path = upload_performance_audio_to_s3(_DummyUploadFile(), 12)
 
     assert uploaded_path.startswith("/uploads/")
     saved_file = tmp_path / uploaded_path.split("/", 2)[-1]
     assert saved_file.exists()
-    assert saved_file.read_bytes() == b"wav-bytes"
+    assert saved_file.read_bytes() == _make_wav_bytes()
+
+
+def test_upload_audio_rejects_signature_mismatch() -> None:
+    """Uploading spoofed audio bytes should fail validation."""
+
+    async def _override_user():
+        return _DummyUser(user_id=7, role=RoleEnum.MUSICIAN.value)
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_active_user] = _override_user
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/performances/upload-audio",
+        data={"title": "Spoofed"},
+        files={"audio_file": ("fake.wav", b"not-really-wav", "audio/wav")},
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Audio file content does not match its type"

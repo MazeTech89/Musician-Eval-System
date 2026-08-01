@@ -9,6 +9,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import UploadFile
 
 from app.core.config import settings
+from app.core.upload_security import validate_audio_upload
 
 
 class S3StorageError(Exception):
@@ -34,6 +35,7 @@ def _build_local_upload_path(musician_id: int, filename: str) -> Path:
 
 def upload_performance_audio_to_local_storage(audio_file: UploadFile, musician_id: int) -> str:
     """Persist uploaded audio to disk and return a local URL."""
+    validate_audio_upload(audio_file)
     target_path = _build_local_upload_path(
         musician_id=musician_id,
         filename=audio_file.filename or "upload.bin",
@@ -68,6 +70,7 @@ def _build_object_key(musician_id: int, filename: str) -> str:
 
 def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> str:
     """Upload a performance audio file to the configured storage backend."""
+    validate_audio_upload(audio_file)
     if settings.use_local_upload_storage:
         return upload_performance_audio_to_local_storage(audio_file, musician_id)
 

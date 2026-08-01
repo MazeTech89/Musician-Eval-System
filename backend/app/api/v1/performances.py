@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.audit import record_audit_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.models.evaluation import Evaluation, EvaluationStatus, Performance
@@ -19,19 +20,9 @@ from app.schemas.evaluation import (
 )
 from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import S3StorageError, upload_performance_audio_to_s3
+from app.core.upload_security import validate_audio_upload
 
 router = APIRouter(prefix="/performances", tags=["performances"])
-
-ALLOWED_AUDIO_CONTENT_TYPES = {
-    "audio/mpeg",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/ogg",
-    "audio/webm",
-    "audio/mp4",
-    "audio/flac",
-}
-
 
 def _resolve_local_audio_path(audio_file_url: str) -> Path:
     """Resolve a locally stored audio file path from the stored URL."""
@@ -182,11 +173,7 @@ async def create_performance_with_audio_upload(
             detail="Only musicians and admins can create performances",
         )
 
-    if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported audio file type",
-        )
+    validate_audio_upload(audio_file)
 
     try:
         audio_file_url = upload_performance_audio_to_s3(
@@ -210,6 +197,12 @@ async def create_performance_with_audio_upload(
     db.add(performance)
     db.commit()
     db.refresh(performance)
+    record_audit_event(
+        "performance.uploaded",
+        performance_id=performance.id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
     return performance
 
 
@@ -244,6 +237,7 @@ async def analyze_performance_audio(
             detail="Performance has no uploaded audio to compare",
         )
 
+    validate_audio_upload(reference_audio)
     reference_bytes = await reference_audio.read()
     if not reference_bytes:
         raise HTTPException(
@@ -289,6 +283,13 @@ async def analyze_performance_audio(
     db.add(evaluation)
     db.commit()
     db.refresh(evaluation)
+    record_audit_event(
+        "performance.analyzed",
+        performance_id=performance.id,
+        evaluation_id=evaluation.id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
 
     return {
         "performance_id": performance.id,
