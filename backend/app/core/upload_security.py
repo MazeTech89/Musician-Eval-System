@@ -11,6 +11,9 @@ from app.core.audit import record_security_alert
 
 ALLOWED_AUDIO_CONTENT_TYPES = {
     "audio/mpeg",
+    "audio/mp3",
+    "audio/x-mp3",
+    "audio/x-mpeg",
     "audio/wav",
     "audio/x-wav",
     "audio/ogg",
@@ -33,7 +36,7 @@ def _matches_signature(content_type: str, header: bytes) -> bool:
         return header.startswith(b"\x1A\x45\xDF\xA3")
     if content_type == "audio/mp4":
         return len(header) >= 8 and header[4:8] == b"ftyp"
-    if content_type == "audio/mpeg":
+    if content_type in {"audio/mpeg", "audio/mp3", "audio/x-mp3", "audio/x-mpeg"}:
         return header.startswith(b"ID3") or (
             len(header) >= 2 and header[0] == 0xFF and header[1] & 0xE0 == 0xE0
         )
