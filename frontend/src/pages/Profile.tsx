@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import api from "../api/axios";
+import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 
@@ -87,25 +87,28 @@ const Profile: React.FC = () => {
     }
   };
 
+  const workflowSteps = [
+    "1. Check your account details first.",
+    "2. Generate MFA setup if you have not enabled security yet.",
+    "3. Verify the code in your authenticator app.",
+    "4. Return to your role pages with security confirmed.",
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
-            </div>
-            <div className="flex items-center">
-              <Link to="/" className="text-indigo-600 hover:text-indigo-500">
-                Back to Dashboard
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AppHeader title="Profile" subtitle="Check your account details and security settings." />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+        <div className="px-4 py-6 sm:px-0 space-y-6">
+          <section className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
+            <ol className="space-y-2 text-sm text-gray-700">
+              {workflowSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </section>
+
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">

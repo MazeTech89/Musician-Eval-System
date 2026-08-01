@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../api/axios";
+import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 import {
@@ -72,6 +74,8 @@ interface SubmissionResponse {
 
 const Assignments: React.FC = () => {
   const { user, isLoading } = useAuth();
+  const isMusician = user?.role === "musician";
+  const isEvaluator = user?.role === "evaluator" || user?.role === "admin";
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -125,6 +129,20 @@ const Assignments: React.FC = () => {
         new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
     );
   }, [historyEvaluations]);
+
+  const workflowSteps = isMusician
+    ? [
+        "1. Open the active assignment you want to submit against.",
+        "2. Add a title, description, and audio file.",
+        "3. Submit the performance and wait for scoring or pending review.",
+        "4. Check your submission history for feedback and results.",
+      ]
+    : [
+        "1. Review the active assignments and reference tracks.",
+        "2. Use Evaluations to create or inspect scoring history.",
+        "3. Open a submission to review the attached performance.",
+        "4. Return here to monitor activity and recent uploads.",
+      ];
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -199,27 +217,34 @@ const Assignments: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Assignments</h1>
-            </div>
-            <div className="flex items-center">
-              <a href="/" className="text-indigo-600 hover:text-indigo-500">
-                Back to Dashboard
-              </a>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AppHeader title="Assignments" subtitle="View active assignments, submit performances, and review history." />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0 space-y-6">
           <section className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
+            <ol className="space-y-2 text-sm text-gray-700">
+              {workflowSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Active assignments</h2>
             {assignments.length === 0 ? (
-              <p className="text-gray-600">No active assignments yet.</p>
+              <div className="space-y-3">
+                <p className="text-gray-600">
+                  {isMusician
+                    ? "No active assignments yet. Check back after an admin publishes one."
+                    : "No active assignments yet. Create a reference track and assignment in Evaluations to get started."}
+                </p>
+                {isEvaluator ? (
+                  <Link to="/evaluations" className="text-indigo-600 hover:text-indigo-500">
+                    Go to Evaluations
+                  </Link>
+                ) : null}
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {assignments.map((assignment) => (
@@ -256,7 +281,9 @@ const Assignments: React.FC = () => {
                 You are submitting against <span className="font-medium">{selectedAssignment.title}</span>.
               </p>
             ) : (
-              <p className="text-sm text-gray-600 mb-4">Select an assignment to submit against.</p>
+              <p className="text-sm text-gray-600 mb-4">
+                Select an assignment to submit against. Your upload will appear in your history after scoring.
+              </p>
             )}
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -391,7 +418,11 @@ const Assignments: React.FC = () => {
               Your submission history
             </h2>
             {rankedHistory.length === 0 ? (
-              <p className="text-gray-600">No submissions yet.</p>
+              <p className="text-gray-600">
+                {isMusician
+                  ? "No submissions yet. Upload your first performance to see scoring here."
+                  : "No submissions yet. Musicians will see their scored performances here after upload."}
+              </p>
             ) : (
               <div className="space-y-3">
                 {rankedHistory.map((evaluation) => (
