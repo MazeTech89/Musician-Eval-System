@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
+import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 import {
@@ -28,6 +29,19 @@ const UploadPerformance: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<{ title?: string; audioFile?: string }>({});
 
   const canUpload = user?.role === "musician" || user?.role === "admin";
+  const workflowSteps = user?.role === "musician"
+    ? [
+        "1. Open Assignments and confirm the assignment you want to submit against.",
+        "2. Fill in a clear title and optional notes.",
+        "3. Choose your audio file and keep it within the size limit.",
+        "4. Submit, then review the result in Evaluations.",
+      ]
+    : [
+        "1. Use this page when you need to upload a performance directly.",
+        "2. Fill in the title and optional notes.",
+        "3. Attach the audio file and submit.",
+        "4. Review the uploaded item or return to the dashboard.",
+      ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +99,8 @@ const UploadPerformance: React.FC = () => {
           <div className="bg-white shadow rounded-lg p-6">
             <h1 className="text-xl font-semibold text-gray-900">Upload Performance</h1>
             <p className="mt-3 text-gray-600">
-              Only musicians and admins can upload performances.
+              Only musicians and admins can upload performances. If you are a musician,
+              choose your assignment first so the submission is tied to the right workflow.
             </p>
             <Link to="/" className="mt-4 inline-block text-indigo-600 hover:text-indigo-500">
               Back to Dashboard
@@ -98,19 +113,23 @@ const UploadPerformance: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <h1 className="text-xl font-semibold text-gray-900">Upload Performance</h1>
-            <Link to="/" className="text-indigo-600 hover:text-indigo-500">
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <AppHeader
+        title="Upload Performance"
+        subtitle="Send in a performance file for your active assignment. Check Assignments first if you need to pick one."
+      />
 
       <main className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg p-6">
+        <div className="space-y-6">
+          <section className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
+            <ol className="space-y-2 text-sm text-gray-700">
+              {workflowSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </section>
+
+          <div className="bg-white shadow rounded-lg p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -187,6 +206,7 @@ const UploadPerformance: React.FC = () => {
               {isSubmitting ? "Uploading..." : "Upload performance"}
             </button>
           </form>
+          </div>
         </div>
       </main>
     </div>

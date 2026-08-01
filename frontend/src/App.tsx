@@ -32,10 +32,10 @@ function App() {
               }
             />
             <Route
-              path="/evaluations"
+              path="/profile"
               element={
                 <ProtectedRoute>
-                  <Evaluations />
+                  <Profile />
                 </ProtectedRoute>
               }
             />
@@ -48,18 +48,18 @@ function App() {
               }
             />
             <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/performances/upload"
               element={
                 <ProtectedRoute>
                   <UploadPerformance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/evaluations"
+              element={
+                <ProtectedRoute>
+                  <Evaluations />
                 </ProtectedRoute>
               }
             />

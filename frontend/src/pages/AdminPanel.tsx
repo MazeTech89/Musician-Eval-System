@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../api/axios";
+import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
 
 interface User {
@@ -94,22 +95,10 @@ const AdminPanel: React.FC = () => {
   }
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Admin Panel
-              </h1>
-            </div>
-            <div className="flex items-center">
-              <a href="/" className="text-indigo-600 hover:text-indigo-500">
-                Back to Dashboard
-              </a>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <AppHeader
+        title="Admin Panel"
+        subtitle="Manage users, roles, and access to the system."
+      />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
