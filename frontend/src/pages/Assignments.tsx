@@ -87,6 +87,8 @@ const Assignments: React.FC = () => {
   const [submissionResult, setSubmissionResult] = useState<SubmissionResponse | null>(null);
   const [historyEvaluations, setHistoryEvaluations] = useState<EvaluationHistory[]>([]);
   const [fieldErrors, setFieldErrors] = useState<{ assignment?: string; audioFile?: string }>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [deletingPerformanceId, setDeletingPerformanceId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -181,6 +183,7 @@ const Assignments: React.FC = () => {
     setFieldErrors({});
     setSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
     setSubmissionResult(null);
 
     const formData = new FormData();
@@ -199,11 +202,37 @@ const Assignments: React.FC = () => {
       setTitle("");
       setDescription("");
       setAudioFile(null);
+      setSuccessMessage("Performance submitted successfully.");
     } catch (err: unknown) {
       console.error("Failed to submit assignment performance:", err);
       setError(getApiErrorMessage(err, "Failed to submit performance"));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeletePerformance = async (performanceId: number) => {
+    if (!window.confirm("Delete this uploaded performance and its related score?")) {
+      return;
+    }
+
+    setDeletingPerformanceId(performanceId);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await api.delete(`/performances/${performanceId}`);
+      setHistoryEvaluations((current) =>
+        current.filter((evaluation) => evaluation.performance.id !== performanceId),
+      );
+      setSubmissionResult((current) =>
+        current?.performance.id === performanceId ? null : current,
+      );
+      setSuccessMessage("Uploaded performance deleted successfully.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to delete uploaded performance"));
+    } finally {
+      setDeletingPerformanceId(null);
     }
   };
 
@@ -380,6 +409,9 @@ const Assignments: React.FC = () => {
             {error ? (
               <p className="mt-4 text-sm text-red-600">{error}</p>
             ) : null}
+            {successMessage ? (
+              <p className="mt-4 text-sm text-green-600">{successMessage}</p>
+            ) : null}
           </section>
 
           {submissionResult ? (
@@ -457,6 +489,16 @@ const Assignments: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                    {(isMusician || user.role === "admin") ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeletePerformance(evaluation.performance.id)}
+                        disabled={deletingPerformanceId === evaluation.performance.id}
+                        className="mt-3 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {deletingPerformanceId === evaluation.performance.id ? "Deleting..." : "Delete upload"}
+                      </button>
+                    ) : null}
                     {evaluation.comments ? (
                       <p className="mt-3 text-sm text-gray-600">{evaluation.comments}</p>
                     ) : null}

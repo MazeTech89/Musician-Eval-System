@@ -21,6 +21,7 @@ from app.schemas.reference_tracks import (
 from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import (
     S3StorageError,
+    delete_audio_file,
     materialize_audio_file,
     upload_performance_audio_to_s3,
 )
@@ -303,6 +304,13 @@ async def delete_reference_track(
             status_code=status.HTTP_404_NOT_FOUND, detail="Reference track not found"
         )
 
+    if reference_track.assignments:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Reference track is used by assignments. Delete those assignments first.",
+        )
+
+    delete_audio_file(reference_track.audio_file_url)
     db.delete(reference_track)
     db.commit()
     record_audit_event(
@@ -460,8 +468,17 @@ async def delete_assignment(
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
+    for performance in assignment.performances:
+        performance.assignment_id = None
+
     db.delete(assignment)
     db.commit()
+    record_audit_event(
+        "assignment.deleted",
+        assignment_id=assignment_id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
     return {"message": "Assignment deleted successfully"}
 
 

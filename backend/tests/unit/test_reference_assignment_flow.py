@@ -100,6 +100,27 @@ def musician_user(setup_roles):
     return user
 
 
+@pytest.fixture
+def evaluator_user(setup_roles):
+    """Create a test evaluator user."""
+    db = setup_roles
+    role = db.query(Role).filter(Role.name == RoleEnum.EVALUATOR).first()
+    username = f"evaluator-{uuid4().hex[:8]}"
+    user = User(
+        username=username,
+        email=f"{username}@example.com",
+        hashed_password=hash_password("secret123"),
+        first_name="Evaluator",
+        last_name="User",
+        role_id=role.id,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def _auth_headers(user: User) -> dict[str, str]:
     token, _ = create_access_token(
         {"sub": user.id, "username": user.username, "role": user.role.name.value}
@@ -198,6 +219,235 @@ def test_analyze_performance_with_assignment(
         performance = db.query(Performance).filter(Performance.id == performance_id).first()
         assert performance is not None
         assert performance.assignment_id == assignment_id
+    finally:
+        db.close()
+
+
+def test_musician_can_delete_uploaded_performance_and_related_evaluation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Deleting a performance should remove the record, its evaluation, and the audio file."""
+    monkeypatch.setattr(settings, "use_local_upload_storage", True)
+    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
+
+    reference_path = tmp_path / "delete-reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Delete reference", "description": "Delete flow reference"},
+            files={"audio_file": ("delete-reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Delete assignment",
+            "description": "Assignment for delete flow",
+            "reference_track_id": reference_response.json()["id"],
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assignment_id = assignment_response.json()["id"]
+
+    performance_path = tmp_path / "delete-performance.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        submission_response = client.post(
+            f"/api/v1/assignments/{assignment_id}/submissions",
+            data={"title": "Delete me", "description": "Submission to delete"},
+            files={"audio_file": ("delete-performance.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    assert submission_response.status_code == 201
+    submission_payload = submission_response.json()
+    performance_id = submission_payload["performance"]["id"]
+    evaluation_id = submission_payload["evaluation"]["id"]
+    stored_path = tmp_path / Path(submission_payload["performance"]["audio_file_url"]).name
+    assert stored_path.exists()
+
+    delete_response = client.delete(
+        f"/api/v1/performances/{performance_id}",
+        headers=_auth_headers(musician_user),
+    )
+
+    assert delete_response.status_code == 200
+    assert not stored_path.exists()
+
+    db = SessionLocal()
+    try:
+        assert db.query(Performance).filter(Performance.id == performance_id).first() is None
+        assert db.query(Evaluation).filter(Evaluation.id == evaluation_id).first() is None
+    finally:
+        db.close()
+
+
+def test_assignment_delete_unlinks_performances_and_reference_track_can_then_be_deleted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Deleting an assignment should preserve submissions so the reference track can be removed safely."""
+    monkeypatch.setattr(settings, "use_local_upload_storage", True)
+    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
+
+    reference_path = tmp_path / "cleanup-reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Cleanup reference", "description": "Reference for cleanup"},
+            files={"audio_file": ("cleanup-reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+
+    reference_payload = reference_response.json()
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Cleanup assignment",
+            "description": "Assignment to remove later",
+            "reference_track_id": reference_payload["id"],
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assignment_id = assignment_response.json()["id"]
+
+    performance_path = tmp_path / "cleanup-performance.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        submission_response = client.post(
+            f"/api/v1/assignments/{assignment_id}/submissions",
+            data={"title": "Keep me", "description": "Submission to preserve"},
+            files={"audio_file": ("cleanup-performance.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    performance_id = submission_response.json()["performance"]["id"]
+    evaluation_id = submission_response.json()["evaluation"]["id"]
+    reference_file_path = tmp_path / Path(reference_payload["audio_file_url"]).name
+    assert reference_file_path.exists()
+
+    delete_assignment_response = client.delete(
+        f"/api/v1/assignments/{assignment_id}",
+        headers=_auth_headers(admin_user),
+    )
+    assert delete_assignment_response.status_code == 200
+
+    db = SessionLocal()
+    try:
+        preserved_performance = (
+            db.query(Performance).filter(Performance.id == performance_id).first()
+        )
+        preserved_evaluation = db.query(Evaluation).filter(Evaluation.id == evaluation_id).first()
+        assert preserved_performance is not None
+        assert preserved_performance.assignment_id is None
+        assert preserved_evaluation is not None
+    finally:
+        db.close()
+
+    delete_reference_response = client.delete(
+        f"/api/v1/reference-tracks/{reference_payload['id']}",
+        headers=_auth_headers(admin_user),
+    )
+    assert delete_reference_response.status_code == 200
+    assert not reference_file_path.exists()
+
+
+def test_reference_track_delete_requires_assignments_to_be_removed_first(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    admin_user: User,
+) -> None:
+    """Reference tracks with dependent assignments should not be deleted directly."""
+    monkeypatch.setattr(settings, "use_local_upload_storage", True)
+    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
+
+    reference_path = tmp_path / "blocked-reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Blocked reference", "description": "Still in use"},
+            files={"audio_file": ("blocked-reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+
+    reference_id = reference_response.json()["id"]
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Blocking assignment",
+            "description": "Prevents delete",
+            "reference_track_id": reference_id,
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assert assignment_response.status_code == 201
+
+    delete_response = client.delete(
+        f"/api/v1/reference-tracks/{reference_id}",
+        headers=_auth_headers(admin_user),
+    )
+    assert delete_response.status_code == 409
+    assert "delete those assignments first" in delete_response.json()["detail"].lower()
+
+
+def test_evaluator_can_delete_their_own_evaluation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    musician_user: User,
+    evaluator_user: User,
+) -> None:
+    """Evaluators can remove evaluations they created."""
+    monkeypatch.setattr(settings, "use_local_upload_storage", True)
+    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
+
+    performance_path = tmp_path / "evaluator-delete.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        performance_response = client.post(
+            "/api/v1/performances/upload-audio",
+            data={"title": "Evaluator delete target", "description": "Delete evaluation later"},
+            files={"audio_file": ("evaluator-delete.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    performance_id = performance_response.json()["id"]
+    create_evaluation_response = client.post(
+        "/api/v1/evaluations",
+        json={
+            "performance_id": performance_id,
+            "score": 92.5,
+            "comments": "Delete this evaluation",
+        },
+        headers=_auth_headers(evaluator_user),
+    )
+    assert create_evaluation_response.status_code == 201
+    evaluation_id = create_evaluation_response.json()["id"]
+
+    delete_response = client.delete(
+        f"/api/v1/evaluations/{evaluation_id}",
+        headers=_auth_headers(evaluator_user),
+    )
+    assert delete_response.status_code == 200
+
+    db = SessionLocal()
+    try:
+        assert db.query(Evaluation).filter(Evaluation.id == evaluation_id).first() is None
+        assert db.query(Performance).filter(Performance.id == performance_id).first() is not None
     finally:
         db.close()
 
