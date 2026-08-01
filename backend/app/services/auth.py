@@ -5,11 +5,14 @@ from secrets import token_urlsafe
 from uuid import uuid4
 
 import pyotp
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.audit import record_audit_event, record_security_alert
 from app.core.email import send_password_reset_email, send_verification_email
+from app.models.evaluation import Evaluation, Performance
+from app.models.reference_track import Assignment, ReferenceTrack
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -19,6 +22,7 @@ from app.core.security import (
 )
 from app.models.user import Role, RoleEnum, User
 from app.schemas.auth import TokenResponse, UserCreate, UserUpdate
+from app.services.s3_storage import delete_audio_file
 
 
 class AuthService:
@@ -236,7 +240,7 @@ class AuthService:
         Returns:
             Updated user
         """
-        update_data = user_data.dict(exclude_unset=True)
+        update_data = user_data.model_dump(exclude_unset=True)
 
         # Handle role update
         if "role" in update_data:
@@ -253,6 +257,100 @@ class AuthService:
         db.refresh(user)
 
         return user
+
+    @staticmethod
+    def _count_active_admins(db: Session) -> int:
+        """Return the number of active admin users."""
+        return (
+            db.query(User)
+            .join(Role, User.role_id == Role.id)
+            .filter(Role.name == RoleEnum.ADMIN)
+            .filter(User.is_active.is_(True))
+            .count()
+        )
+
+    @staticmethod
+    def admin_update_user(
+        db: Session,
+        acting_user: User,
+        user: User,
+        user_data: UserUpdate,
+    ) -> User:
+        """Update a user as an admin with guardrails for admin accounts."""
+        update_data = user_data.model_dump(exclude_unset=True)
+        target_role = update_data.get("role")
+        target_is_active = update_data.get("is_active")
+
+        if user.id == acting_user.id:
+            if target_is_active is False:
+                raise ValueError("You cannot deactivate your own account")
+            if target_role is not None and target_role != RoleEnum.ADMIN:
+                raise ValueError("You cannot change your own admin role")
+
+        if user.role.name == RoleEnum.ADMIN:
+            removing_admin_access = target_is_active is False or (
+                target_role is not None and target_role != RoleEnum.ADMIN
+            )
+            if removing_admin_access and AuthService._count_active_admins(db) <= 1:
+                raise ValueError("You cannot remove the last active admin")
+
+        return AuthService.update_user(db, user, user_data)
+
+    @staticmethod
+    def admin_delete_user(
+        db: Session,
+        acting_user: User,
+        user: User,
+    ) -> None:
+        """Delete a user and clean up owned records safely."""
+        if user.id == acting_user.id:
+            raise ValueError("You cannot delete your own account")
+
+        if user.role.name == RoleEnum.ADMIN and AuthService._count_active_admins(db) <= 1:
+            raise ValueError("You cannot delete the last active admin")
+
+        performances = db.query(Performance).filter(Performance.musician_id == user.id).all()
+        performance_ids = [performance.id for performance in performances]
+
+        reference_tracks = (
+            db.query(ReferenceTrack).filter(ReferenceTrack.created_by_id == user.id).all()
+        )
+        reference_track_ids = [track.id for track in reference_tracks]
+
+        assignment_filters = [Assignment.created_by_id == user.id]
+        if reference_track_ids:
+            assignment_filters.append(Assignment.reference_track_id.in_(reference_track_ids))
+        assignments = db.query(Assignment).filter(or_(*assignment_filters)).all()
+        assignment_ids = [assignment.id for assignment in assignments]
+
+        if assignment_ids:
+            db.query(Performance).filter(Performance.assignment_id.in_(assignment_ids)).update(
+                {Performance.assignment_id: None},
+                synchronize_session=False,
+            )
+
+        if performance_ids:
+            db.query(Evaluation).filter(Evaluation.performance_id.in_(performance_ids)).delete(
+                synchronize_session=False
+            )
+
+        db.query(Evaluation).filter(Evaluation.evaluator_id == user.id).delete(
+            synchronize_session=False
+        )
+
+        for performance in performances:
+            delete_audio_file(performance.audio_file_url)
+            db.delete(performance)
+
+        for assignment in assignments:
+            db.delete(assignment)
+
+        for reference_track in reference_tracks:
+            delete_audio_file(reference_track.audio_file_url)
+            db.delete(reference_track)
+
+        db.delete(user)
+        db.commit()
 
     @staticmethod
     def change_password(

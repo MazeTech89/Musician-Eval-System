@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_admin
 from app.models.user import User
 from app.schemas.auth import UserResponse, UserUpdate
+from app.services.auth import AuthService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -89,13 +90,13 @@ async def update_user(
             detail="User not found",
         )
 
-    # Update user fields
-    for field, value in user_update.model_dump(exclude_unset=True).items():
-        setattr(user, field, value)
-
-    db.commit()
-    db.refresh(user)
-    return user
+    try:
+        return AuthService.admin_update_user(db, current_user, user, user_update)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
 
 
 @router.delete("/{user_id}")
@@ -124,6 +125,11 @@ async def delete_user(
             detail="User not found",
         )
 
-    db.delete(user)
-    db.commit()
+    try:
+        AuthService.admin_delete_user(db, current_user, user)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
     return {"message": "User deleted successfully"}

@@ -452,6 +452,88 @@ def test_evaluator_can_delete_their_own_evaluation(
         db.close()
 
 
+def test_admin_can_delete_user_and_clean_up_owned_content(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Deleting a user should remove owned uploads, evaluations, and account data."""
+    monkeypatch.setattr(settings, "use_local_upload_storage", True)
+    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
+
+    performance_path = tmp_path / "delete-user-performance.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        upload_response = client.post(
+            "/api/v1/performances/upload-audio",
+            data={"title": "Owned upload", "description": "Owned by musician to delete"},
+            files={"audio_file": ("delete-user-performance.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    assert upload_response.status_code == 201
+    performance_payload = upload_response.json()
+    performance_id = performance_payload["id"]
+    stored_path = tmp_path / Path(performance_payload["audio_file_url"]).name
+    assert stored_path.exists()
+
+    evaluation_response = client.post(
+        "/api/v1/evaluations",
+        json={
+            "performance_id": performance_id,
+            "score": 81.2,
+            "comments": "Cleanup me",
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assert evaluation_response.status_code == 201
+    evaluation_id = evaluation_response.json()["id"]
+
+    delete_user_response = client.delete(
+        f"/api/v1/auth/users/{musician_user.id}",
+        headers=_auth_headers(admin_user),
+    )
+    assert delete_user_response.status_code == 200
+
+    db = SessionLocal()
+    try:
+        assert db.query(User).filter(User.id == musician_user.id).first() is None
+        assert db.query(Performance).filter(Performance.id == performance_id).first() is None
+        assert db.query(Evaluation).filter(Evaluation.id == evaluation_id).first() is None
+    finally:
+        db.close()
+
+    assert not stored_path.exists()
+
+
+def test_admin_can_change_user_role(
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Admins can change another user's role."""
+    response = client.put(
+        f"/api/v1/auth/users/{musician_user.id}",
+        json={"role": "evaluator"},
+        headers=_auth_headers(admin_user),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["role"] == "evaluator"
+
+
+def test_admin_cannot_delete_own_account(admin_user: User) -> None:
+    """Admins cannot delete their own account."""
+    response = client.delete(
+        f"/api/v1/auth/users/{admin_user.id}",
+        headers=_auth_headers(admin_user),
+    )
+
+    assert response.status_code == 400
+    assert "cannot delete your own account" in response.json()["detail"].lower()
+
+
 def test_musician_can_submit_assignment_and_receive_score(
     tmp_path: Path,
     admin_user: User,

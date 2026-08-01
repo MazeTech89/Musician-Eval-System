@@ -374,7 +374,7 @@ async def get_user(
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
-    _: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ) -> User:
     """Update user (admin only).
@@ -400,7 +400,14 @@ async def update_user(
         )
 
     try:
-        user = AuthService.update_user(db, user, user_data)
+        user = AuthService.admin_update_user(db, current_user, user, user_data)
+        record_audit_event(
+            "auth.user_updated",
+            actor_user_id=current_user.id,
+            actor_username=current_user.username,
+            target_user_id=user.id,
+            target_username=user.username,
+        )
         return user
     except ValueError as err:
         raise HTTPException(
@@ -409,12 +416,12 @@ async def update_user(
         ) from err
 
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/users/{user_id}")
 async def delete_user(
     user_id: int,
-    _: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
-) -> None:
+) -> dict[str, str]:
     """Delete user (admin only).
 
     Args:
@@ -433,6 +440,19 @@ async def delete_user(
             detail="User not found",
         )
 
-    # Soft delete by deactivating
-    user.is_active = False
-    db.commit()
+    try:
+        AuthService.admin_delete_user(db, current_user, user)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        ) from err
+
+    record_audit_event(
+        "auth.user_deleted",
+        actor_user_id=current_user.id,
+        actor_username=current_user.username,
+        target_user_id=user_id,
+        target_username=user.username,
+    )
+    return {"message": "User deleted successfully"}

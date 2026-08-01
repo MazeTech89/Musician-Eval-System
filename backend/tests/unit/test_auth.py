@@ -1,7 +1,6 @@
 """Tests for authentication and RBAC."""
 
 from datetime import timedelta
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -120,6 +119,7 @@ def test_musician_user(setup_test_roles):
     db.commit()
     db.refresh(user)
     return user
+
 
 
 class TestAuthentication:
@@ -436,7 +436,6 @@ class TestUserManagement:
 
         assert response.status_code == 200
         assert response.json()["is_active"] is False
-
 
 class TestRefreshToken:
     """Test refresh token functionality."""
