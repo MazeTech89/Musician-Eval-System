@@ -3,6 +3,11 @@ import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
+import {
+  ACCEPTED_AUDIO_FILE_TYPES,
+  MAX_AUDIO_UPLOAD_SIZE_MB,
+  validateAudioFileSize,
+} from "../utils/audio";
 
 interface UploadResponse {
   id: number;
@@ -33,6 +38,11 @@ const UploadPerformance: React.FC = () => {
     }
     if (!audioFile) {
       nextFieldErrors.audioFile = "Please choose an audio file to upload.";
+    } else {
+      const audioFileError = validateAudioFileSize(audioFile);
+      if (audioFileError) {
+        nextFieldErrors.audioFile = audioFileError;
+      }
     }
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
@@ -147,13 +157,20 @@ const UploadPerformance: React.FC = () => {
                 id="audio-file"
                 type="file"
                 required
-                accept="audio/*"
+                accept={ACCEPTED_AUDIO_FILE_TYPES}
                 onChange={(e) => {
-                  setAudioFile(e.target.files?.[0] ?? null);
-                  setFieldErrors((current) => ({ ...current, audioFile: undefined }));
+                  const nextFile = e.target.files?.[0] ?? null;
+                  setAudioFile(nextFile);
+                  setFieldErrors((current) => ({
+                    ...current,
+                    audioFile: validateAudioFileSize(nextFile) ?? undefined,
+                  }));
                 }}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               />
+              <p className="mt-1 text-sm text-gray-500">
+                Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+              </p>
               {fieldErrors.audioFile ? (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
               ) : null}

@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
+import {
+  ACCEPTED_AUDIO_FILE_TYPES,
+  MAX_AUDIO_UPLOAD_SIZE_MB,
+  validateAudioFileSize,
+} from "../utils/audio";
 
 interface ReferenceTrack {
   id: number;
@@ -142,6 +147,11 @@ const Assignments: React.FC = () => {
     }
     if (!audioFile) {
       nextFieldErrors.audioFile = "Choose an audio file to upload.";
+    } else {
+      const audioFileError = validateAudioFileSize(audioFile);
+      if (audioFileError) {
+        nextFieldErrors.audioFile = audioFileError;
+      }
     }
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors);
@@ -311,13 +321,20 @@ const Assignments: React.FC = () => {
                 <input
                   id="submission-audio-file"
                   type="file"
-                  accept="audio/*"
+                  accept={ACCEPTED_AUDIO_FILE_TYPES}
                   onChange={(event) => {
-                    setAudioFile(event.target.files?.[0] ?? null);
-                    setFieldErrors((current) => ({ ...current, audioFile: undefined }));
+                    const nextFile = event.target.files?.[0] ?? null;
+                    setAudioFile(nextFile);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      audioFile: validateAudioFileSize(nextFile) ?? undefined,
+                    }));
                   }}
                   className="mt-1 block w-full text-sm text-gray-500"
                 />
+                <p className="mt-1 text-sm text-gray-500">
+                  Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+                </p>
                 {fieldErrors.audioFile ? (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
                 ) : null}
