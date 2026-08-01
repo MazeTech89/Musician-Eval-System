@@ -1,9 +1,15 @@
 """Authentication and user management services."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from secrets import token_urlsafe
+from uuid import uuid4
 
+import pyotp
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+from app.core.audit import record_audit_event, record_security_alert
+from app.core.email import send_password_reset_email, send_verification_email
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -50,6 +56,14 @@ class AuthService:
         if not role:
             raise ValueError(f"Role {user_data.role} not found")
 
+        email_verified = True
+        email_verification_token = None
+        email_verification_token_expires_at = None
+        if settings.require_email_verification:
+            email_verified = False
+            email_verification_token = uuid4().hex
+            email_verification_token_expires_at = datetime.now(UTC) + timedelta(hours=24)
+
         # Create user
         user = User(
             username=user_data.username,
@@ -58,11 +72,27 @@ class AuthService:
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             role_id=role.id,
+            email_verified=email_verified,
+            email_verification_token=email_verification_token,
+            email_verification_token_expires_at=email_verification_token_expires_at,
         )
 
         db.add(user)
         db.commit()
         db.refresh(user)
+        record_audit_event(
+            "auth.register",
+            user_id=user.id,
+            username=user.username,
+            role=user.role.name.value,
+        )
+
+        if settings.require_email_verification and user.email_verification_token:
+            verification_url = f"/verify-email?token={user.email_verification_token}"
+            try:
+                send_verification_email(user.email, verification_url)
+            except RuntimeError:
+                pass
 
         return user
 
@@ -71,6 +101,7 @@ class AuthService:
         db: Session,
         username: str,
         password: str,
+        totp_code: str | None = None,
     ) -> TokenResponse | None:
         """Authenticate user and return token.
 
@@ -85,9 +116,53 @@ class AuthService:
         user = db.query(User).filter(User.username == username).first()
 
         if not user or not user.is_active:
+            record_audit_event("auth.login.failed", username=username, reason="inactive_or_missing")
+            return None
+
+        if user.lockout_until and user.lockout_until > datetime.now(UTC):
+            record_audit_event("auth.login.failed", username=username, reason="locked_out")
             return None
 
         if not verify_password(password, user.hashed_password):
+            user.failed_login_count += 1
+            if user.failed_login_count >= 5:
+                user.lockout_until = datetime.now(UTC) + timedelta(minutes=15)
+                record_security_alert(
+                    "auth.account_locked",
+                    user_id=user.id,
+                    username=user.username,
+                    failed_login_count=user.failed_login_count,
+                )
+            db.commit()
+            record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_password")
+            return None
+
+        if user.mfa_enabled:
+            if not totp_code:
+                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa")
+                return None
+            if not user.mfa_secret:
+                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa_secret")
+                return None
+            totp = pyotp.TOTP(user.mfa_secret)
+            if not totp.verify(totp_code, valid_window=1):
+                user.failed_login_count += 1
+                if user.failed_login_count >= 5:
+                    user.lockout_until = datetime.now(UTC) + timedelta(minutes=15)
+                    record_security_alert(
+                        "auth.account_locked",
+                        user_id=user.id,
+                        username=user.username,
+                        failed_login_count=user.failed_login_count,
+                    )
+                db.commit()
+                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_mfa")
+                return None
+
+        user.failed_login_count = 0
+        user.lockout_until = None
+
+        if settings.require_email_verification and not user.email_verified:
             return None
 
         # Create access token
@@ -111,6 +186,7 @@ class AuthService:
         # Update last login
         user.last_login = datetime.now(UTC)
         db.commit()
+        record_audit_event("auth.login.success", user_id=user.id, username=user.username)
 
         return TokenResponse(
             access_token=access_token,
@@ -208,6 +284,100 @@ class AuthService:
         return True
 
     @staticmethod
+    def verify_email(db: Session, token: str) -> bool:
+        """Verify a user's email using a token."""
+        user = db.query(User).filter(User.email_verification_token == token).first()
+        if not user:
+            return False
+        if user.email_verification_token_expires_at and user.email_verification_token_expires_at < datetime.now(UTC):
+            return False
+
+        user.email_verified = True
+        user.email_verification_token = None
+        user.email_verification_token_expires_at = None
+        db.commit()
+        record_audit_event("auth.email_verified", user_id=user.id, username=user.username)
+        return True
+
+    @staticmethod
+    def request_password_reset(db: Session, email: str) -> bool:
+        """Create a reset token and send the email."""
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            return False
+
+        token = token_urlsafe(24)
+        user.password_reset_token = token
+        user.password_reset_token_expires_at = datetime.now(UTC) + timedelta(hours=2)
+        db.commit()
+
+        reset_url = f"/reset-password?token={token}"
+        try:
+            send_password_reset_email(user.email, reset_url)
+        except RuntimeError:
+            pass
+        record_audit_event("auth.password_reset.requested", user_id=user.id, username=user.username)
+        return True
+
+    @staticmethod
+    def reset_password(db: Session, token: str, new_password: str) -> bool:
+        """Reset a password using a token."""
+        user = db.query(User).filter(User.password_reset_token == token).first()
+        if not user:
+            return False
+        if user.password_reset_token_expires_at and user.password_reset_token_expires_at < datetime.now(UTC):
+            return False
+
+        user.hashed_password = hash_password(new_password)
+        user.password_reset_token = None
+        user.password_reset_token_expires_at = None
+        user.failed_login_count = 0
+        user.lockout_until = None
+        db.commit()
+        record_audit_event("auth.password_reset.completed", user_id=user.id, username=user.username)
+        return True
+
+    @staticmethod
+    def setup_mfa(db: Session, user: User) -> tuple[str, str]:
+        """Generate MFA secret and provisioning URL for a user."""
+        secret = pyotp.random_base32()
+        user.mfa_secret = secret
+        user.mfa_enabled = False
+        db.commit()
+        record_audit_event("auth.mfa.setup", user_id=user.id, username=user.username)
+        provisioning_uri = pyotp.TOTP(secret).provisioning_uri(name=user.email or user.username, issuer_name="Musician Evaluation")
+        return secret, provisioning_uri
+
+    @staticmethod
+    def enable_mfa(db: Session, user: User, code: str) -> bool:
+        """Enable MFA after a valid verification code."""
+        if not user.mfa_secret:
+            return False
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(code, valid_window=1):
+            record_audit_event("auth.mfa.enable_failed", user_id=user.id, username=user.username)
+            return False
+        user.mfa_enabled = True
+        db.commit()
+        record_audit_event("auth.mfa.enabled", user_id=user.id, username=user.username)
+        return True
+
+    @staticmethod
+    def disable_mfa(db: Session, user: User, code: str) -> bool:
+        """Disable MFA after a valid verification code."""
+        if not user.mfa_secret:
+            return False
+        totp = pyotp.TOTP(user.mfa_secret)
+        if not totp.verify(code, valid_window=1):
+            record_audit_event("auth.mfa.disable_failed", user_id=user.id, username=user.username)
+            return False
+        user.mfa_enabled = False
+        user.mfa_secret = None
+        db.commit()
+        record_audit_event("auth.mfa.disabled", user_id=user.id, username=user.username)
+        return True
+
+    @staticmethod
     def refresh_access_token(
         db: Session,
         refresh_token: str,
@@ -231,6 +401,7 @@ class AuthService:
         user = AuthService.get_user_by_id(db, token_data.sub)
 
         if not user or not user.is_active:
+            record_audit_event("auth.refresh.failed", user_id=token_data.sub)
             return None
 
         # Create new access token

@@ -6,6 +6,7 @@ import { getApiErrorMessage, validateRequired } from "../utils/form";
 const Login: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +35,7 @@ const Login: React.FC = () => {
     setError("");
 
     try {
-      await login(username, password);
+      await login(username, password, totpCode || undefined);
       navigate("/");
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Invalid credentials"));
@@ -97,6 +98,22 @@ const Login: React.FC = () => {
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
               ) : null}
             </div>
+            <div>
+              <label htmlFor="login-totp" className="block text-sm font-medium text-gray-700 mb-1">
+                MFA code (optional)
+              </label>
+              <input
+                id="login-totp"
+                name="totpCode"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="6-digit code"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+              />
+            </div>
           </div>
 
           {error && (
@@ -111,6 +128,12 @@ const Login: React.FC = () => {
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
+          </div>
+
+          <div className="text-center">
+            <Link to="/forgot-password" className="text-indigo-600 hover:text-indigo-500">
+              Forgot your password?
+            </Link>
           </div>
 
           <div className="text-center">

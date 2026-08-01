@@ -6,9 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.database import SessionLocal
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
+    decode_token,
     hash_password,
     verify_password,
 )
@@ -219,6 +221,32 @@ class TestPasswordSecurity:
         hashed = hash_password(password)
 
         assert not verify_password("wrongpassword", hashed)
+
+    def test_token_decode_supports_secret_rotation(self, monkeypatch):
+        """Tokens signed with an old secret should still validate during rotation."""
+        original_secret = settings.secret_key
+        original_fallbacks = settings.secret_key_fallbacks
+
+        try:
+            monkeypatch.setattr(settings, "secret_key", "old-secret-key-old-secret-key-old!")
+            token, _ = create_access_token(
+                {
+                    "sub": 123,
+                    "username": "rotating-user",
+                    "role": "musician",
+                }
+            )
+
+            monkeypatch.setattr(settings, "secret_key", "new-secret-key-new-secret-key-new!")
+            monkeypatch.setattr(settings, "secret_key_fallbacks", "old-secret-key-old-secret-key-old!")
+
+            decoded = decode_token(token)
+            assert decoded is not None
+            assert decoded.sub == 123
+            assert decoded.username == "rotating-user"
+        finally:
+            monkeypatch.setattr(settings, "secret_key", original_secret)
+            monkeypatch.setattr(settings, "secret_key_fallbacks", original_fallbacks)
 
 
 class TestRoleBasedAccess:

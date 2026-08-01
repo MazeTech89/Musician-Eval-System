@@ -46,6 +46,8 @@ class UserResponse(UserBase):
     id: int
     role: str
     is_active: bool
+    email_verified: bool = False
+    mfa_enabled: bool = False
     created_at: datetime
     updated_at: datetime
     last_login: datetime | None = None
@@ -111,6 +113,7 @@ class LoginRequest(BaseModel):
 
     username: str
     password: str
+    totp_code: str | None = None
 
 
 class PasswordChangeRequest(BaseModel):
@@ -118,3 +121,29 @@ class PasswordChangeRequest(BaseModel):
 
     current_password: str = Field(..., min_length=8)
     new_password: str = Field(..., min_length=8)
+
+
+class PasswordResetRequest(BaseModel):
+    """Schema for requesting a password reset email."""
+
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    """Schema for completing a password reset."""
+
+    token: str = Field(..., min_length=10)
+    new_password: str = Field(..., min_length=8)
+
+
+class MFASetupResponse(BaseModel):
+    """Schema for MFA setup data."""
+
+    secret: str
+    otpauth_url: str
+
+
+class MFAVerifyRequest(BaseModel):
+    """Schema for MFA verification."""
+
+    code: str = Field(..., min_length=6, max_length=8)

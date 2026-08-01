@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from fastapi.responses import Response
 from jwt import InvalidTokenError
 
 from app.core.config import settings
@@ -13,6 +14,17 @@ from app.schemas.auth import TokenData
 # Password hashing
 password_hasher = PasswordHasher()
 REFRESH_TOKEN_TYPE = "refresh"
+
+
+def _get_secret_keys() -> list[str]:
+    keys = [settings.secret_key]
+    if settings.secret_key_fallbacks.strip():
+        keys.extend(
+            key.strip()
+            for key in settings.secret_key_fallbacks.split(",")
+            if key.strip()
+        )
+    return keys
 
 
 def hash_password(password: str) -> str:
@@ -88,12 +100,16 @@ def decode_token(token: str) -> TokenData | None:
     Returns:
         TokenData if valid, None otherwise
     """
-    try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.algorithm],
-        )
+    for secret_key in _get_secret_keys():
+        try:
+            payload = jwt.decode(
+                token,
+                secret_key,
+                algorithms=[settings.algorithm],
+            )
+        except InvalidTokenError:
+            continue
+
         user_id = payload.get("sub")
         username: str = payload.get("username")
         role: str = payload.get("role")
@@ -104,13 +120,9 @@ def decode_token(token: str) -> TokenData | None:
         if user_id is None or username is None or role is None:
             return None
 
-        return TokenData(
-            sub=user_id,
-            username=username,
-            role=role,
-        )
-    except InvalidTokenError:
-        return None
+        return TokenData(sub=user_id, username=username, role=role)
+
+    return None
 
 
 def create_refresh_token(
@@ -153,19 +165,22 @@ def create_refresh_token(
 
 def decode_refresh_token(token: str) -> TokenData | None:
     """Decode and validate a refresh JWT token.
-
+    
     Args:
         token: Refresh JWT token to decode
-
+    
     Returns:
         TokenData if valid, None otherwise
     """
-    try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.algorithm],
-        )
+    for secret_key in _get_secret_keys():
+        try:
+            payload = jwt.decode(
+                token,
+                secret_key,
+                algorithms=[settings.algorithm],
+            )
+        except InvalidTokenError:
+            continue
 
         # Verify token type
         payload_token_type = payload.get("type")
@@ -182,10 +197,37 @@ def decode_refresh_token(token: str) -> TokenData | None:
         if user_id is None or username is None or role is None:
             return None
 
-        return TokenData(
-            sub=user_id,
-            username=username,
-            role=role,
+        return TokenData(sub=user_id, username=username, role=role)
+
+    return None
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str | None = None) -> None:
+    """Set auth cookies for the browser using HttpOnly cookies."""
+    secure = not settings.debug
+    response.set_cookie(
+        key=settings.access_token_cookie_name,
+        value=access_token,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        path="/",
+        max_age=settings.access_token_expire_minutes * 60,
+    )
+    if refresh_token:
+        response.set_cookie(
+            key=settings.refresh_token_cookie_name,
+            value=refresh_token,
+            httponly=True,
+            secure=secure,
+            samesite="lax",
+            path="/",
+            max_age=settings.refresh_token_expire_days * 86400,
         )
-    except InvalidTokenError:
-        return None
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """Clear auth cookies from the browser."""
+    secure = not settings.debug
+    for cookie_name in (settings.access_token_cookie_name, settings.refresh_token_cookie_name):
+        response.delete_cookie(cookie_name, path="/", secure=secure, samesite="lax")

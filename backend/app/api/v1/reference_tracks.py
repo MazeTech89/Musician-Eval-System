@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.audit import record_audit_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.models.evaluation import Evaluation, EvaluationStatus, Performance
@@ -23,19 +24,9 @@ from app.services.s3_storage import (
     materialize_audio_file,
     upload_performance_audio_to_s3,
 )
+from app.core.upload_security import validate_audio_upload
 
 router = APIRouter(tags=["reference-tracks"])
-
-ALLOWED_AUDIO_CONTENT_TYPES = {
-    "audio/mpeg",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/ogg",
-    "audio/webm",
-    "audio/mp4",
-    "audio/flac",
-}
-
 
 def _resolve_local_audio_path(audio_file_url: str) -> Path:
     """Resolve a locally stored audio file path from the stored URL."""
@@ -173,11 +164,7 @@ async def create_reference_track(
             detail="Only admins can create reference tracks",
         )
 
-    if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported audio file type",
-        )
+    validate_audio_upload(audio_file)
 
     try:
         audio_file_url = upload_performance_audio_to_s3(
@@ -200,6 +187,12 @@ async def create_reference_track(
     db.add(reference_track)
     db.commit()
     db.refresh(reference_track)
+    record_audit_event(
+        "reference_track.created",
+        reference_track_id=reference_track.id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
     return reference_track
 
 
@@ -265,11 +258,7 @@ async def update_reference_track(
         reference_track.is_active = is_active
 
     if audio_file is not None:
-        if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unsupported audio file type",
-            )
+        validate_audio_upload(audio_file)
 
         try:
             reference_track.audio_file_url = upload_performance_audio_to_s3(
@@ -284,6 +273,12 @@ async def update_reference_track(
 
     db.commit()
     db.refresh(reference_track)
+    record_audit_event(
+        "reference_track.updated",
+        reference_track_id=reference_track.id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
     return reference_track
 
 
@@ -310,6 +305,12 @@ async def delete_reference_track(
 
     db.delete(reference_track)
     db.commit()
+    record_audit_event(
+        "reference_track.deleted",
+        reference_track_id=reference_track_id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
     return {"message": "Reference track deleted successfully"}
 
 
@@ -493,11 +494,7 @@ async def submit_performance_for_assignment(
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
-    if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported audio file type",
-        )
+    validate_audio_upload(audio_file)
 
     try:
         audio_file_url = upload_performance_audio_to_s3(
@@ -531,6 +528,14 @@ async def submit_performance_for_assignment(
     db.commit()
     db.refresh(performance)
     db.refresh(evaluation)
+    record_audit_event(
+        "assignment.submission.created",
+        assignment_id=assignment.id,
+        performance_id=performance.id,
+        evaluation_id=evaluation.id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
 
     return {
         "performance": performance,
@@ -592,6 +597,14 @@ async def analyze_performance_with_assignment(
     db.commit()
     db.refresh(evaluation)
     db.refresh(performance)
+    record_audit_event(
+        "assignment.performance.analyzed",
+        assignment_id=assignment.id,
+        performance_id=performance.id,
+        evaluation_id=evaluation.id,
+        user_id=current_user.id,
+        username=current_user.username,
+    )
 
     return {
         "performance_id": performance.id,

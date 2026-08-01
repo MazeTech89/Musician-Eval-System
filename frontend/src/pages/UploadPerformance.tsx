@@ -43,12 +43,6 @@ const UploadPerformance: React.FC = () => {
     setError("");
     setSuccess("");
 
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setError("You are not authenticated. Please log in again.");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -60,9 +54,7 @@ const UploadPerformance: React.FC = () => {
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api/v1";
       const response = await fetch(`${baseUrl}/performances/upload-audio`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formData,
       });
 

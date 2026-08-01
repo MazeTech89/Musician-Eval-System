@@ -16,11 +16,13 @@ interface User {
   last_name: string;
   role: string;
   is_active: boolean;
+  email_verified?: boolean;
+  mfa_enabled?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, totpCode?: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -55,17 +57,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const response = await api.get("/auth/me");
         setUser(response.data);
       } catch (error) {
-        localStorage.removeItem("access_token");
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -74,17 +70,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, totpCode?: string) => {
     try {
-      const response = await api.post("/auth/login", {
+      await api.post("/auth/login", {
         username,
         password,
+        totp_code: totpCode || undefined,
       });
-      const { access_token, refresh_token } = response.data;
-      localStorage.setItem("access_token", access_token);
-      if (refresh_token) {
-        localStorage.setItem("refresh_token", refresh_token);
-      }
       const profileResponse = await api.get("/auth/me");
       setUser(profileResponse.data);
     } catch (error) {
@@ -101,9 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    delete api.defaults.headers.common["Authorization"];
+    api.post("/auth/logout").catch(() => undefined);
     setUser(null);
   };
 

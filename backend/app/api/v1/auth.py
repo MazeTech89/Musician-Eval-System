@@ -1,14 +1,20 @@
 """Authentication API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.audit import record_audit_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin
 from app.models.user import User
+from app.core.security import clear_auth_cookies, set_auth_cookies
 from app.schemas.auth import (
     LoginRequest,
+    MFASetupResponse,
+    MFAVerifyRequest,
     PasswordChangeRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
     RefreshTokenRequest,
     TokenResponse,
     UserCreate,
@@ -23,6 +29,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> User:
     """Register a new user.
@@ -39,6 +46,12 @@ async def register(
     """
     try:
         user = AuthService.register_user(db, user_data)
+        record_audit_event(
+            "auth.register.request",
+            username=user.username,
+            role=user.role.name.value,
+            ip=request.client.host if request.client else None,
+        )
         return user
     except ValueError as err:
         raise HTTPException(
@@ -50,6 +63,8 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     credentials: LoginRequest,
+    request: Request,
+    response: Response,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """Login and get access token.
@@ -64,21 +79,39 @@ async def login(
     Raises:
         HTTPException: If credentials are invalid
     """
-    token = AuthService.authenticate_user(db, credentials.username, credentials.password)
+    token = AuthService.authenticate_user(
+        db,
+        credentials.username,
+        credentials.password,
+        totp_code=credentials.totp_code,
+    )
 
     if not token:
+        record_audit_event(
+            "auth.login.request_failed",
+            username=credentials.username,
+            ip=request.client.host if request.client else None,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
+            detail="Invalid username or password or MFA code",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    set_auth_cookies(response, token.access_token, token.refresh_token)
+    record_audit_event(
+        "auth.login.request_succeeded",
+        username=credentials.username,
+        ip=request.client.host if request.client else None,
+    )
     return token
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
-    request: RefreshTokenRequest,
+    request: Request,
+    response: Response,
+    payload: RefreshTokenRequest | None = None,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """Refresh access token using refresh token.
@@ -93,16 +126,42 @@ async def refresh_token(
     Raises:
         HTTPException: If refresh token is invalid or expired
     """
-    token = AuthService.refresh_access_token(db, request.refresh_token)
+    refresh_token_value = None
+    if payload and payload.refresh_token:
+        refresh_token_value = payload.refresh_token
+    elif request.cookies.get("refresh_token"):
+        refresh_token_value = request.cookies.get("refresh_token")
+
+    token = AuthService.refresh_access_token(db, refresh_token_value or "")
 
     if not token:
+        record_audit_event(
+            "auth.refresh.request_failed",
+            ip=request.client.host if request.client else None,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    set_auth_cookies(response, token.access_token, token.refresh_token)
+    record_audit_event(
+        "auth.refresh.request_succeeded",
+        ip=request.client.host if request.client else None,
+    )
     return token
+
+
+@router.post("/logout")
+async def logout(request: Request, response: Response) -> dict[str, str]:
+    """Clear browser auth cookies."""
+    clear_auth_cookies(response)
+    record_audit_event(
+        "auth.logout",
+        ip=request.client.host if request.client else None,
+    )
+    return {"message": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -156,6 +215,75 @@ async def update_me(
         ) from err
 
 
+@router.post("/verify-email")
+async def verify_email(token: str, db: Session = Depends(get_db)) -> dict[str, str]:
+    """Verify an email address using a verification token."""
+    if AuthService.verify_email(db, token):
+        record_audit_event("auth.email_verified.request")
+        return {"message": "Email verified successfully"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+
+
+@router.post("/password-reset/request")
+async def request_password_reset(
+    payload: PasswordResetRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Request a password reset email."""
+    AuthService.request_password_reset(db, payload.email)
+    record_audit_event("auth.password_reset.requested.request", email=payload.email)
+    return {"message": "If the email exists, a password reset link has been sent"}
+
+
+@router.post("/password-reset/confirm")
+async def confirm_password_reset(
+    payload: PasswordResetConfirmRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Reset a password using a token."""
+    if AuthService.reset_password(db, payload.token, payload.new_password):
+        record_audit_event("auth.password_reset.completed.request")
+        return {"message": "Password reset successfully"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired password reset token")
+
+
+@router.post("/mfa/setup", response_model=MFASetupResponse)
+async def setup_mfa(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> MFASetupResponse:
+    """Generate an MFA secret for the current user."""
+    secret, otpauth_url = AuthService.setup_mfa(db, current_user)
+    record_audit_event("auth.mfa.setup.request", user_id=current_user.id, username=current_user.username)
+    return MFASetupResponse(secret=secret, otpauth_url=otpauth_url)
+
+
+@router.post("/mfa/enable")
+async def enable_mfa(
+    payload: MFAVerifyRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Enable MFA for the current user."""
+    if AuthService.enable_mfa(db, current_user, payload.code):
+        record_audit_event("auth.mfa.enable.request", user_id=current_user.id, username=current_user.username)
+        return {"message": "MFA enabled successfully"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
+
+
+@router.post("/mfa/disable")
+async def disable_mfa(
+    payload: MFAVerifyRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Disable MFA for the current user."""
+    if AuthService.disable_mfa(db, current_user, payload.code):
+        record_audit_event("auth.mfa.disable.request", user_id=current_user.id, username=current_user.username)
+        return {"message": "MFA disabled successfully"}
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
+
+
 @router.post("/change-password", status_code=status.HTTP_200_OK)
 async def change_password(
     password_data: PasswordChangeRequest,
@@ -182,6 +310,7 @@ async def change_password(
             password_data.current_password,
             password_data.new_password,
         )
+        record_audit_event("auth.password_changed", user_id=current_user.id, username=current_user.username)
         return {"message": "Password changed successfully"}
     except ValueError as err:
         raise HTTPException(
