@@ -229,3 +229,27 @@ def test_upload_audio_rejects_signature_mismatch() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Audio file content does not match its type"
+
+
+def test_upload_audio_respects_configured_max_size(monkeypatch) -> None:
+    """Uploads larger than the configured maximum should be rejected."""
+    from app.core import config as config_module
+
+    async def _override_user():
+        return _DummyUser(user_id=7, role=RoleEnum.MUSICIAN.value)
+
+    monkeypatch.setattr(config_module.settings, "max_audio_upload_size_mb", 0)
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_active_user] = _override_user
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/performances/upload-audio",
+        data={"title": "Too large"},
+        files={"audio_file": ("large.wav", _make_wav_bytes(), "audio/wav")},
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Audio upload must be 0 MB or smaller"

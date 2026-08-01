@@ -6,6 +6,11 @@ import {
   validateRequired,
   validateScore,
 } from "../utils/form";
+import {
+  ACCEPTED_AUDIO_FILE_TYPES,
+  MAX_AUDIO_UPLOAD_SIZE_MB,
+  validateAudioFileSize,
+} from "../utils/audio";
 
 interface Performance {
   id: number;
@@ -182,6 +187,11 @@ const Evaluations: React.FC = () => {
       setAnalysisFormError("Choose a reference audio file.");
       return;
     }
+    const referenceFileError = validateAudioFileSize(referenceFile, "Reference audio file");
+    if (referenceFileError) {
+      setAnalysisFormError(referenceFileError);
+      return;
+    }
 
     setAnalysisFormError(null);
     setAnalysisLoading(true);
@@ -193,9 +203,6 @@ const Evaluations: React.FC = () => {
       const response = await api.post(
         `/performances/${selectedPerformance}/analyze-audio`,
         formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        },
       );
       setAnalysisResult(response.data);
       const evalResponse = await api.get("/evaluations");
@@ -223,6 +230,14 @@ const Evaluations: React.FC = () => {
       setReferenceTrackError("Choose a reference audio file.");
       return;
     }
+    const referenceTrackFileError = validateAudioFileSize(
+      referenceTrackFile,
+      "Reference audio file",
+    );
+    if (referenceTrackFileError) {
+      setReferenceTrackError(referenceTrackFileError);
+      return;
+    }
 
     setReferenceTrackError(null);
     setCreatingReferenceTrack(true);
@@ -232,9 +247,7 @@ const Evaluations: React.FC = () => {
       formData.append("description", newReferenceTrackDescription);
       formData.append("audio_file", referenceTrackFile);
 
-      await api.post("/reference-tracks", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await api.post("/reference-tracks", formData);
       const response = await api.get("/reference-tracks");
       setReferenceTracks(response.data);
       setNewReferenceTrackTitle("");
@@ -504,11 +517,20 @@ const Evaluations: React.FC = () => {
                   <input
                     id="analysis-reference-file"
                     type="file"
-                    accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/webm,audio/mp4,audio/flac"
-                    onChange={(e) => setReferenceFile(e.target.files?.[0] ?? null)}
+                    accept={ACCEPTED_AUDIO_FILE_TYPES}
+                    onChange={(e) => {
+                      const nextFile = e.target.files?.[0] ?? null;
+                      setReferenceFile(nextFile);
+                      setAnalysisFormError(
+                        validateAudioFileSize(nextFile, "Reference audio file"),
+                      );
+                    }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                     required
                   />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+                  </p>
                 </div>
                 <button
                   type="submit"
@@ -591,11 +613,20 @@ const Evaluations: React.FC = () => {
                   <input
                     id="reference-track-audio"
                     type="file"
-                    accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/webm,audio/mp4,audio/flac"
-                    onChange={(e) => setReferenceTrackFile(e.target.files?.[0] ?? null)}
+                    accept={ACCEPTED_AUDIO_FILE_TYPES}
+                    onChange={(e) => {
+                      const nextFile = e.target.files?.[0] ?? null;
+                      setReferenceTrackFile(nextFile);
+                      setReferenceTrackError(
+                        validateAudioFileSize(nextFile, "Reference audio file"),
+                      );
+                    }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                     required
                   />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+                  </p>
                 </div>
                 <button
                   type="submit"

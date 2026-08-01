@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # Upload storage
     use_local_upload_storage: bool = True
     local_upload_dir: str = "uploads"
-    max_audio_upload_size_mb: int = 25
+    max_audio_upload_size_mb: int = 300
 
     # AWS S3
     aws_region: str | None = None
