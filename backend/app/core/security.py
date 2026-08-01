@@ -205,12 +205,13 @@ def decode_refresh_token(token: str) -> TokenData | None:
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str | None = None) -> None:
     """Set auth cookies for the browser using HttpOnly cookies."""
     secure = not settings.debug
+    samesite = "none" if not settings.debug else "lax"
     response.set_cookie(
         key=settings.access_token_cookie_name,
         value=access_token,
         httponly=True,
         secure=secure,
-        samesite="lax",
+        samesite=samesite,
         path="/",
         max_age=settings.access_token_expire_minutes * 60,
     )
@@ -220,7 +221,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str |
             value=refresh_token,
             httponly=True,
             secure=secure,
-            samesite="lax",
+            samesite=samesite,
             path="/",
             max_age=settings.refresh_token_expire_days * 86400,
         )
@@ -229,5 +230,6 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str |
 def clear_auth_cookies(response: Response) -> None:
     """Clear auth cookies from the browser."""
     secure = not settings.debug
+    samesite = "none" if not settings.debug else "lax"
     for cookie_name in (settings.access_token_cookie_name, settings.refresh_token_cookie_name):
-        response.delete_cookie(cookie_name, path="/", secure=secure, samesite="lax")
+        response.delete_cookie(cookie_name, path="/", secure=secure, samesite=samesite)
