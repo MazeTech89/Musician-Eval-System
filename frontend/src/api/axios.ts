@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 
 const baseURL = import.meta.env.VITE_API_URL ?? "/api/v1";
 const AUTH_ACCESS_TOKEN_KEY = "auth.access_token";
@@ -35,6 +35,15 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.delete("Content-Type");
+    } else if (config.headers) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
+    }
+  }
+
   const accessToken = getStoredAccessToken();
   if (accessToken) {
     config.headers = config.headers ?? {};

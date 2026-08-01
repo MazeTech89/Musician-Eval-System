@@ -1,14 +1,19 @@
 import axios from "axios";
 
 type ApiErrorResponse = {
-  detail?: string | string[];
+  detail?: string | string[] | Array<{ msg?: string }>;
 };
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     const detail = error.response?.data?.detail;
     if (Array.isArray(detail)) {
-      return detail.join(", ");
+      const messages = detail
+        .map((item) => (typeof item === "string" ? item : item.msg))
+        .filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+      if (messages.length > 0) {
+        return messages.join(", ");
+      }
     }
     if (typeof detail === "string" && detail.trim()) {
       return detail;
