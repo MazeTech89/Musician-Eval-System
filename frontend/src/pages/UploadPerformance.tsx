@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 
@@ -51,26 +52,9 @@ const UploadPerformance: React.FC = () => {
       formData.append("description", description);
       formData.append("audio_file", audioFile!);
 
-      const baseUrl = import.meta.env.VITE_API_URL ?? "/api/v1";
-      const response = await fetch(`${baseUrl}/performances/upload-audio`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const response = await api.post<UploadResponse>("/performances/upload-audio", formData);
 
-      const data = (await response.json()) as UploadResponse | { detail?: string };
-
-      if (!response.ok) {
-        const detail = "detail" in data ? data.detail : undefined;
-        const message = Array.isArray(detail)
-          ? detail.join(", ")
-          : typeof detail === "string" && detail.trim()
-            ? detail
-            : "Upload failed";
-        throw new Error(message);
-      }
-
-      const upload = data as UploadResponse;
+      const upload = response.data;
       setSuccess(
         `Uploaded successfully: ${upload.title}. Status: ${upload.status}.`,
       );

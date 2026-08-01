@@ -163,11 +163,6 @@ const Assignments: React.FC = () => {
       const response = await api.post<SubmissionResponse>(
         `/assignments/${selectedAssignmentId}/submissions`,
         formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
       );
       setSubmissionResult(response.data);
       const historyResponse = await api.get("/evaluations");

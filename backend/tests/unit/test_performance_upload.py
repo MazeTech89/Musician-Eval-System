@@ -63,6 +63,10 @@ def _make_wav_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def _make_mp3_bytes() -> bytes:
+    return b"ID3\x04\x00\x00\x00\x00\x00\x21FakeMP3Payload"
+
+
 def test_upload_audio_creates_performance(monkeypatch) -> None:
     """Uploading valid audio should create a performance with S3 URI."""
 
@@ -120,6 +124,43 @@ def test_upload_audio_rejects_invalid_content_type() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Unsupported audio file type"
+
+
+def test_upload_audio_accepts_common_mp3_content_type_alias(monkeypatch) -> None:
+    """Uploading MP3 bytes with a browser-style alias content type should succeed."""
+
+    async def _override_user():
+        return _DummyUser(user_id=7, role=RoleEnum.MUSICIAN.value)
+
+    def _mock_upload(audio_file, musician_id: int) -> str:  # noqa: ANN001
+        assert musician_id == 7
+        assert audio_file.filename == "sample.mp3"
+        assert audio_file.content_type == "audio/mp3"
+        return "s3://test-bucket/performances/7/sample.mp3"
+
+    monkeypatch.setattr(
+        "app.api.v1.performances.upload_performance_audio_to_s3",
+        _mock_upload,
+    )
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_active_user] = _override_user
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/performances/upload-audio",
+        data={"title": "MP3 upload"},
+        files={"audio_file": ("sample.mp3", _make_mp3_bytes(), "audio/mp3")},
+    )
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "MP3 upload"
+    assert data["audio_file_url"] == "s3://test-bucket/performances/7/sample.mp3"
+    assert data["musician_id"] == 7
+
 
 
 def test_local_upload_storage_fallback_writes_to_disk(tmp_path, monkeypatch) -> None:
