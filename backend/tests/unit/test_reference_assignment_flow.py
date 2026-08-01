@@ -11,10 +11,11 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.security import create_access_token, hash_password
 from app.main import app
-from app.models.evaluation import Evaluation, Performance
+from app.models.evaluation import Evaluation, EvaluationStatus, Performance
 from app.models.user import Role, RoleEnum, User
 
 client = TestClient(app)
@@ -271,5 +272,75 @@ def test_musician_can_submit_assignment_and_receive_score(
         assert performance.assignment_id == assignment_id
         assert evaluation is not None
         assert evaluation.performance_id == performance.id
+    finally:
+        db.close()
+
+
+def test_musician_submission_survives_missing_reference_audio(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Missing reference audio should not prevent a musician submission from being created."""
+    reference_path = tmp_path / "missing-reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Missing reference", "description": "Reference for fallback"},
+            files={"audio_file": ("missing-reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+
+    assert reference_response.status_code == 201
+    reference_payload = reference_response.json()
+
+    missing_reference_path = Path.cwd() / settings.local_upload_dir / Path(reference_payload["audio_file_url"]).name
+    missing_reference_path.unlink(missing_ok=True)
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Week 3 assignment",
+            "description": "Submit even if reference is gone",
+            "reference_track_id": reference_payload["id"],
+        },
+        headers=_auth_headers(admin_user),
+    )
+
+    assert assignment_response.status_code == 201
+    assignment_id = assignment_response.json()["id"]
+
+    performance_path = tmp_path / "fallback-submission.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        submission_response = client.post(
+            f"/api/v1/assignments/{assignment_id}/submissions",
+            data={
+                "title": "My fallback submission",
+                "description": "Recorded at home",
+            },
+            files={"audio_file": ("fallback-submission.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    assert submission_response.status_code == 201
+    submission_payload = submission_response.json()
+    assert submission_payload["analysis"] is None
+    assert "automatic scoring is pending" in submission_payload["message"].lower()
+    assert submission_payload["evaluation"]["status"] == EvaluationStatus.PENDING.value
+
+    db = SessionLocal()
+    try:
+        evaluation = (
+            db.query(Evaluation)
+            .filter(Evaluation.id == submission_payload["evaluation"]["id"])
+            .first()
+        )
+        assert evaluation is not None
+        assert evaluation.score is None
+        assert evaluation.status == EvaluationStatus.PENDING
     finally:
         db.close()
