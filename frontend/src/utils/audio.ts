@@ -28,6 +28,10 @@ export function validateAudioFileSize(
     return null;
   }
 
+  if (file.size <= 0) {
+    return `${label} is empty. Please select a valid audio file.`;
+  }
+
   if (file.size > MAX_AUDIO_UPLOAD_SIZE_BYTES) {
     return `${label} must be ${MAX_AUDIO_UPLOAD_SIZE_MB} MB or smaller.`;
   }

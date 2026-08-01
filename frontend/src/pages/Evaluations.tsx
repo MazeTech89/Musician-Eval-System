@@ -521,9 +521,7 @@ const Evaluations: React.FC = () => {
                     onChange={(e) => {
                       const nextFile = e.target.files?.[0] ?? null;
                       setReferenceFile(nextFile);
-                      setAnalysisFormError(
-                        validateAudioFileSize(nextFile, "Reference audio file"),
-                      );
+                      setAnalysisFormError(validateAudioFileSize(nextFile, "Reference audio file"));
                     }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                     required
@@ -617,9 +615,7 @@ const Evaluations: React.FC = () => {
                     onChange={(e) => {
                       const nextFile = e.target.files?.[0] ?? null;
                       setReferenceTrackFile(nextFile);
-                      setReferenceTrackError(
-                        validateAudioFileSize(nextFile, "Reference audio file"),
-                      );
+                      setReferenceTrackError(validateAudioFileSize(nextFile, "Reference audio file"));
                     }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                     required
