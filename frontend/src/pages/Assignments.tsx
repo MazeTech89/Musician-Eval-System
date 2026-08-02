@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import api from "../api/axios";
 import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
@@ -75,7 +74,6 @@ interface SubmissionResponse {
 const Assignments: React.FC = () => {
   const { user, isLoading } = useAuth();
   const isMusician = user?.role === "musician";
-  const isEvaluator = user?.role === "evaluator" || user?.role === "admin";
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -131,20 +129,6 @@ const Assignments: React.FC = () => {
         new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
     );
   }, [historyEvaluations]);
-
-  const workflowSteps = isMusician
-    ? [
-        "1. Open the active assignment you want to submit against.",
-        "2. Add a title, description, and audio file.",
-        "3. Submit the performance and wait for scoring or pending review.",
-        "4. Check your submission history for feedback and results.",
-      ]
-    : [
-        "1. Review the active assignments and reference tracks.",
-        "2. Use Evaluations to create or inspect scoring history.",
-        "3. Open a submission to review the attached performance.",
-        "4. Return here to monitor activity and recent uploads.",
-      ];
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -245,37 +229,27 @@ const Assignments: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Assignments" subtitle="View active assignments, submit performances, and review history." />
+    <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
+      <AppHeader
+        title="Musician Evaluation System"
+        subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}
+      />
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0 space-y-6">
-          <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
-            <ol className="space-y-2 text-sm text-gray-700">
-              {workflowSteps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          </section>
-
-          <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Active assignments</h2>
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          {/* Active assignments */}
+          <section className="bg-white rounded-2xl shadow-md p-6">
+            <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
+              🎯 Active Tasks
+            </h2>
             {assignments.length === 0 ? (
-              <div className="space-y-3">
-                <p className="text-gray-600">
-                  {isMusician
-                    ? "No active assignments yet. Check back after an admin publishes one."
-                    : "No active assignments yet. Create a reference track and assignment in Evaluations to get started."}
-                </p>
-                {isEvaluator ? (
-                  <Link to="/evaluations" className="text-indigo-600 hover:text-indigo-500">
-                    Go to Evaluations
-                  </Link>
-                ) : null}
-              </div>
+              <p className="text-gray-500 italic">
+                {isMusician
+                  ? "No active tasks yet. Check back after an admin publishes one."
+                  : "No active tasks yet. Go to Reference Upload to create a task."}
+              </p>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {assignments.map((assignment) => (
                   <button
                     key={assignment.id}
@@ -284,17 +258,19 @@ const Assignments: React.FC = () => {
                       setSelectedAssignmentId(assignment.id);
                       setFieldErrors((current) => ({ ...current, assignment: undefined }));
                     }}
-                    className={`text-left rounded-lg border p-4 transition ${
+                    className={`text-left rounded-xl border-2 p-4 transition music-card ${
                       selectedAssignmentId === assignment.id
-                        ? "border-indigo-500 bg-indigo-50"
-                        : "border-gray-200 bg-white hover:border-indigo-300"
+                        ? "border-amber-500 bg-amber-50"
+                        : "border-gray-200 bg-white hover:border-amber-300"
                     }`}
                   >
-                    <div className="font-semibold text-gray-900">{assignment.title}</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      {assignment.description || "No description provided"}
+                    <div className="font-semibold text-sm" style={{ color: "var(--color-primary)" }}>
+                      {assignment.title}
                     </div>
-                    <div className="text-sm text-gray-500 mt-2">
+                    <div className="text-sm text-gray-500 mt-1">
+                      {assignment.description || "No description"}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-2">
                       Reference: {assignment.reference_track.title}
                     </div>
                   </button>
@@ -303,210 +279,213 @@ const Assignments: React.FC = () => {
             )}
           </section>
 
-          <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Submit a performance</h2>
-            {selectedAssignment ? (
-              <p className="text-sm text-gray-600 mb-4">
-                You are submitting against <span className="font-medium">{selectedAssignment.title}</span>.
-              </p>
-            ) : (
-              <p className="text-sm text-gray-600 mb-4">
-                Select an assignment to submit against. Your upload will appear in your history after scoring.
-              </p>
-            )}
-
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="assignment-select" className="block text-sm font-medium text-gray-700">
-                  Assignment
-                </label>
-                <select
-                  id="assignment-select"
-                  value={selectedAssignmentId}
-                  onChange={(event) => {
-                    setSelectedAssignmentId(
-                      event.target.value ? Number(event.target.value) : "",
-                    );
-                    setFieldErrors((current) => ({ ...current, assignment: undefined }));
-                  }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                >
-                  <option value="">Select an assignment</option>
-                  {assignments.map((assignment) => (
-                    <option key={assignment.id} value={assignment.id}>
-                      {assignment.title}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.assignment ? (
-                  <p className="mt-1 text-sm text-red-600">{fieldErrors.assignment}</p>
-                ) : null}
-              </div>
-
-              <div>
-                <label htmlFor="submission-title" className="block text-sm font-medium text-gray-700">
-                  Submission title
-                </label>
-                <input
-                  id="submission-title"
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                  placeholder="My recorded submission"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="submission-description" className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  id="submission-description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                  rows={4}
-                  placeholder="Add notes about the recording"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="submission-audio-file" className="block text-sm font-medium text-gray-700">
-                  Audio file
-                </label>
-                <input
-                  id="submission-audio-file"
-                  type="file"
-                  accept={ACCEPTED_AUDIO_FILE_TYPES}
-                  onChange={(event) => {
-                    const nextFile = event.target.files?.[0] ?? null;
-                    setAudioFile(nextFile);
-                    setFieldErrors((current) => ({
-                      ...current,
-                      audioFile: validateAudioFileSize(nextFile) ?? undefined,
-                    }));
-                  }}
-                  className="mt-1 block w-full text-sm text-gray-500"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+          {/* Performance submission — musicians only */}
+          {isMusician ? (
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
+                🎤 Submit a Performance
+              </h2>
+              {selectedAssignment ? (
+                <p className="text-sm text-gray-600 mb-4">
+                  Submitting against <span className="font-semibold">{selectedAssignment.title}</span>
                 </p>
-                {fieldErrors.audioFile ? (
-                  <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
-                ) : null}
-              </div>
+              ) : (
+                <p className="text-sm text-gray-500 mb-4">
+                  Select a task above then upload your recording. The AI will score it automatically.
+                </p>
+              )}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {submitting ? "Submitting..." : "Submit and score"}
-              </button>
-            </form>
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                <div>
+                  <label htmlFor="assignment-select" className="block text-sm font-medium text-gray-700 mb-1">
+                    Task
+                  </label>
+                  <select
+                    id="assignment-select"
+                    value={selectedAssignmentId}
+                    onChange={(event) => {
+                      setSelectedAssignmentId(event.target.value ? Number(event.target.value) : "");
+                      setFieldErrors((current) => ({ ...current, assignment: undefined }));
+                    }}
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  >
+                    <option value="">Select a task…</option>
+                    {assignments.map((assignment) => (
+                      <option key={assignment.id} value={assignment.id}>
+                        {assignment.title}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.assignment ? (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.assignment}</p>
+                  ) : null}
+                </div>
 
-            {error ? (
-              <p className="mt-4 text-sm text-red-600">{error}</p>
-            ) : null}
-            {successMessage ? (
-              <p className="mt-4 text-sm text-green-600">{successMessage}</p>
-            ) : null}
-          </section>
+                <div>
+                  <label htmlFor="submission-title" className="block text-sm font-medium text-gray-700 mb-1">
+                    Submission title
+                  </label>
+                  <input
+                    id="submission-title"
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    placeholder="My recorded submission"
+                  />
+                </div>
 
-          {submissionResult ? (
-            <section className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Latest score</h2>
-              <p className="text-gray-700">
+                <div>
+                  <label htmlFor="submission-description" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="submission-description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    rows={3}
+                    placeholder="Notes about this recording"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="submission-audio-file" className="block text-sm font-medium text-gray-700 mb-1">
+                    Audio file
+                  </label>
+                  <input
+                    id="submission-audio-file"
+                    type="file"
+                    accept={ACCEPTED_AUDIO_FILE_TYPES}
+                    onChange={(event) => {
+                      const nextFile = event.target.files?.[0] ?? null;
+                      setAudioFile(nextFile);
+                      setFieldErrors((current) => ({
+                        ...current,
+                        audioFile: validateAudioFileSize(nextFile) ?? undefined,
+                      }));
+                    }}
+                    className="block w-full text-sm text-gray-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">Max {MAX_AUDIO_UPLOAD_SIZE_MB} MB</p>
+                  {fieldErrors.audioFile ? (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
+                  ) : null}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: "var(--color-accent)" }}
+                >
+                  {submitting ? "Submitting…" : "Submit & Score"}
+                </button>
+              </form>
+
+              {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+              {successMessage ? <p className="mt-4 text-sm text-green-600">{successMessage}</p> : null}
+            </section>
+          ) : null}
+
+          {/* Latest score result */}
+          {isMusician && submissionResult ? (
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
+                ✨ Latest Score
+              </h2>
+              <p className="text-gray-700 mb-2">
                 <span className="font-medium">Performance:</span> {submissionResult.performance.title}
               </p>
               {submissionResult.analysis ? (
                 <>
-                  <p className="text-gray-700">
-                    <span className="font-medium">Score:</span> {submissionResult.analysis.score.toFixed(1)}
+                  <p className="text-gray-700 mb-4">
+                    <span className="font-medium">Score:</span>{" "}
+                    <span className="text-2xl font-bold" style={{ color: "var(--color-accent)" }}>
+                      {submissionResult.analysis.score.toFixed(1)}
+                    </span>{" "}
+                    / 100
                   </p>
-                  <p className="text-gray-700">
-                    <span className="font-medium">Reference:</span> {submissionResult.analysis.reference_filename}
-                  </p>
-                  <div className="mt-4 grid gap-2 md:grid-cols-2">
+                  <div className="grid gap-2 md:grid-cols-3">
                     {Object.entries(submissionResult.analysis.breakdown).map(([label, value]) => (
-                      <div key={label} className="rounded border border-gray-200 p-3">
-                        <div className="text-xs uppercase text-gray-500">{label.replace(/_/g, " ")}</div>
-                        <div className="text-gray-900 font-semibold">{value.toFixed(2)}</div>
+                      <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                          {label.replace(/_/g, " ")}
+                        </div>
+                        <div className="font-bold" style={{ color: "var(--color-primary)" }}>
+                          {value.toFixed(2)}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <p className="mt-2 text-sm text-amber-700">
+                <p className="text-sm text-amber-700">
                   {submissionResult.message || "Upload succeeded. Automatic scoring is pending."}
                 </p>
               )}
             </section>
           ) : null}
 
-          <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Your submission history
-            </h2>
-            {rankedHistory.length === 0 ? (
-              <p className="text-gray-600">
-                {isMusician
-                  ? "No submissions yet. Upload your first performance to see scoring here."
-                  : "No submissions yet. Musicians will see their scored performances here after upload."}
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {rankedHistory.map((evaluation) => (
-                  <div
-                    key={evaluation.id}
-                    className="rounded-lg border border-gray-200 p-4"
-                  >
-                    <div className="flex items-center justify-between gap-4">
+          {/* Submission history — musicians only */}
+          {isMusician ? (
+            <section className="bg-white rounded-2xl shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
+                📜 My Submission History
+              </h2>
+              {rankedHistory.length === 0 ? (
+                <p className="text-gray-500 italic">
+                  No submissions yet. Upload your first performance above.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {rankedHistory.map((evaluation) => (
+                    <div
+                      key={evaluation.id}
+                      className="rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-4"
+                    >
                       <div>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-semibold text-sm" style={{ color: "var(--color-primary)" }}>
                           {evaluation.performance.title}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          Assignment:{" "}
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          Task:{" "}
                           {evaluation.performance.assignment_id
                             ? assignmentNameById.get(evaluation.performance.assignment_id) ||
-                              `Assignment #${evaluation.performance.assignment_id}`
-                            : "Unassigned"}
+                              `Task #${evaluation.performance.assignment_id}`
+                            : "Direct upload"}
                         </div>
-                        <div className="text-sm text-gray-500">
-                          Submitted: {new Date(evaluation.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-indigo-600">
-                          {evaluation.score !== null
-                            ? `${evaluation.score.toFixed(1)} / 100`
-                            : "Pending"}
-                        </div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500">
-                          {evaluation.status}
+                        <div className="text-xs text-gray-400">
+                          {new Date(evaluation.created_at).toLocaleString()}
                         </div>
                       </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-lg font-bold" style={{ color: "var(--color-accent)" }}>
+                            {evaluation.score !== null
+                              ? `${evaluation.score.toFixed(1)} / 100`
+                              : "Pending"}
+                          </div>
+                          <div className="text-xs uppercase text-gray-400">{evaluation.status}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePerformance(evaluation.performance.id)}
+                          disabled={deletingPerformanceId === evaluation.performance.id}
+                          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                        >
+                          {deletingPerformanceId === evaluation.performance.id ? "…" : "✕"}
+                        </button>
+                      </div>
+                      {evaluation.comments ? (
+                        <p className="mt-2 text-sm text-gray-600 col-span-full">{evaluation.comments}</p>
+                      ) : null}
                     </div>
-                    {(isMusician || user.role === "admin") ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleDeletePerformance(evaluation.performance.id)}
-                        disabled={deletingPerformanceId === evaluation.performance.id}
-                        className="mt-3 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        {deletingPerformanceId === evaluation.performance.id ? "Deleting..." : "Delete upload"}
-                      </button>
-                    ) : null}
-                    {evaluation.comments ? (
-                      <p className="mt-3 text-sm text-gray-600">{evaluation.comments}</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          ) : null}
         </div>
       </main>
     </div>
