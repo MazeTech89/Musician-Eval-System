@@ -6,7 +6,6 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.audit import record_audit_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
@@ -22,31 +21,12 @@ from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import (
     S3StorageError,
     delete_audio_file,
+    materialize_audio_file,
     upload_performance_audio_to_s3,
 )
 from app.core.upload_security import validate_audio_upload
 
 router = APIRouter(prefix="/performances", tags=["performances"])
-
-def _resolve_local_audio_path(audio_file_url: str) -> Path:
-    """Resolve a locally stored audio file path from the stored URL."""
-    if not audio_file_url:
-        raise ValueError("Performance has no audio file")
-
-    if audio_file_url.startswith("s3://"):
-        raise ValueError("Similarity analysis currently supports local uploads only")
-
-    if audio_file_url.startswith("/uploads/"):
-        upload_dir = Path(settings.local_upload_dir)
-        if not upload_dir.is_absolute():
-            upload_dir = Path.cwd() / upload_dir
-        return upload_dir / Path(audio_file_url).name
-
-    candidate_path = Path(audio_file_url)
-    if not candidate_path.is_absolute():
-        candidate_path = Path.cwd() / candidate_path
-    return candidate_path
-
 
 @router.get("/", response_model=list[PerformanceResponse])
 async def get_performances(
@@ -254,25 +234,41 @@ async def analyze_performance_audio(
         tmp_reference.write(reference_bytes)
         temp_reference_path = Path(tmp_reference.name)
 
+    candidate_audio_path = None
+    candidate_is_temporary = False
     try:
-        candidate_audio_path = _resolve_local_audio_path(performance.audio_file_url)
-        if not candidate_audio_path.exists():
-            raise FileNotFoundError(candidate_audio_path)
+        try:
+            candidate_audio_path, candidate_is_temporary = materialize_audio_file(
+                performance.audio_file_url
+            )
+        except S3StorageError as err:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(err),
+            ) from err
+        except ValueError as err:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(err),
+            ) from err
 
-        analysis = score_audio_similarity(candidate_audio_path, temp_reference_path)
-    except FileNotFoundError as err:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Performance audio file could not be found",
-        ) from err
-    except ValueError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(err),
-        ) from err
+        if not candidate_audio_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Performance audio file could not be found",
+            )
+
+        try:
+            analysis = score_audio_similarity(candidate_audio_path, temp_reference_path)
+        except ValueError as err:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(err),
+            ) from err
     finally:
-        if temp_reference_path.exists():
-            temp_reference_path.unlink(missing_ok=True)
+        temp_reference_path.unlink(missing_ok=True)
+        if candidate_is_temporary and candidate_audio_path is not None:
+            candidate_audio_path.unlink(missing_ok=True)
 
     evaluation = Evaluation(
         performance_id=performance.id,
