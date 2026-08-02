@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FileAudio2, History, Music2, Type } from "lucide-react";
 import api from "../api/axios";
 import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
@@ -239,9 +240,12 @@ const Assignments: React.FC = () => {
         <div className="space-y-6">
           {/* Active assignments */}
           <section className="bg-white rounded-2xl shadow-md p-6">
-            <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
-              🎯 Active Tasks
-            </h2>
+            <div className="mb-4 flex items-center gap-2">
+              <Music2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
+              <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                Active Tasks
+              </h2>
+            </div>
             {assignments.length === 0 ? (
               <p className="text-gray-500 italic">
                 {isMusician
@@ -282,9 +286,12 @@ const Assignments: React.FC = () => {
           {/* Performance submission — musicians only */}
           {isMusician ? (
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
-                🎤 Submit a Performance
-              </h2>
+              <div className="mb-4 flex items-center gap-2">
+                <FileAudio2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
+                <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                  Submit a Performance
+                </h2>
+              </div>
               {selectedAssignment ? (
                 <p className="text-sm text-gray-600 mb-4">
                   Submitting against <span className="font-semibold">{selectedAssignment.title}</span>
@@ -309,7 +316,7 @@ const Assignments: React.FC = () => {
                     }}
                     className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                   >
-                    <option value="">Select a task…</option>
+                    <option value="">Select a task...</option>
                     {assignments.map((assignment) => (
                       <option key={assignment.id} value={assignment.id}>
                         {assignment.title}
@@ -322,8 +329,9 @@ const Assignments: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="submission-title" className="block text-sm font-medium text-gray-700 mb-1">
-                    Submission title
+                  <label htmlFor="submission-title" className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <Type className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                    <span>Submission title</span>
                   </label>
                   <input
                     id="submission-title"
@@ -379,7 +387,7 @@ const Assignments: React.FC = () => {
                   className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ backgroundColor: "var(--color-accent)" }}
                 >
-                  {submitting ? "Submitting…" : "Submit & Score"}
+                  {submitting ? "Submitting..." : "Submit and score"}
                 </button>
               </form>
 
@@ -391,9 +399,12 @@ const Assignments: React.FC = () => {
           {/* Latest score result */}
           {isMusician && submissionResult ? (
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
-                ✨ Latest Score
-              </h2>
+              <div className="mb-4 flex items-center gap-2">
+                <FileAudio2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
+                <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                  Latest Score
+                </h2>
+              </div>
               <p className="text-gray-700 mb-2">
                 <span className="font-medium">Performance:</span> {submissionResult.performance.title}
               </p>
@@ -430,9 +441,12 @@ const Assignments: React.FC = () => {
           {/* Submission history — musicians only */}
           {isMusician ? (
             <section className="bg-white rounded-2xl shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--color-primary)" }}>
-                📜 My Submission History
-              </h2>
+              <div className="mb-4 flex items-center gap-2">
+                <History className="h-5 w-5 text-amber-600" aria-hidden="true" />
+                <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                  My Submission History
+                </h2>
+              </div>
               {rankedHistory.length === 0 ? (
                 <p className="text-gray-500 italic">
                   No submissions yet. Upload your first performance above.
@@ -474,7 +488,7 @@ const Assignments: React.FC = () => {
                           disabled={deletingPerformanceId === evaluation.performance.id}
                           className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
                         >
-                          {deletingPerformanceId === evaluation.performance.id ? "…" : "✕"}
+                          {deletingPerformanceId === evaluation.performance.id ? "..." : "Delete"}
                         </button>
                       </div>
                       {evaluation.comments ? (

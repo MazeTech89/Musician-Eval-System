@@ -1,26 +1,39 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React from "react";
+import {
+  BarChart3,
+  LayoutDashboard,
+  LogOut,
+  Music4,
+  ShieldCheck,
+  Trophy,
+  Upload,
+  UserCircle2,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 type NavItem = {
   to: string;
   label: string;
+  Icon: LucideIcon;
 };
 
 const navItemsByRole: Record<string, NavItem[]> = {
   admin: [
-    { to: '/', label: '\U0001F3E0 Dashboard' },
-    { to: '/admin', label: '\u2699\uFE0F Users' },
-    { to: '/reference-upload', label: '\U0001F3B5 Reference Upload' },
-    { to: '/musician-results', label: '\U0001F4CA Results' },
-    { to: '/recommendations', label: '\U0001F3C6 Rankings' },
+    { to: "/", label: "Dashboard", Icon: LayoutDashboard },
+    { to: "/admin", label: "Users", Icon: Users },
+    { to: "/reference-upload", label: "Reference Upload", Icon: Upload },
+    { to: "/musician-results", label: "Results", Icon: BarChart3 },
+    { to: "/recommendations", label: "Rankings", Icon: Trophy },
   ],
   musician: [
-    { to: '/', label: '\U0001F3E0 Dashboard' },
-    { to: '/profile', label: '\U0001F464 Profile' },
-    { to: '/assignments', label: '\U0001F3AF Tasks' },
-    { to: '/performances/upload', label: '\U0001F3A4 Upload' },
-    { to: '/evaluations', label: '\U0001F4CA My Scores' },
+    { to: "/", label: "Dashboard", Icon: LayoutDashboard },
+    { to: "/profile", label: "Profile", Icon: UserCircle2 },
+    { to: "/assignments", label: "Tasks", Icon: ShieldCheck },
+    { to: "/performances/upload", label: "Upload", Icon: Upload },
+    { to: "/evaluations", label: "My Scores", Icon: BarChart3 },
   ],
 };
 
@@ -32,7 +45,9 @@ interface AppHeaderProps {
 const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const navItems = navItemsByRole[user?.role || ''] || [{ to: '/', label: '\U0001F3E0 Dashboard' }];
+  const navItems = navItemsByRole[user?.role || ""] || [
+    { to: "/", label: "Dashboard", Icon: LayoutDashboard },
+  ];
 
   return (
     <nav className="bg-stage-900 shadow-lg">
@@ -40,7 +55,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
         <div className="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-2xl" aria-hidden="true">\U0001F3B5</span>
+              <Music4 className="h-6 w-6 text-amber-300" aria-hidden="true" />
               <div>
                 <h1 className="text-lg font-bold text-white leading-tight">{title}</h1>
                 {subtitle ? <p className="text-xs text-amber-300">{subtitle}</p> : null}
@@ -57,6 +72,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
             <div className="flex flex-wrap gap-1.5">
               {navItems.map((item) => {
                 const active = location.pathname === item.to;
+                const Icon = item.Icon;
                 return (
                   <Link
                     key={item.to}
@@ -67,7 +83,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
                         : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                     }`}
                   >
-                    {item.label}
+                    <span className="inline-flex items-center gap-1.5">
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </span>
                   </Link>
                 );
               })}
@@ -77,7 +96,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
               onClick={logout}
               className="self-start text-xs font-medium text-slate-400 hover:text-amber-300 transition lg:self-end"
             >
-              \u2190 Sign out
+              <span className="inline-flex items-center gap-1">
+                <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Sign out</span>
+              </span>
             </button>
           </div>
         </div>
