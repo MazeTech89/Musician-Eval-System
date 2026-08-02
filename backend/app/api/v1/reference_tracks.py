@@ -1,6 +1,7 @@
 """Reference tracks and assignments API routes."""
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -131,10 +132,10 @@ async def list_reference_tracks(
     current_user: User = Depends(get_current_active_user),
 ) -> list[ReferenceTrack]:
     """List reusable reference tracks."""
-    if current_user.role.name not in ["admin", "evaluator"]:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins and evaluators can view reference tracks",
+            detail="Only admins can view reference tracks",
         )
 
     return (
@@ -204,10 +205,10 @@ async def get_reference_track(
     current_user: User = Depends(get_current_active_user),
 ) -> ReferenceTrack:
     """Get one reference track by ID."""
-    if current_user.role.name not in ["admin", "evaluator"]:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins and evaluators can view reference tracks",
+            detail="Only admins can view reference tracks",
         )
 
     reference_track = (
@@ -617,10 +618,10 @@ async def analyze_performance_with_assignment(
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
     """Analyze a performance using the reference track from an assignment."""
-    if current_user.role.name not in ["admin", "evaluator"]:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins and evaluators can analyze performances",
+            detail="Only admins can analyze performances",
         )
 
     assignment = (
@@ -673,3 +674,77 @@ async def analyze_performance_with_assignment(
             "candidate_pitch_hz": analysis.candidate_pitch_hz,
         },
     }
+
+
+@router.get("/assignments/recommendations")
+async def get_task_recommendations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> list[dict[str, Any]]:
+    """Return each active task with its highest-scoring musician (admin only).
+
+    For every active assignment this returns:
+    - assignment metadata
+    - total number of submissions
+    - the best musician so far (highest completed evaluation score)
+    """
+    if current_user.role.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can view task recommendations",
+        )
+
+    assignments = (
+        db.query(Assignment).filter(Assignment.is_active.is_(True)).all()
+    )
+
+    recommendations = []
+    for assignment in assignments:
+        total_submissions = (
+            db.query(Performance)
+            .filter(Performance.assignment_id == assignment.id)
+            .count()
+        )
+
+        # Best completed evaluation for this assignment
+        best_row = (
+            db.query(Performance, Evaluation, User)
+            .join(Evaluation, Evaluation.performance_id == Performance.id)
+            .join(User, User.id == Performance.musician_id)
+            .filter(Performance.assignment_id == assignment.id)
+            .filter(Evaluation.score.isnot(None))
+            .filter(Evaluation.status == EvaluationStatus.COMPLETED)
+            .order_by(Evaluation.score.desc())
+            .first()
+        )
+
+        best_musician = None
+        if best_row:
+            _perf, best_eval, best_user = best_row
+            best_musician = {
+                "id": best_user.id,
+                "username": best_user.username,
+                "first_name": best_user.first_name,
+                "last_name": best_user.last_name,
+                "instrument_type": best_user.instrument_type,
+                "skill_level": best_user.skill_level,
+                "score": best_eval.score,
+                "evaluation_id": best_eval.id,
+            }
+
+        recommendations.append(
+            {
+                "assignment_id": assignment.id,
+                "assignment_title": assignment.title,
+                "description": assignment.description,
+                "reference_track_title": (
+                    assignment.reference_track.title
+                    if assignment.reference_track
+                    else None
+                ),
+                "total_submissions": total_submissions,
+                "best_musician": best_musician,
+            }
+        )
+
+    return recommendations

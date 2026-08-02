@@ -9,25 +9,19 @@ type NavItem = {
 
 const navItemsByRole: Record<string, NavItem[]> = {
   admin: [
-    { to: "/", label: "Dashboard" },
-    { to: "/profile", label: "Profile" },
-    { to: "/admin", label: "Admin Panel" },
-    { to: "/evaluations", label: "Evaluations" },
-    { to: "/assignments", label: "Assignments" },
-    { to: "/performances/upload", label: "Upload" },
-  ],
-  evaluator: [
-    { to: "/", label: "Dashboard" },
-    { to: "/profile", label: "Profile" },
-    { to: "/evaluations", label: "Evaluations" },
-    { to: "/assignments", label: "Assignments" },
+    { to: "/", label: "?? Dashboard" },
+    { to: "/profile", label: "?? Profile" },
+    { to: "/admin", label: "?? Users" },
+    { to: "/evaluations", label: "?? Evaluations" },
+    { to: "/assignments", label: "?? Tasks" },
+    { to: "/recommendations", label: "?? Rankings" },
   ],
   musician: [
-    { to: "/", label: "Dashboard" },
-    { to: "/profile", label: "Profile" },
-    { to: "/assignments", label: "Assignments" },
-    { to: "/performances/upload", label: "Upload" },
-    { to: "/evaluations", label: "Evaluations" },
+    { to: "/", label: "?? Dashboard" },
+    { to: "/profile", label: "?? Profile" },
+    { to: "/assignments", label: "?? Tasks" },
+    { to: "/performances/upload", label: "?? Upload" },
+    { to: "/evaluations", label: "?? My Scores" },
   ],
 };
 
@@ -39,36 +33,39 @@ interface AppHeaderProps {
 const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const navItems = navItemsByRole[user?.role || ""] || [{ to: "/", label: "Dashboard" }];
+  const navItems = navItemsByRole[user?.role || ""] || [{ to: "/", label: "?? Dashboard" }];
 
   return (
-    <nav className="bg-white shadow">
+    <nav className="bg-stage-900 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-              {user?.role ? (
-                <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium capitalize text-indigo-700">
-                  {user.role}
-                </span>
-              ) : null}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl" aria-hidden="true">??</span>
+              <div>
+                <h1 className="text-lg font-bold text-white leading-tight">{title}</h1>
+                {subtitle ? <p className="text-xs text-amber-300">{subtitle}</p> : null}
+              </div>
             </div>
-            {subtitle ? <p className="mt-1 text-sm text-gray-600">{subtitle}</p> : null}
+            {user?.role ? (
+              <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold capitalize text-white">
+                {user.role}
+              </span>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {navItems.map((item) => {
                 const active = location.pathname === item.to;
                 return (
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                       active
-                        ? "bg-indigo-600 text-white"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                        ? "bg-amber-500 text-white"
+                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }`}
                   >
                     {item.label}
@@ -79,9 +76,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
             <button
               type="button"
               onClick={logout}
-              className="self-start text-sm font-medium text-gray-700 hover:text-gray-900 lg:self-end"
+              className="self-start text-xs font-medium text-slate-400 hover:text-amber-300 transition lg:self-end"
             >
-              Logout
+              ? Sign out
             </button>
           </div>
         </div>

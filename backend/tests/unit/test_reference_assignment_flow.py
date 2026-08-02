@@ -457,54 +457,6 @@ def test_reference_track_delete_requires_assignments_to_be_removed_first(
     assert "delete those assignments first" in delete_response.json()["detail"].lower()
 
 
-def test_evaluator_can_delete_their_own_evaluation(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    musician_user: User,
-    evaluator_user: User,
-) -> None:
-    """Evaluators can remove evaluations they created."""
-    monkeypatch.setattr(settings, "use_local_upload_storage", True)
-    monkeypatch.setattr(settings, "local_upload_dir", str(tmp_path))
-
-    performance_path = tmp_path / "evaluator-delete.wav"
-    _write_wav(performance_path, 440.0)
-
-    with performance_path.open("rb") as performance_file:
-        performance_response = client.post(
-            "/api/v1/performances/upload-audio",
-            data={"title": "Evaluator delete target", "description": "Delete evaluation later"},
-            files={"audio_file": ("evaluator-delete.wav", performance_file, "audio/wav")},
-            headers=_auth_headers(musician_user),
-        )
-
-    performance_id = performance_response.json()["id"]
-    create_evaluation_response = client.post(
-        "/api/v1/evaluations",
-        json={
-            "performance_id": performance_id,
-            "score": 92.5,
-            "comments": "Delete this evaluation",
-        },
-        headers=_auth_headers(evaluator_user),
-    )
-    assert create_evaluation_response.status_code == 201
-    evaluation_id = create_evaluation_response.json()["id"]
-
-    delete_response = client.delete(
-        f"/api/v1/evaluations/{evaluation_id}",
-        headers=_auth_headers(evaluator_user),
-    )
-    assert delete_response.status_code == 200
-
-    db = SessionLocal()
-    try:
-        assert db.query(Evaluation).filter(Evaluation.id == evaluation_id).first() is None
-        assert db.query(Performance).filter(Performance.id == performance_id).first() is not None
-    finally:
-        db.close()
-
-
 def test_admin_can_delete_user_and_clean_up_owned_content(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -568,12 +520,12 @@ def test_admin_can_change_user_role(
     """Admins can change another user's role."""
     response = client.put(
         f"/api/v1/auth/users/{musician_user.id}",
-        json={"role": "evaluator"},
+        json={"role": "admin"},
         headers=_auth_headers(admin_user),
     )
 
     assert response.status_code == 200
-    assert response.json()["role"] == "evaluator"
+    assert response.json()["role"] == "admin"
 
 
 def test_admin_cannot_delete_own_account(admin_user: User) -> None:
