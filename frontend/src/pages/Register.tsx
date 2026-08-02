@@ -16,6 +16,9 @@ const Register: React.FC = () => {
     confirmPassword: "",
     first_name: "",
     last_name: "",
+    instrument_type: "",
+    skill_level: "",
+    availability: "",
     role: "musician",
   });
   const [error, setError] = useState("");
@@ -24,7 +27,7 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
     setFormData({
       ...formData,
@@ -79,7 +82,12 @@ const Register: React.FC = () => {
 
     try {
       const { confirmPassword, ...registrationData } = formData;
-      await api.post("/auth/register", registrationData);
+      await api.post("/auth/register", {
+        ...registrationData,
+        instrument_type: registrationData.instrument_type || undefined,
+        skill_level: registrationData.skill_level || undefined,
+        availability: registrationData.availability || undefined,
+      });
       navigate("/login");
     } catch (err: unknown) {
       console.error("Registration failed", err);
@@ -180,6 +188,61 @@ const Register: React.FC = () => {
                 }}
               />
               {fieldErrors.last_name ? <p className="mt-1 text-sm text-red-600">{fieldErrors.last_name}</p> : null}
+            </div>
+            <div>
+              <label
+                htmlFor="register-instrument-type"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Instrument type (optional)
+              </label>
+              <input
+                id="register-instrument-type"
+                name="instrument_type"
+                type="text"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="e.g. Piano, Guitar, Violin"
+                value={formData.instrument_type}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="register-skill-level"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Skill level (optional)
+              </label>
+              <select
+                id="register-skill-level"
+                name="skill_level"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={formData.skill_level}
+                onChange={handleChange}
+              >
+                <option value="">Select skill level</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+                <option value="expert">Expert</option>
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="register-availability"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Availability (optional)
+              </label>
+              <textarea
+                id="register-availability"
+                name="availability"
+                rows={3}
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="e.g. Weekday evenings, weekends"
+                value={formData.availability}
+                onChange={handleChange}
+              />
             </div>
             <div>
               <label htmlFor="register-role" className="block text-sm font-medium text-gray-700 mb-1">

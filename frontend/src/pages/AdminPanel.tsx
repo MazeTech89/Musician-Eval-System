@@ -10,6 +10,9 @@ interface User {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  instrument_type: string | null;
+  skill_level: string | null;
+  availability: string | null;
   role: string;
   is_active: boolean;
 }
@@ -245,6 +248,15 @@ const AdminPanel: React.FC = () => {
                           <div className="text-sm text-gray-500">
                             @{user.username} • {user.email}
                           </div>
+                          {(user.instrument_type || user.skill_level || user.availability) ? (
+                            <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                              {user.instrument_type ? (
+                                <p>Instrument: {user.instrument_type}</p>
+                              ) : null}
+                              {user.skill_level ? <p>Skill level: {user.skill_level}</p> : null}
+                              {user.availability ? <p>Availability: {user.availability}</p> : null}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">

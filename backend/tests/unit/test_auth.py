@@ -1,6 +1,7 @@
 """Tests for authentication and RBAC."""
 
 from datetime import timedelta
+from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
@@ -65,6 +66,9 @@ def test_admin_user(setup_test_roles):
         existing.hashed_password = hash_password("testpassword123")
         existing.first_name = "Test"
         existing.last_name = "Admin"
+        existing.instrument_type = None
+        existing.skill_level = None
+        existing.availability = None
         existing.role_id = role.id
         existing.is_active = True
         existing.last_login = None
@@ -99,6 +103,9 @@ def test_musician_user(setup_test_roles):
         existing.hashed_password = hash_password("testpassword123")
         existing.first_name = "Test"
         existing.last_name = "Musician"
+        existing.instrument_type = None
+        existing.skill_level = None
+        existing.availability = None
         existing.role_id = role.id
         existing.is_active = True
         existing.last_login = None
@@ -317,6 +324,36 @@ class TestUserManagement:
         assert response.status_code == 200
         assert response.json()["username"] == "testmusician"
         assert response.json()["email"] == "testmusician@example.com"
+        assert response.json()["instrument_type"] is None
+        assert response.json()["skill_level"] is None
+        assert response.json()["availability"] is None
+
+    def test_register_user_with_profile_fields(self, setup_test_roles, db_session):
+        """Test user registration stores profile fields."""
+        username = f"profileuser-{uuid4().hex[:8]}"
+        user_data = {
+            "username": username,
+            "email": f"{username}@example.com",
+            "password": "securepassword123",
+            "first_name": "Profile",
+            "last_name": "User",
+            "instrument_type": "Piano",
+            "skill_level": "advanced",
+            "availability": "Weekday evenings",
+            "role": "musician",
+        }
+
+        db_session.query(User).filter(
+            (User.username == user_data["username"]) | (User.email == user_data["email"])
+        ).delete()
+        db_session.commit()
+
+        response = client.post("/api/v1/auth/register", json=user_data)
+
+        assert response.status_code == 201
+        assert response.json()["instrument_type"] == "Piano"
+        assert response.json()["skill_level"] == "advanced"
+        assert response.json()["availability"] == "Weekday evenings"
 
     def test_update_current_user(self, test_musician_user):
         """Test updating current user."""
@@ -333,6 +370,9 @@ class TestUserManagement:
             json={
                 "first_name": "Updated",
                 "last_name": "Name",
+                "instrument_type": "Violin",
+                "skill_level": "expert",
+                "availability": "Weekends",
             },
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -340,6 +380,9 @@ class TestUserManagement:
         assert response.status_code == 200
         assert response.json()["first_name"] == "Updated"
         assert response.json()["last_name"] == "Name"
+        assert response.json()["instrument_type"] == "Violin"
+        assert response.json()["skill_level"] == "expert"
+        assert response.json()["availability"] == "Weekends"
 
     def test_change_password(self, test_musician_user):
         """Test changing password."""
