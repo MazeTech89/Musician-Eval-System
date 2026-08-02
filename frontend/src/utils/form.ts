@@ -34,6 +34,20 @@ export function validateRequired(value: string, label: string): string | null {
   return null;
 }
 
+export function validateEmail(value: string, label = "Email"): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return `${label} is required.`;
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(trimmed)) {
+    return `Enter a valid ${label.toLowerCase()}.`;
+  }
+
+  return null;
+}
+
 export function validateMinLength(
   value: string,
   label: string,

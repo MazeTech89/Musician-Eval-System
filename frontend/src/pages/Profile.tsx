@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
-import { getApiErrorMessage, validateRequired } from "../utils/form";
+import { getApiErrorMessage, validateEmail, validateRequired } from "../utils/form";
 
 const SKILL_LEVEL_OPTIONS = [
   { value: "", label: "Select skill level" },
@@ -69,7 +69,7 @@ const Profile: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
-    const emailError = validateRequired(profileForm.email, "Email");
+    const emailError = validateEmail(profileForm.email);
     const firstNameError = validateRequired(profileForm.first_name, "First name");
     const lastNameError = validateRequired(profileForm.last_name, "Last name");
 

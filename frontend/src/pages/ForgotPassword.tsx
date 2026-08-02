@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
-import { getApiErrorMessage, validateRequired } from "../utils/form";
+import { getApiErrorMessage, validateEmail } from "../utils/form";
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -11,7 +11,7 @@ const ForgotPassword: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const emailError = validateRequired(email, "Email");
+    const emailError = validateEmail(email);
     if (emailError) {
       setError(emailError);
       return;
