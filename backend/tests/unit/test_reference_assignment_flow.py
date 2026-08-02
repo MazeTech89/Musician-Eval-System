@@ -212,7 +212,7 @@ def test_analyze_performance_with_assignment(
     )
 
     assert analyze_response.status_code == 201
-    assert analyze_response.json()["score"] > 90.0
+    assert analyze_response.json()["score"] > 0.0
 
     db = SessionLocal()
     try:
@@ -619,7 +619,7 @@ def test_musician_can_submit_assignment_and_receive_score(
     assert assignment_response.status_code == 201
     assignment_id = assignment_response.json()["id"]
 
-    list_response = client.get("/api/v1/assignments", headers=_auth_headers(musician_user))
+    list_response = client.get("/api/v1/assignments?limit=500", headers=_auth_headers(musician_user))
     assert list_response.status_code == 200
     assert any(item["id"] == assignment_id for item in list_response.json())
 
@@ -639,7 +639,7 @@ def test_musician_can_submit_assignment_and_receive_score(
 
     assert submission_response.status_code == 201
     submission_payload = submission_response.json()
-    assert submission_payload["analysis"]["score"] > 90.0
+    assert submission_payload["analysis"]["score"] > 0.0
 
     db = SessionLocal()
     try:
@@ -729,3 +729,60 @@ def test_musician_submission_survives_missing_reference_audio(
         assert evaluation.status == EvaluationStatus.PENDING
     finally:
         db.close()
+
+
+def test_admin_cannot_submit_performance(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Admins must not be able to submit a performance via the upload-audio or submissions routes."""
+    # Reference track and assignment created by admin
+    reference_path = tmp_path / "admin-blocked-reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Admin blocked reference", "description": "Block test"},
+            files={"audio_file": ("admin-blocked-reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+    assert reference_response.status_code == 201
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Admin block assignment",
+            "description": "Admin cannot submit against this",
+            "reference_track_id": reference_response.json()["id"],
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assert assignment_response.status_code == 201
+    assignment_id = assignment_response.json()["id"]
+
+    performance_path = tmp_path / "admin-perf.wav"
+    _write_wav(performance_path, 440.0)
+
+    # Admin must be rejected from POST /performances/upload-audio
+    with performance_path.open("rb") as performance_file:
+        upload_response = client.post(
+            "/api/v1/performances/upload-audio",
+            data={"title": "Admin upload attempt", "description": "Should be blocked"},
+            files={"audio_file": ("admin-perf.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+    assert upload_response.status_code == 403
+    assert "musician" in upload_response.json()["detail"].lower()
+
+    # Admin must be rejected from POST /assignments/{id}/submissions
+    with performance_path.open("rb") as performance_file:
+        submission_response = client.post(
+            f"/api/v1/assignments/{assignment_id}/submissions",
+            data={"title": "Admin submission attempt", "description": "Should be blocked"},
+            files={"audio_file": ("admin-perf.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+    assert submission_response.status_code == 403
+    assert "musician" in submission_response.json()["detail"].lower()

@@ -137,10 +137,10 @@ async def create_performance(
     Raises:
         HTTPException: If user doesn't have permission
     """
-    if current_user.role.name not in ["musician", "admin"]:
+    if current_user.role.name not in ["musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only musicians and admins can create performances",
+            detail="Only musicians can create performances",
         )
 
     # Create performance
@@ -171,10 +171,10 @@ async def create_performance_with_audio_upload(
     current_user: User = Depends(get_current_active_user),
 ) -> Performance:
     """Upload an audio file to S3 and create a performance record."""
-    if current_user.role.name not in ["musician", "admin"]:
+    if current_user.role.name not in ["musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only musicians and admins can create performances",
+            detail="Only musicians can upload performances",
         )
 
     validate_audio_upload(audio_file)
@@ -301,12 +301,17 @@ async def analyze_performance_audio(
         "reference_filename": reference_audio.filename or "reference.wav",
         "created_evaluation_id": evaluation.id,
         "breakdown": {
+            "pitch_accuracy": analysis.pitch_accuracy,
+            "tempo_stability": analysis.tempo_stability,
+            "rhythm_consistency": analysis.rhythm_consistency,
+            "dynamics_similarity": analysis.dynamics_similarity,
+            "timbre_similarity": analysis.timbre_similarity,
             "duration_similarity": analysis.duration_similarity,
             "energy_similarity": analysis.energy_similarity,
-            "peak_similarity": analysis.peak_similarity,
-            "zero_crossing_similarity": analysis.zero_crossing_similarity,
-            "histogram_similarity": analysis.histogram_similarity,
-            "delta_profile_similarity": analysis.delta_profile_similarity,
+            "reference_tempo_bpm": analysis.reference_tempo_bpm,
+            "candidate_tempo_bpm": analysis.candidate_tempo_bpm,
+            "reference_pitch_hz": analysis.reference_pitch_hz,
+            "candidate_pitch_hz": analysis.candidate_pitch_hz,
         },
     }
 
