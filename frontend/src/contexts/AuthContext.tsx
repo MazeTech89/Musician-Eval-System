@@ -14,6 +14,9 @@ interface User {
   email: string;
   first_name: string;
   last_name: string;
+  instrument_type?: string | null;
+  skill_level?: string | null;
+  availability?: string | null;
   role: string;
   is_active: boolean;
   email_verified?: boolean;
@@ -25,6 +28,7 @@ interface AuthContextType {
   login: (username: string, password: string, totpCode?: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -35,6 +39,9 @@ interface RegisterData {
   first_name: string;
   last_name: string;
   role: string;
+  instrument_type?: string;
+  skill_level?: string;
+  availability?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,11 +62,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshUser = async () => {
+    const response = await api.get("/auth/me");
+    setUser(response.data);
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const response = await api.get("/auth/me");
-        setUser(response.data);
+        await refreshUser();
       } catch (error) {
         clearStoredAuthTokens();
         setUser(null);
@@ -108,6 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
+    refreshUser,
     isLoading,
   };
 

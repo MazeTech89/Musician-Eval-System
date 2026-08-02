@@ -4,8 +4,27 @@ import AppHeader from "../components/AppHeader";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 
+const SKILL_LEVEL_OPTIONS = [
+  { value: "", label: "Select skill level" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+  { value: "expert", label: "Expert" },
+];
+
 const Profile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const [profileForm, setProfileForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    instrument_type: "",
+    skill_level: "",
+    availability: "",
+  });
+  const [profileError, setProfileError] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaSecret, setMfaSecret] = useState("");
   const [mfaUrl, setMfaUrl] = useState("");
@@ -16,8 +35,20 @@ const Profile: React.FC = () => {
   const [securityMessage, setSecurityMessage] = useState("");
 
   useEffect(() => {
-    setMfaEnabled(Boolean(user?.mfa_enabled));
-  }, [user?.mfa_enabled]);
+    if (!user) {
+      return;
+    }
+
+    setProfileForm({
+      first_name: user.first_name || "",
+      last_name: user.last_name || "",
+      email: user.email || "",
+      instrument_type: user.instrument_type || "",
+      skill_level: user.skill_level || "",
+      availability: user.availability || "",
+    });
+    setMfaEnabled(Boolean(user.mfa_enabled));
+  }, [user]);
 
   if (!user) {
     return <div>Loading...</div>;
@@ -26,6 +57,46 @@ const Profile: React.FC = () => {
   const resetMessages = () => {
     setSecurityError("");
     setSecurityMessage("");
+  };
+
+  const handleProfileChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
+    setProfileForm((current) => ({
+      ...current,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSaveProfile = async () => {
+    const emailError = validateRequired(profileForm.email, "Email");
+    const firstNameError = validateRequired(profileForm.first_name, "First name");
+    const lastNameError = validateRequired(profileForm.last_name, "Last name");
+
+    if (emailError || firstNameError || lastNameError) {
+      setProfileError(emailError || firstNameError || lastNameError || "Please fix the profile fields.");
+      return;
+    }
+
+    setProfileError("");
+    setProfileMessage("");
+    setIsSavingProfile(true);
+    try {
+      await api.put("/auth/me", {
+        email: profileForm.email,
+        first_name: profileForm.first_name,
+        last_name: profileForm.last_name,
+        instrument_type: profileForm.instrument_type || null,
+        skill_level: profileForm.skill_level || null,
+        availability: profileForm.availability || null,
+      });
+      await refreshUser();
+      setProfileMessage("Profile updated successfully.");
+    } catch (err: unknown) {
+      setProfileError(getApiErrorMessage(err, "Unable to save profile."));
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleSetupMfa = async () => {
@@ -88,15 +159,15 @@ const Profile: React.FC = () => {
   };
 
   const workflowSteps = [
-    "1. Check your account details first.",
-    "2. Generate MFA setup if you have not enabled security yet.",
-    "3. Verify the code in your authenticator app.",
-    "4. Return to your role pages with security confirmed.",
+    "1. Review and update your profile details first.",
+    "2. Save your instrument, skill, and availability information.",
+    "3. Generate MFA setup if you have not enabled security yet.",
+    "4. Return to your role pages with your profile confirmed.",
   ];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Profile" subtitle="Check your account details and security settings." />
+      <AppHeader title="Profile" subtitle="Check your account details, profile fields, and security settings." />
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0 space-y-6">
@@ -110,68 +181,150 @@ const Profile: React.FC = () => {
           </section>
 
           <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                User Information
-              </h3>
+            <div className="px-4 py-5 sm:p-6 space-y-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">User Information</h3>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Username
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Username</label>
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
                     {user.username}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email
-                  </label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
-                    {user.email}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    First Name
-                  </label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
-                    {user.first_name}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Last Name
-                  </label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
-                    {user.last_name}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Role
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Role</label>
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 capitalize">
                     {user.role}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Status
+                  <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700">
+                    Email
                   </label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
-                    {user.is_active ? "Active" : "Inactive"}
-                  </div>
+                  <input
+                    id="profile-email"
+                    name="email"
+                    type="email"
+                    value={profileForm.email}
+                    onChange={handleProfileChange}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="profile-first-name"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    First Name
+                  </label>
+                  <input
+                    id="profile-first-name"
+                    name="first_name"
+                    type="text"
+                    value={profileForm.first_name}
+                    onChange={handleProfileChange}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="profile-last-name"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Last Name
+                  </label>
+                  <input
+                    id="profile-last-name"
+                    name="last_name"
+                    type="text"
+                    value={profileForm.last_name}
+                    onChange={handleProfileChange}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="profile-instrument-type"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Instrument Type
+                  </label>
+                  <input
+                    id="profile-instrument-type"
+                    name="instrument_type"
+                    type="text"
+                    value={profileForm.instrument_type}
+                    onChange={handleProfileChange}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="e.g. Piano, Guitar, Violin"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="profile-skill-level"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Skill Level
+                  </label>
+                  <select
+                    id="profile-skill-level"
+                    name="skill_level"
+                    value={profileForm.skill_level}
+                    onChange={handleProfileChange}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    {SKILL_LEVEL_OPTIONS.map((option) => (
+                      <option key={option.value || "blank"} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="profile-availability"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Availability
+                  </label>
+                  <textarea
+                    id="profile-availability"
+                    name="availability"
+                    rows={3}
+                    value={profileForm.availability}
+                    onChange={handleProfileChange}
+                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="Share your typical availability window"
+                  />
                 </div>
               </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  onClick={() => void handleSaveProfile()}
+                  disabled={isSavingProfile}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {isSavingProfile ? "Saving..." : "Save profile"}
+                </button>
+                <div className="text-sm text-gray-600">
+                  Status: {user.is_active ? "Active" : "Inactive"}
+                </div>
+              </div>
+              {profileError ? <p className="text-sm text-red-600">{profileError}</p> : null}
+              {profileMessage ? <p className="text-sm text-green-600">{profileMessage}</p> : null}
             </div>
           </div>
-          <div className="bg-white shadow rounded-lg mt-6">
-            <div className="px-4 py-5 sm:p-6 space-y-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Security</h3>
+
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-5 sm:p-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Security</h3>
               <p className="text-sm text-gray-600">
                 Multi-factor authentication status:{" "}
-                <span className={mfaEnabled ? "text-green-700 font-medium" : "text-gray-700 font-medium"}>
+                <span
+                  className={
+                    mfaEnabled ? "text-green-700 font-medium" : "text-gray-700 font-medium"
+                  }
+                >
                   {mfaEnabled ? "Enabled" : "Disabled"}
                 </span>
               </p>
@@ -199,7 +352,10 @@ const Profile: React.FC = () => {
                   ) : null}
 
                   <div>
-                    <label htmlFor="mfa-enable-code" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="mfa-enable-code"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       MFA code
                     </label>
                     <input
@@ -225,7 +381,10 @@ const Profile: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="mfa-disable-code" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="mfa-disable-code"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       MFA code to disable
                     </label>
                     <input

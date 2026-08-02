@@ -207,6 +207,11 @@ async def update_me(
             )
 
         user = AuthService.update_user(db, current_user, user_data)
+        record_audit_event(
+            "auth.profile.updated",
+            user_id=current_user.id,
+            username=current_user.username,
+        )
         return user
     except ValueError as err:
         raise HTTPException(

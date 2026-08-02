@@ -21,6 +21,9 @@ class UserBase(BaseModel):
     email: EmailStr
     first_name: str | None = Field(None, max_length=100)
     last_name: str | None = Field(None, max_length=100)
+    instrument_type: str | None = Field(None, max_length=100)
+    skill_level: str | None = Field(None, max_length=50)
+    availability: str | None = Field(None, max_length=500)
 
 
 class UserCreate(UserBase):
@@ -36,6 +39,9 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     first_name: str | None = Field(None, max_length=100)
     last_name: str | None = Field(None, max_length=100)
+    instrument_type: str | None = Field(None, max_length=100)
+    skill_level: str | None = Field(None, max_length=50)
+    availability: str | None = Field(None, max_length=500)
     is_active: bool | None = None
     role: RoleEnum | None = None
 
