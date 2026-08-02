@@ -223,6 +223,59 @@ def test_analyze_performance_with_assignment(
         db.close()
 
 
+def test_evaluator_cannot_analyze_performance(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+    evaluator_user: User,
+) -> None:
+    """Evaluators cannot upload reference audio for similarity analysis."""
+    reference_path = tmp_path / "reference.wav"
+    _write_wav(reference_path, 440.0)
+
+    with reference_path.open("rb") as reference_file:
+        reference_response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": "Reference", "description": "Reference for testing"},
+            files={"audio_file": ("reference.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Reference assignment",
+            "description": "Assignment backed by a reference track",
+            "reference_track_id": reference_response.json()["id"],
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assignment_id = assignment_response.json()["id"]
+
+    performance_path = tmp_path / "performance.wav"
+    _write_wav(performance_path, 440.0)
+
+    with performance_path.open("rb") as performance_file:
+        performance_response = client.post(
+            "/api/v1/performances/upload-audio",
+            data={"title": "My performance", "description": "Performance to score"},
+            files={"audio_file": ("performance.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(musician_user),
+        )
+
+    performance_id = performance_response.json()["id"]
+
+    with reference_path.open("rb") as blocked_reference_file:
+        analyze_response = client.post(
+            f"/api/v1/performances/{performance_id}/analyze-audio",
+            files={"reference_audio": ("reference.wav", blocked_reference_file, "audio/wav")},
+            headers=_auth_headers(evaluator_user),
+        )
+
+    assert analyze_response.status_code == 403
+    assert "only admins can analyze performances" in analyze_response.json()["detail"].lower()
+
+
 def test_musician_can_delete_uploaded_performance_and_related_evaluation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

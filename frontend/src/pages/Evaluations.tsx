@@ -69,6 +69,7 @@ interface Assignment {
 const Evaluations: React.FC = () => {
   const { user, isLoading } = useAuth();
   const isMusician = user?.role === "musician";
+  const isAdmin = user?.role === "admin";
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,7 @@ const Evaluations: React.FC = () => {
   const [deletingReferenceTrackId, setDeletingReferenceTrackId] = useState<number | null>(null);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<number | null>(null);
 
-  const isEvaluator = user?.role === "evaluator" || user?.role === "admin";
+  const canCreateEvaluations = user?.role === "evaluator" || user?.role === "admin";
   const assignmentById = useMemo(() => {
     return new Map(assignments.map((assignment) => [assignment.id, assignment]));
   }, [assignments]);
@@ -124,10 +125,10 @@ const Evaluations: React.FC = () => {
       try {
         const [evalResponse, perfResponse] = await Promise.all([
           api.get("/evaluations"),
-          isEvaluator ? api.get("/performances") : Promise.resolve({ data: [] }),
+          canCreateEvaluations ? api.get("/performances") : Promise.resolve({ data: [] }),
         ]);
         setEvaluations(evalResponse.data);
-        if (isEvaluator) {
+        if (isAdmin) {
           setPerformances(perfResponse.data);
           const [referenceResponse, assignmentResponse] = await Promise.all([
             api.get("/reference-tracks"),
@@ -136,6 +137,9 @@ const Evaluations: React.FC = () => {
           setReferenceTracks(referenceResponse.data);
           setAssignments(assignmentResponse.data);
         } else {
+          if (canCreateEvaluations) {
+            setPerformances(perfResponse.data);
+          }
           setReferenceTracks([]);
           setAssignments([]);
         }
@@ -150,7 +154,7 @@ const Evaluations: React.FC = () => {
     };
 
     fetchData();
-  }, [user, isEvaluator, isLoading]);
+  }, [user, canCreateEvaluations, isAdmin, isLoading]);
 
   const handleCreateEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -455,18 +459,18 @@ const Evaluations: React.FC = () => {
     const rightScore = right.score ?? -1;
     return rightScore - leftScore;
   });
-  const workflowSteps = isEvaluator
+  const workflowSteps = isAdmin
     ? [
         "1. Open your profile and confirm security settings and MFA.",
-        "2. Create or review reference tracks in the admin tools above.",
+        "2. Review reference tracks and assignments in the admin tools below.",
         "3. Choose a performance to score or analyze.",
-        "4. Save the evaluation or run the similarity analysis, then check the ranked list.",
+        "4. Save the evaluation or run similarity analysis, then check the ranked list.",
       ]
     : [
-        "1. Submit a performance in Assignments.",
-        "2. Return here to see your scored history.",
-        "3. Open the top result to review comments and score details.",
-        "4. Use the dashboard links to go back to your next task.",
+        "1. Open your profile and confirm security settings and MFA.",
+        "2. Choose a performance to score.",
+        "3. Save the evaluation, then check the ranked list.",
+        "4. Return to the dashboard when you're ready for the next item.",
       ];
 
   return (
@@ -495,7 +499,7 @@ const Evaluations: React.FC = () => {
           </div>
         </section>
 
-        {isEvaluator && (
+        {canCreateEvaluations && (
           <div className="px-4 sm:px-0 mb-6 flex justify-end">
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
@@ -505,7 +509,7 @@ const Evaluations: React.FC = () => {
             </button>
           </div>
         )}
-        {isEvaluator && (
+        {canCreateEvaluations && (
           <div className="px-4 py-6 sm:px-0 mb-6 space-y-6">
             {showCreateForm && (
               <div className="bg-white shadow rounded-md p-6">
@@ -581,93 +585,96 @@ const Evaluations: React.FC = () => {
               </div>
             )}
 
-            <div className="bg-white shadow rounded-md p-6">
-              <h2 className="text-lg font-semibold mb-4">
-                Auto-score a performance from a reference audio track
-              </h2>
-              <form onSubmit={handleAnalyzePerformance}>
-                <div className="mb-4">
-                  <label
-                    htmlFor="analysis-performance"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Performance
-                  </label>
-                  <select
-                    id="analysis-performance"
-                    value={selectedPerformance}
-                    onChange={(e) => setSelectedPerformance(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  >
-                    <option value={0}>Select a performance</option>
-                    {performances.map((perf) => (
-                      <option key={perf.id} value={perf.id}>
-                        {perf.title} - {perf.status}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="analysis-reference-file"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Reference audio
-                  </label>
-                  <input
-                    id="analysis-reference-file"
-                    type="file"
-                    accept={ACCEPTED_AUDIO_FILE_TYPES}
-                    onChange={(e) => {
-                      const nextFile = e.target.files?.[0] ?? null;
-                      setReferenceFile(nextFile);
-                      setAnalysisFormError(validateAudioFileSize(nextFile, "Reference audio file"));
-                    }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
-                  </p>
-                </div>
-                <button
-                  type="submit"
-                  disabled={analysisLoading}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {analysisLoading ? "Analyzing..." : "Run similarity analysis"}
-                </button>
-              </form>
-              {(analysisFormError || analysisError) && (
-                <p className="mt-4 text-sm text-red-600">
-                  {analysisFormError || analysisError}
-                </p>
-              )}
-              {analysisResult && (
-                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                  <p className="font-semibold">
-                    Similarity score: {analysisResult.score.toFixed(2)} / 100
-                  </p>
-                  <p className="mt-1">
-                    Reference: {analysisResult.reference_filename}
-                  </p>
-                  <div className="mt-2 grid gap-2 md:grid-cols-2">
-                    {Object.entries(analysisResult.breakdown).map(([label, value]) => (
-                      <div key={label} className="rounded bg-white px-3 py-2 shadow-sm">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">
-                          {label.replace(/_/g, " ")}
-                        </div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {(value * 100).toFixed(1)}%
-                        </div>
-                      </div>
-                    ))}
+              {isAdmin ? (
+              <div className="bg-white shadow rounded-md p-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  Auto-score a performance from a reference audio track
+                </h2>
+                <form onSubmit={handleAnalyzePerformance}>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="analysis-performance"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Performance
+                    </label>
+                    <select
+                      id="analysis-performance"
+                      value={selectedPerformance}
+                      onChange={(e) => setSelectedPerformance(Number(e.target.value))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                    >
+                      <option value={0}>Select a performance</option>
+                      {performances.map((perf) => (
+                        <option key={perf.id} value={perf.id}>
+                          {perf.title} - {perf.status}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
-              )}
-            </div>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="analysis-reference-file"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Reference audio
+                    </label>
+                    <input
+                      id="analysis-reference-file"
+                      type="file"
+                      accept={ACCEPTED_AUDIO_FILE_TYPES}
+                      onChange={(e) => {
+                        const nextFile = e.target.files?.[0] ?? null;
+                        setReferenceFile(nextFile);
+                        setAnalysisFormError(validateAudioFileSize(nextFile, "Reference audio file"));
+                      }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={analysisLoading}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {analysisLoading ? "Analyzing..." : "Run similarity analysis"}
+                  </button>
+                </form>
+                {(analysisFormError || analysisError) && (
+                  <p className="mt-4 text-sm text-red-600">
+                    {analysisFormError || analysisError}
+                  </p>
+                )}
+                {analysisResult && (
+                  <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                    <p className="font-semibold">
+                      Similarity score: {analysisResult.score.toFixed(2)} / 100
+                    </p>
+                    <p className="mt-1">
+                      Reference: {analysisResult.reference_filename}
+                    </p>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      {Object.entries(analysisResult.breakdown).map(([label, value]) => (
+                        <div key={label} className="rounded bg-white px-3 py-2 shadow-sm">
+                          <div className="text-xs uppercase tracking-wide text-gray-500">
+                            {label.replace(/_/g, " ")}
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {(value * 100).toFixed(1)}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
+            {isAdmin ? (
             <div className="bg-white shadow rounded-md p-6">
               <h2 className="text-lg font-semibold mb-4">Manage reusable reference tracks</h2>
               <form onSubmit={handleCreateReferenceTrack}>
@@ -716,7 +723,9 @@ const Evaluations: React.FC = () => {
                     onChange={(e) => {
                       const nextFile = e.target.files?.[0] ?? null;
                       setReferenceTrackFile(nextFile);
-                      setReferenceTrackError(validateAudioFileSize(nextFile, "Reference audio file"));
+                      setReferenceTrackError(
+                        validateAudioFileSize(nextFile, "Reference audio file"),
+                      );
                     }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                     required
@@ -765,7 +774,10 @@ const Evaluations: React.FC = () => {
                 </div>
               )}
             </div>
+            ) : null}
 
+            {isAdmin ? (
+              <>
             <div className="bg-white shadow rounded-md p-6">
               <h2 className="text-lg font-semibold mb-4">Create an assignment from a reference track</h2>
               <form onSubmit={handleCreateAssignment}>
@@ -929,7 +941,9 @@ const Evaluations: React.FC = () => {
                   </p>
                 </div>
               )}
-            </div>
+              </div>
+              </>
+            ) : null}
           </div>
         )}
 
@@ -988,7 +1002,7 @@ const Evaluations: React.FC = () => {
                           {new Date(evaluation.created_at).toLocaleDateString()}
                         </div>
                       </div>
-                       {isEvaluator ? (
+                       {canCreateEvaluations ? (
                          <button
                            type="button"
                            onClick={() => void handleDeleteEvaluation(evaluation.id)}

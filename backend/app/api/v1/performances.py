@@ -222,10 +222,10 @@ async def analyze_performance_audio(
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
     """Create a similarity evaluation by comparing a performance against a reference audio file."""
-    if current_user.role.name not in ["evaluator", "admin"]:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only evaluators and admins can analyze performances",
+            detail="Only admins can analyze performances",
         )
 
     performance = db.query(Performance).filter(Performance.id == performance_id).first()
