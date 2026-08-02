@@ -4,6 +4,7 @@ from datetime import timedelta
 from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.core.database import SessionLocal
 from app.core.config import settings
@@ -16,6 +17,7 @@ from app.core.security import (
 )
 from app.main import app
 from app.models.user import Permission, PermissionEnum, Role, RoleEnum, User
+from app.schemas.auth import UserUpdate
 
 client = TestClient(app)
 
@@ -169,6 +171,23 @@ class TestAuthentication:
 
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
+
+    def test_register_rejects_invalid_email(self):
+        """Test registration rejects an invalid email address."""
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "bademailuser",
+                "email": "not-an-email",
+                "password": "securepassword123",
+                "first_name": "Bad",
+                "last_name": "Email",
+                "role": "musician",
+            },
+        )
+
+        assert response.status_code == 422
+        assert "email" in response.json()["detail"][0]["loc"]
 
     def test_login_success(self, test_musician_user):
         """Test successful login."""
@@ -383,6 +402,11 @@ class TestUserManagement:
         assert response.json()["instrument_type"] == "Violin"
         assert response.json()["skill_level"] == "expert"
         assert response.json()["availability"] == "Weekends"
+
+    def test_user_update_schema_rejects_invalid_email(self):
+        """Test user update schema rejects an invalid email address."""
+        with pytest.raises(ValidationError):
+            UserUpdate.model_validate({"email": "invalid-email"})
 
     def test_change_password(self, test_musician_user):
         """Test changing password."""

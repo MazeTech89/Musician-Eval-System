@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import {
   getApiErrorMessage,
+  validateEmail,
   validateMinLength,
   validatePassword,
   validateRequired,
@@ -40,7 +41,7 @@ const Register: React.FC = () => {
     const nextFieldErrors: Record<string, string> = {};
 
     const usernameError = validateMinLength(formData.username, "Username", 3);
-    const emailError = validateRequired(formData.email, "Email");
+    const emailError = validateEmail(formData.email);
     const firstNameError = validateRequired(formData.first_name, "First name");
     const lastNameError = validateRequired(formData.last_name, "Last name");
     const passwordError = validatePassword(formData.password);
