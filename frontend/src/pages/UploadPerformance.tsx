@@ -37,20 +37,13 @@ const UploadPerformance: React.FC = () => {
   const [loadingPerformances, setLoadingPerformances] = useState(true);
   const [deletingPerformanceId, setDeletingPerformanceId] = useState<number | null>(null);
 
-  const canUpload = user?.role === "musician" || user?.role === "admin";
-  const workflowSteps = user?.role === "musician"
-    ? [
-        "1. Open Assignments and confirm the assignment you want to submit against.",
-        "2. Fill in a clear title and optional notes.",
-        "3. Choose your audio file and keep it within the size limit.",
-        "4. Submit, then review the result in Evaluations.",
-      ]
-    : [
-        "1. Use this page when you need to upload a performance directly.",
-        "2. Fill in the title and optional notes.",
-        "3. Attach the audio file and submit.",
-        "4. Review the uploaded item or return to the dashboard.",
-      ];
+  const canUpload = user?.role === "musician";
+  const workflowSteps = [
+    "1. Open Assignments and confirm the assignment you want to submit against.",
+    "2. Fill in a clear title and optional notes.",
+    "3. Choose your audio file and keep it within the size limit.",
+    "4. Submit, then review the result in Evaluations.",
+  ];
 
   useEffect(() => {
     if (!canUpload) {

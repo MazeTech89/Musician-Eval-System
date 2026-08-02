@@ -496,10 +496,10 @@ async def submit_performance_for_assignment(
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
     """Create a performance submission against an assignment and score it immediately."""
-    if current_user.role.name not in ["admin", "musician"]:
+    if current_user.role.name not in ["musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins and musicians can submit performances",
+            detail="Only musicians can submit performances",
         )
 
     assignment = (
@@ -585,12 +585,17 @@ async def submit_performance_for_assignment(
                 "reference_filename": assignment.reference_track.title,
                 "created_evaluation_id": evaluation.id,
                 "breakdown": {
+                    "pitch_accuracy": analysis.pitch_accuracy,
+                    "tempo_stability": analysis.tempo_stability,
+                    "rhythm_consistency": analysis.rhythm_consistency,
+                    "dynamics_similarity": analysis.dynamics_similarity,
+                    "timbre_similarity": analysis.timbre_similarity,
                     "duration_similarity": analysis.duration_similarity,
                     "energy_similarity": analysis.energy_similarity,
-                    "peak_similarity": analysis.peak_similarity,
-                    "zero_crossing_similarity": analysis.zero_crossing_similarity,
-                    "histogram_similarity": analysis.histogram_similarity,
-                    "delta_profile_similarity": analysis.delta_profile_similarity,
+                    "reference_tempo_bpm": analysis.reference_tempo_bpm,
+                    "candidate_tempo_bpm": analysis.candidate_tempo_bpm,
+                    "reference_pitch_hz": analysis.reference_pitch_hz,
+                    "candidate_pitch_hz": analysis.candidate_pitch_hz,
                 },
             }
             if analysis is not None
@@ -655,11 +660,16 @@ async def analyze_performance_with_assignment(
         "reference_filename": assignment.reference_track.title,
         "created_evaluation_id": evaluation.id,
         "breakdown": {
+            "pitch_accuracy": analysis.pitch_accuracy,
+            "tempo_stability": analysis.tempo_stability,
+            "rhythm_consistency": analysis.rhythm_consistency,
+            "dynamics_similarity": analysis.dynamics_similarity,
+            "timbre_similarity": analysis.timbre_similarity,
             "duration_similarity": analysis.duration_similarity,
             "energy_similarity": analysis.energy_similarity,
-            "peak_similarity": analysis.peak_similarity,
-            "zero_crossing_similarity": analysis.zero_crossing_similarity,
-            "histogram_similarity": analysis.histogram_similarity,
-            "delta_profile_similarity": analysis.delta_profile_similarity,
+            "reference_tempo_bpm": analysis.reference_tempo_bpm,
+            "candidate_tempo_bpm": analysis.candidate_tempo_bpm,
+            "reference_pitch_hz": analysis.reference_pitch_hz,
+            "candidate_pitch_hz": analysis.candidate_pitch_hz,
         },
     }
