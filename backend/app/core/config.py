@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
 
     # Upload storage
-    use_local_upload_storage: bool = True
+    use_local_upload_storage: bool = False
     local_upload_dir: str = "uploads"
     max_audio_upload_size_mb: int = 300
 
