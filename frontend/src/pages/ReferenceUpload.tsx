@@ -1,4 +1,14 @@
 import React, { useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  FileAudio2,
+  Loader2,
+  Music4,
+  RefreshCw,
+  Trash2,
+  Type,
+  Upload,
+} from "lucide-react";
 import api from "../api/axios";
 import AppHeader from "../components/AppHeader";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
@@ -36,6 +46,8 @@ const ReferenceUpload: React.FC = () => {
   const [rtError, setRtError] = useState<string | null>(null);
   const [rtSubmitting, setRtSubmitting] = useState(false);
   const [rtFileError, setRtFileError] = useState<string | null>(null);
+  const [replacementFiles, setReplacementFiles] = useState<Record<number, File | null>>({});
+  const [replacingRtId, setReplacingRtId] = useState<number | null>(null);
 
   // Assignment form
   const [aTitle, setATitle] = useState("");
@@ -146,6 +158,41 @@ const ReferenceUpload: React.FC = () => {
     }
   };
 
+  const handleReplaceReferenceTrack = async (referenceTrackId: number) => {
+    const replacementFile = replacementFiles[referenceTrackId];
+    if (!replacementFile) {
+      setError("Choose a replacement audio file first.");
+      return;
+    }
+
+    const fileError = validateAudioFileSize(replacementFile, "Reference audio");
+    if (fileError) {
+      setError(fileError);
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setReplacingRtId(referenceTrackId);
+    try {
+      const fd = new FormData();
+      fd.append("audio_file", replacementFile);
+      await api.put(`/reference-tracks/${referenceTrackId}`, fd);
+      const [referenceResponse, assignmentResponse] = await Promise.all([
+        api.get("/reference-tracks"),
+        api.get("/assignments"),
+      ]);
+      setReferenceTracks(referenceResponse.data);
+      setAssignments(assignmentResponse.data);
+      setReplacementFiles((current) => ({ ...current, [referenceTrackId]: null }));
+      setSuccess("Reference track audio replaced successfully.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to replace reference track audio."));
+    } finally {
+      setReplacingRtId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
       <AppHeader title="Musician Evaluation System" subtitle="Reference Upload" />
@@ -156,8 +203,11 @@ const ReferenceUpload: React.FC = () => {
           className="rounded-2xl p-8 text-white relative overflow-hidden"
           style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)" }}
         >
-          <span className="text-5xl absolute right-8 top-6 opacity-20 pointer-events-none select-none">🎼</span>
-          <h2 className="text-3xl font-bold mb-2 font-display">Reference Audio Upload</h2>
+          <Music4 className="absolute right-8 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
+          <div className="flex items-center gap-3">
+            <FileAudio2 className="h-8 w-8 text-amber-300" aria-hidden="true" />
+            <h2 className="text-3xl font-bold font-display">Reference Audio Upload</h2>
+          </div>
           <p className="text-indigo-200 max-w-xl">
             Upload a reference recording for each task. Musicians' submissions will be automatically
             scored by the AI engine against this audio.
@@ -167,7 +217,7 @@ const ReferenceUpload: React.FC = () => {
         {/* Global messages */}
         {success && (
           <div className="rounded-xl bg-green-50 border border-green-200 px-5 py-3 text-green-700 text-sm flex items-center gap-2">
-            <span>✓</span> {success}
+            <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {success}
           </div>
         )}
         {error && (
@@ -177,7 +227,7 @@ const ReferenceUpload: React.FC = () => {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="wave-bars">{[1,2,3,4,5,6].map((i) => <span key={i} />)}</div>
-            <span className="ml-4 text-gray-500">Loading…</span>
+            <span className="ml-4 text-gray-500">Loading...</span>
           </div>
         ) : (
           <div className="grid gap-8 lg:grid-cols-2">
@@ -185,12 +235,18 @@ const ReferenceUpload: React.FC = () => {
             <div className="space-y-6">
               {/* Upload form */}
               <div className="bg-white rounded-2xl shadow-md p-6">
-                <h3 className="text-lg font-bold mb-4" style={{ color: "var(--color-primary)" }}>
-                  🎵 Upload Reference Track
-                </h3>
+                <div className="mb-4 flex items-center gap-2">
+                  <Upload className="h-5 w-5 text-amber-600" aria-hidden="true" />
+                  <h3 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
+                    Upload Reference Track
+                  </h3>
+                </div>
                 <form onSubmit={handleUploadReferenceTrack} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                    <label className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Type className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                      <span>Title *</span>
+                    </label>
                     <input
                       type="text"
                       value={rtTitle}
@@ -231,7 +287,7 @@ const ReferenceUpload: React.FC = () => {
                     className="w-full rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     style={{ backgroundColor: "var(--color-accent)" }}
                   >
-                    {rtSubmitting ? "Uploading…" : "Upload Reference Track"}
+                    {rtSubmitting ? "Uploading..." : "Upload Reference Track"}
                   </button>
                 </form>
               </div>
@@ -246,19 +302,52 @@ const ReferenceUpload: React.FC = () => {
                 ) : (
                   <ul className="space-y-3">
                     {referenceTracks.map((rt) => (
-                      <li key={rt.id} className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 p-3">
-                        <div>
-                          <p className="font-medium text-sm" style={{ color: "var(--color-primary)" }}>{rt.title}</p>
-                          {rt.description && <p className="text-xs text-gray-400 mt-0.5">{rt.description}</p>}
+                      <li key={rt.id} className="rounded-lg border border-gray-100 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-sm" style={{ color: "var(--color-primary)" }}>{rt.title}</p>
+                            {rt.description && <p className="text-xs text-gray-400 mt-0.5">{rt.description}</p>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReferenceTrack(rt.id)}
+                            disabled={deletingRtId === rt.id}
+                            className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            <span>{deletingRtId === rt.id ? "Deleting..." : "Delete"}</span>
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReferenceTrack(rt.id)}
-                          disabled={deletingRtId === rt.id}
-                          className="text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-50"
-                        >
-                          {deletingRtId === rt.id ? "Deleting…" : "Delete"}
-                        </button>
+                        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                          <div>
+                            <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Replace audio file
+                            </label>
+                            <input
+                              type="file"
+                              accept={ACCEPTED_AUDIO_FILE_TYPES}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0] ?? null;
+                                setReplacementFiles((current) => ({ ...current, [rt.id]: file }));
+                              }}
+                              className="block w-full text-sm text-gray-500"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void handleReplaceReferenceTrack(rt.id)}
+                            disabled={replacingRtId === rt.id}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                            style={{ backgroundColor: "var(--color-accent)" }}
+                          >
+                            {replacingRtId === rt.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            <span>{replacingRtId === rt.id ? "Replacing..." : "Replace audio"}</span>
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -270,15 +359,21 @@ const ReferenceUpload: React.FC = () => {
             <div className="space-y-6">
               {/* Create task form */}
               <div className="bg-white rounded-2xl shadow-md p-6">
-                <h3 className="text-lg font-bold mb-4" style={{ color: "var(--color-primary)" }}>
-                  🎯 Create a Task
-                </h3>
+                <div className="mb-4 flex items-center gap-2">
+                  <FileAudio2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
+                  <h3 className="text-lg font-bold" style={{ color: "var(--color-primary)" }}>
+                    Create a Task
+                  </h3>
+                </div>
                 <p className="text-sm text-gray-500 mb-4">
                   Link a reference track to create a task. Musicians will submit their recordings against it.
                 </p>
                 <form onSubmit={handleCreateAssignment} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Task title *</label>
+                    <label className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Type className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                      <span>Task title *</span>
+                    </label>
                     <input
                       type="text"
                       value={aTitle}
@@ -307,7 +402,7 @@ const ReferenceUpload: React.FC = () => {
                         onChange={(e) => setARefTrackId(Number(e.target.value))}
                         className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                       >
-                        <option value={0}>Select reference track…</option>
+                        <option value={0}>Select reference track...</option>
                         {referenceTracks.map((rt) => (
                           <option key={rt.id} value={rt.id}>{rt.title}</option>
                         ))}
@@ -321,7 +416,7 @@ const ReferenceUpload: React.FC = () => {
                     className="w-full rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                     style={{ backgroundColor: "var(--color-accent)" }}
                   >
-                    {aSubmitting ? "Creating…" : "Create Task"}
+                    {aSubmitting ? "Creating..." : "Create Task"}
                   </button>
                 </form>
               </div>
@@ -340,7 +435,7 @@ const ReferenceUpload: React.FC = () => {
                         <div>
                           <p className="font-medium text-sm" style={{ color: "var(--color-primary)" }}>{a.title}</p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            Reference: {a.reference_track?.title ?? "—"}
+                            Reference: {a.reference_track?.title ?? "Not set"}
                           </p>
                           {a.description && <p className="text-xs text-gray-400">{a.description}</p>}
                         </div>
@@ -348,9 +443,10 @@ const ReferenceUpload: React.FC = () => {
                           type="button"
                           onClick={() => handleDeleteAssignment(a.id)}
                           disabled={deletingAId === a.id}
-                          className="text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-50"
                         >
-                          {deletingAId === a.id ? "Deleting…" : "Delete"}
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>{deletingAId === a.id ? "Deleting..." : "Delete"}</span>
                         </button>
                       </li>
                     ))}

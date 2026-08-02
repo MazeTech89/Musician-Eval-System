@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Music4, Trophy } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import api from "../api/axios";
 
@@ -50,10 +51,13 @@ const TaskRecommendations: React.FC = () => {
           className="rounded-2xl p-8 mb-8 text-white relative overflow-hidden"
           style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)" }}
         >
-          <span className="text-5xl absolute right-8 top-6 opacity-20 pointer-events-none select-none">🏆</span>
-          <h2 className="text-3xl font-bold mb-2 font-display">Task Rankings</h2>
+          <Trophy className="absolute right-8 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
+          <div className="flex items-center gap-3">
+            <Trophy className="h-8 w-8 text-amber-300" aria-hidden="true" />
+            <h2 className="text-3xl font-bold font-display">Task Rankings</h2>
+          </div>
           <p className="text-indigo-200 max-w-xl">
-            AI-scored recommendations — the best musician for each active task based on performance scores.
+            AI-scored recommendations for the best musician on each active task.
           </p>
         </div>
 
@@ -64,7 +68,7 @@ const TaskRecommendations: React.FC = () => {
                 <span key={i} />
               ))}
             </div>
-            <span className="ml-4 text-gray-500">Loading rankings…</span>
+            <span className="ml-4 text-gray-500">Loading rankings...</span>
           </div>
         )}
 
@@ -74,7 +78,7 @@ const TaskRecommendations: React.FC = () => {
 
         {!loading && !error && recommendations.length === 0 && (
           <div className="bg-white rounded-2xl shadow p-10 text-center">
-            <p className="text-5xl mb-4">🎵</p>
+            <Music4 className="mx-auto mb-4 h-12 w-12 text-amber-600" aria-hidden="true" />
             <p className="text-gray-500">
               No scored submissions yet. Once musicians submit performances and the AI scores them, rankings will appear here.
             </p>
@@ -109,7 +113,7 @@ const TaskRecommendations: React.FC = () => {
                       ) : null}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {rec.reference_track_title ?? <span className="text-gray-300">—</span>}
+                      {rec.reference_track_title ?? <span className="text-gray-300">Not set</span>}
                     </td>
                     <td className="px-6 py-4 text-sm text-center font-medium" style={{ color: "var(--color-primary)" }}>
                       {rec.total_submissions}
@@ -129,10 +133,10 @@ const TaskRecommendations: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm capitalize text-gray-600">
-                      {rec.best_musician?.instrument_type ?? <span className="text-gray-300">—</span>}
+                      {rec.best_musician?.instrument_type ?? <span className="text-gray-300">Not set</span>}
                     </td>
                     <td className="px-6 py-4 text-sm capitalize text-gray-600">
-                      {rec.best_musician?.skill_level ?? <span className="text-gray-300">—</span>}
+                      {rec.best_musician?.skill_level ?? <span className="text-gray-300">Not set</span>}
                     </td>
                     <td className="px-6 py-4">
                       {rec.best_musician ? (
@@ -140,7 +144,7 @@ const TaskRecommendations: React.FC = () => {
                           {Math.round(rec.best_musician.score)}
                         </span>
                       ) : (
-                        <span className="text-gray-300">—</span>
+                        <span className="text-gray-300">Not set</span>
                       )}
                     </td>
                   </tr>

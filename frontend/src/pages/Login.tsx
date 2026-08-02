@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Music4 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
@@ -52,7 +53,9 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Brand header */}
         <div className="text-center">
-          <div className="text-6xl mb-3">🎵</div>
+          <div className="mb-3 flex justify-center">
+            <Music4 className="h-14 w-14 text-amber-600" aria-hidden="true" />
+          </div>
           <h1 className="text-3xl font-bold font-display" style={{ color: "var(--color-primary)" }}>
             Musician Evaluation System
           </h1>
@@ -136,7 +139,7 @@ const Login: React.FC = () => {
               className="w-full flex justify-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition disabled:opacity-50"
               style={{ backgroundColor: isLoading ? "#b45309" : "var(--color-accent)" }}
             >
-              {isLoading ? "Signing in…" : "Sign in"}
+              {isLoading ? "Signing in..." : "Sign in"}
             </button>
 
             <div className="flex justify-between text-sm">

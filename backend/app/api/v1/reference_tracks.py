@@ -552,7 +552,7 @@ async def submit_performance_for_assignment(
         fallback_message = (
             "Upload succeeded, but automatic scoring is pending because the "
             "assignment reference audio file could not be found. Ask an admin "
-            "to re-upload the reference track."
+            "to replace the reference audio in Reference Upload, then re-run scoring."
         )
         evaluation = Evaluation(
             performance_id=performance.id,
