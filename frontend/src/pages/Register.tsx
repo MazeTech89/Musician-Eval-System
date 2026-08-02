@@ -258,7 +258,6 @@ const Register: React.FC = () => {
                 onChange={handleChange}
               >
                 <option value="musician">Musician</option>
-                <option value="evaluator">Evaluator</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

@@ -106,7 +106,7 @@ const Evaluations: React.FC = () => {
   const [deletingReferenceTrackId, setDeletingReferenceTrackId] = useState<number | null>(null);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<number | null>(null);
 
-  const canCreateEvaluations = user?.role === "evaluator" || user?.role === "admin";
+  const canCreateEvaluations = user?.role === "admin";
   const assignmentById = useMemo(() => {
     return new Map(assignments.map((assignment) => [assignment.id, assignment]));
   }, [assignments]);

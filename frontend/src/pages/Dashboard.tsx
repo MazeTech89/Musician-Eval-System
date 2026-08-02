@@ -8,182 +8,126 @@ type JourneyAction = {
   description: string;
   to: string;
   cta: string;
+  icon: string;
 };
 
 type JourneyPlan = {
   intro: string;
-  steps: string[];
   actions: JourneyAction[];
 };
 
 const journeyByRole: Record<string, JourneyPlan> = {
   admin: {
-    intro: "Admin journey: profile first, then create assignments and review results. Start with the highlighted card below.",
-    steps: [
-      "1. Open your profile to confirm security settings and MFA.",
-      "2. Go to the Admin Panel to manage users, roles, and account access.",
-      "3. Use Evaluations to create reference tracks, create assignments, and review submissions.",
-      "4. Use Assignments to inspect active assignment activity and scoring history.",
-    ],
+    intro: "Manage your musicians, create performance tasks, upload reference audio, and view AI-generated rankings.",
     actions: [
-      {
-        title: "Admin Panel",
-        description: "Manage users and system access",
-        to: "/admin",
-        cta: "Open Admin Panel",
-      },
-      {
-        title: "Evaluations",
-        description: "Create reference tracks, assignments, and reviews",
-        to: "/evaluations",
-        cta: "Go to Evaluations",
-      },
-      {
-        title: "Assignments",
-        description: "Review active assignments and submissions",
-        to: "/assignments",
-        cta: "Open Assignments",
-      },
-      {
-        title: "Profile",
-        description: "Update password, MFA, and account details",
-        to: "/profile",
-        cta: "View Profile",
-      },
-    ],
-  },
-  evaluator: {
-    intro: "Evaluator journey: profile first, then score performances and track your work. Start with the highlighted card below.",
-    steps: [
-      "1. Open your profile to confirm security settings and MFA.",
-      "2. Go to Evaluations to review performances and create new evaluations.",
-      "3. Use Assignments to inspect reference-backed workflows and submission history.",
-      "4. Return to your dashboard to continue reviewing the next item.",
-    ],
-    actions: [
-      {
-        title: "Evaluations",
-        description: "Review performances and create evaluations",
-        to: "/evaluations",
-        cta: "Start Evaluating",
-      },
-      {
-        title: "Assignments",
-        description: "Inspect assignment-backed submissions and reference tracks",
-        to: "/assignments",
-        cta: "Open Assignments",
-      },
-      {
-        title: "Profile",
-        description: "Update password, MFA, and account details",
-        to: "/profile",
-        cta: "View Profile",
-      },
+      { title: "User Management", description: "Manage user accounts and assign roles", to: "/admin", cta: "Open Admin Panel", icon: "??" },
+      { title: "Evaluations", description: "Create reference tracks and review submissions", to: "/evaluations", cta: "Go to Evaluations", icon: "??" },
+      { title: "Tasks & Assignments", description: "Create tasks and upload reference audio per task", to: "/assignments", cta: "Open Tasks", icon: "??" },
+      { title: "Rankings", description: "See the best musician per task based on AI scores", to: "/recommendations", cta: "View Rankings", icon: "??" },
+      { title: "Profile", description: "Update your account details and security settings", to: "/profile", cta: "View Profile", icon: "??" },
     ],
   },
   musician: {
-    intro: "Musician journey: profile first, then find your assignment, upload, and review feedback. Start with the highlighted card below.",
-    steps: [
-      "1. Open your profile to confirm security settings and MFA.",
-      "2. Go to Assignments to see what you need to record and submit.",
-      "3. Upload your performance from the assignment flow or the direct upload page.",
-      "4. Check Evaluations after scoring to review your feedback and history.",
-    ],
+    intro: "Find your assigned tasks, submit your performances, and track your progress and scores.",
     actions: [
-      {
-        title: "Assignments",
-        description: "View active assignments and submit performances",
-        to: "/assignments",
-        cta: "Open Assignments",
-      },
-      {
-        title: "Upload Performance",
-        description: "Direct upload shortcut for a performance file",
-        to: "/performances/upload",
-        cta: "Upload Now",
-      },
-      {
-        title: "Evaluations",
-        description: "View feedback and scoring history",
-        to: "/evaluations",
-        cta: "View Evaluations",
-      },
-      {
-        title: "Profile",
-        description: "Update password, MFA, and account details",
-        to: "/profile",
-        cta: "View Profile",
-      },
+      { title: "My Tasks", description: "View active assignments and submit performances", to: "/assignments", cta: "Open Tasks", icon: "??" },
+      { title: "Upload Performance", description: "Upload your recording to be scored by the AI", to: "/performances/upload", cta: "Upload Now", icon: "??" },
+      { title: "My Scores", description: "View your evaluation history and feedback breakdown", to: "/evaluations", cta: "View Scores", icon: "??" },
+      { title: "Profile", description: "Update your instrument, skill level, and availability", to: "/profile", cta: "Edit Profile", icon: "??" },
     ],
   },
 };
+
+const notePositions = [
+  { top: "8%", left: "3%", char: "?" },
+  { top: "20%", left: "90%", char: "?" },
+  { top: "60%", left: "95%", char: "?" },
+  { top: "80%", left: "2%", char: "??" },
+];
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const journey = journeyByRole[user?.role || ""] || {
     intro: "Welcome to the Musician Evaluation System.",
-    steps: [],
     actions: [],
   };
-  const primaryAction = journey.actions[0];
-  const secondaryActions = journey.actions.slice(1);
+  const [primary, ...secondary] = journey.actions;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Musician Evaluation System" subtitle={`Welcome, ${user?.first_name}!`} />
+    <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
+      {notePositions.map((n) => (
+        <span key={n.char} className="note-float" style={{ top: n.top, left: n.left }}>
+          {n.char}
+        </span>
+      ))}
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0 space-y-6">
-          <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h2>
-            <p className="text-gray-600">{journey.intro}</p>
-          </section>
+      <AppHeader title="Musician Evaluation System" subtitle={`Welcome back, ${user?.first_name || user?.username}!`} />
 
-          {journey.steps.length > 0 ? (
-            <section className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">How to use the app</h3>
-              <ol className="space-y-3">
-                {journey.steps.map((step, index) => (
-                  <li key={step} className="flex gap-3">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
-                      {index + 1}
-                    </span>
-                    <span className="pt-1 text-gray-700">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          ) : null}
-
-          <section>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Next actions</h3>
-            {primaryAction ? (
-              <div className="bg-white p-6 rounded-lg shadow border border-indigo-200 mb-6">
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-2">
-                  Start here
-                </p>
-                <h4 className="text-lg font-semibold mb-2 text-gray-900">{primaryAction.title}</h4>
-                <p className="text-gray-600 mb-4">{primaryAction.description}</p>
-                <Link to={primaryAction.to} className="text-indigo-600 hover:text-indigo-500">
-                  {primaryAction.cta}
-                </Link>
-              </div>
-            ) : null}
-            {secondaryActions.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {secondaryActions.map((action) => (
-                  <div key={action.title} className="bg-white p-6 rounded-lg shadow">
-                    <h4 className="text-lg font-semibold mb-2 text-gray-900">{action.title}</h4>
-                    <p className="text-gray-600 mb-4">{action.description}</p>
-                    <Link to={action.to} className="text-indigo-600 hover:text-indigo-500">
-                      {action.cta}
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </section>
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
+        {/* Hero card */}
+        <div
+          className="rounded-2xl p-8 mb-8 text-white relative overflow-hidden"
+          style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)" }}
+        >
+          <span className="text-5xl absolute right-8 top-6 opacity-20 pointer-events-none select-none">??</span>
+          <h2 className="text-3xl font-bold mb-2 font-display">Dashboard</h2>
+          <p className="text-indigo-200 max-w-xl">{journey.intro}</p>
         </div>
+
+        {/* Primary action */}
+        {primary ? (
+          <div className="mb-8">
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--color-accent)" }}>
+              ? Start here
+            </p>
+            <Link
+              to={primary.to}
+              className="music-card flex items-start gap-5 bg-white rounded-2xl p-6 shadow-md border-l-4"
+              style={{ borderLeftColor: "var(--color-accent)" }}
+            >
+              <span className="text-4xl">{primary.icon}</span>
+              <div>
+                <h3 className="text-xl font-bold mb-1" style={{ color: "var(--color-primary)" }}>
+                  {primary.title}
+                </h3>
+                <p className="text-gray-500 mb-3">{primary.description}</p>
+                <span
+                  className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold text-white"
+                  style={{ backgroundColor: "var(--color-accent)" }}
+                >
+                  {primary.cta} ?
+                </span>
+              </div>
+            </Link>
+          </div>
+        ) : null}
+
+        {/* Secondary actions */}
+        {secondary.length > 0 ? (
+          <>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3 text-gray-400">More actions</p>
+            <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              {secondary.map((action) => (
+                <Link
+                  key={action.to}
+                  to={action.to}
+                  className="music-card flex items-start gap-4 bg-white rounded-2xl p-5 shadow-sm hover:shadow-md"
+                >
+                  <span className="text-3xl mt-0.5">{action.icon}</span>
+                  <div>
+                    <h4 className="font-semibold mb-1" style={{ color: "var(--color-primary)" }}>
+                      {action.title}
+                    </h4>
+                    <p className="text-sm text-gray-500 mb-2">{action.description}</p>
+                    <span className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>
+                      {action.cta} ?
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : null}
       </main>
     </div>
   );

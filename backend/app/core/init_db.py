@@ -16,10 +16,7 @@ def init_roles_and_permissions(db: Session) -> None:
     # Define role descriptions
     role_descriptions = {
         RoleEnum.ADMIN: "Administrator with full system access",
-        RoleEnum.EVALUATOR: "Evaluator who can submit performance evaluations",
         RoleEnum.MUSICIAN: "Musician who can submit performances for evaluation",
-        RoleEnum.MODERATOR: "Moderator who reviews evaluations for consistency",
-        RoleEnum.ANALYST: "Analyst with read-only access to reports and analytics",
     }
 
     # Define permissions per role
@@ -43,28 +40,11 @@ def init_roles_and_permissions(db: Session) -> None:
             PermissionEnum.REPORT_EXPORT,
             PermissionEnum.AUDIT_READ,
         ],
-        RoleEnum.EVALUATOR: [
-            PermissionEnum.PERFORMANCE_READ,
-            PermissionEnum.EVALUATION_CREATE,
-            PermissionEnum.EVALUATION_READ,
-            PermissionEnum.EVALUATION_UPDATE,
-            PermissionEnum.REPORT_READ,
-        ],
         RoleEnum.MUSICIAN: [
             PermissionEnum.PERFORMANCE_CREATE,
             PermissionEnum.PERFORMANCE_READ,
             PermissionEnum.PERFORMANCE_UPDATE,
             PermissionEnum.EVALUATION_READ,
-        ],
-        RoleEnum.MODERATOR: [
-            PermissionEnum.PERFORMANCE_READ,
-            PermissionEnum.EVALUATION_READ,
-            PermissionEnum.REPORT_READ,
-            PermissionEnum.REPORT_EXPORT,
-        ],
-        RoleEnum.ANALYST: [
-            PermissionEnum.REPORT_READ,
-            PermissionEnum.REPORT_EXPORT,
         ],
     }
 

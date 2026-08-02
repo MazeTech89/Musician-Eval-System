@@ -11,13 +11,14 @@ import Evaluations from "./pages/Evaluations";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
 import UploadPerformance from "./pages/UploadPerformance";
+import TaskRecommendations from "./pages/TaskRecommendations";
 import "./App.css";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen" style={{ backgroundColor: "var(--bg-page)" }}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -68,6 +69,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminPanel />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/recommendations"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <TaskRecommendations />
                 </ProtectedRoute>
               }
             />

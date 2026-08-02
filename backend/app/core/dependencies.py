@@ -158,34 +158,5 @@ def require_permission(*permissions: str):
 async def get_current_admin(
     current_user: User = Depends(require_role(RoleEnum.ADMIN)),
 ) -> User:
-    """Dependency for admin-only endpoints.
-
-    Args:
-        current_user: Current user (already validated as admin)
-
-    Returns:
-        Current user
-    """
-    return current_user
-
-
-async def get_current_evaluator_or_admin(
-    current_user: User = Depends(get_current_active_user),
-) -> User:
-    """Dependency for evaluator and admin endpoints.
-
-    Args:
-        current_user: Current user
-
-    Returns:
-        Current user if has required role
-
-    Raises:
-        HTTPException: If user is not evaluator or admin
-    """
-    if current_user.role.name not in [RoleEnum.EVALUATOR, RoleEnum.ADMIN]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only evaluators and admins can access this resource",
-        )
+    """Dependency for admin-only endpoints."""
     return current_user

@@ -22,7 +22,7 @@ interface UserDraft {
   is_active: boolean;
 }
 
-const ROLE_OPTIONS = ["admin", "evaluator", "musician", "moderator", "analyst"];
+const ROLE_OPTIONS = ["admin", "musician"];
 
 const AdminPanel: React.FC = () => {
   const { user, isLoading } = useAuth();

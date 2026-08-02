@@ -45,15 +45,25 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div
+      className="min-h-screen flex items-center justify-center staff-bg py-12 px-4 sm:px-6 lg:px-8"
+      style={{ backgroundColor: "var(--bg-page)" }}
+    >
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        {/* Brand header */}
+        <div className="text-center">
+          <div className="text-6xl mb-3">🎵</div>
+          <h1 className="text-3xl font-bold font-display" style={{ color: "var(--color-primary)" }}>
+            Musician Evaluation System
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">AI-powered performance scoring</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-lg p-8">
+          <h2 className="text-xl font-semibold mb-6 text-center" style={{ color: "var(--color-primary)" }}>
             Sign in to your account
           </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="login-username" className="block text-sm font-medium text-gray-700 mb-1">
                 Username
@@ -64,7 +74,8 @@ const Login: React.FC = () => {
                 type="text"
                 required
                 autoComplete="username"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 sm:text-sm"
+                style={{ "--tw-ring-color": "var(--color-accent)" } as React.CSSProperties}
                 placeholder="Username"
                 value={username}
                 onChange={(e) => {
@@ -86,7 +97,7 @@ const Login: React.FC = () => {
                 type="password"
                 required
                 autoComplete="current-password"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => {
@@ -100,7 +111,7 @@ const Login: React.FC = () => {
             </div>
             <div>
               <label htmlFor="login-totp" className="block text-sm font-medium text-gray-700 mb-1">
-                MFA code (optional)
+                MFA code <span className="text-gray-400">(optional)</span>
               </label>
               <input
                 id="login-totp"
@@ -108,43 +119,36 @@ const Login: React.FC = () => {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 sm:text-sm"
                 placeholder="6-digit code"
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
               />
             </div>
-          </div>
 
-          {error && (
-            <div className="text-red-600 text-sm text-center">{error}</div>
-          )}
+            {error && (
+              <div className="text-red-600 text-sm text-center bg-red-50 rounded-lg px-4 py-2">{error}</div>
+            )}
 
-          <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full flex justify-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition disabled:opacity-50"
+              style={{ backgroundColor: isLoading ? "#b45309" : "var(--color-accent)" }}
             >
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Signing in…" : "Sign in"}
             </button>
-          </div>
 
-          <div className="text-center">
-            <Link to="/forgot-password" className="text-indigo-600 hover:text-indigo-500">
-              Forgot your password?
-            </Link>
-          </div>
-
-          <div className="text-center">
-            <Link
-              to="/register"
-              className="text-indigo-600 hover:text-indigo-500"
-            >
-              Don't have an account? Register
-            </Link>
-          </div>
-        </form>
+            <div className="flex justify-between text-sm">
+              <Link to="/forgot-password" className="hover:underline" style={{ color: "var(--color-accent)" }}>
+                Forgot password?
+              </Link>
+              <Link to="/register" className="hover:underline" style={{ color: "var(--color-accent)" }}>
+                Create account
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
