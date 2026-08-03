@@ -6,7 +6,7 @@ import jwt
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from fastapi.responses import Response
-from jwt import InvalidTokenError
+from jwt.exceptions import InvalidTokenError
 
 from app.core.config import settings
 from app.schemas.auth import TokenData

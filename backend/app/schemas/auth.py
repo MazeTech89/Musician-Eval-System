@@ -62,7 +62,7 @@ class UserResponse(UserBase):
 
     @field_validator("role", mode="before")
     @classmethod
-    def validate_role(cls, value):
+    def validate_role(cls, value):  # noqa: N805 - Pydantic validator classmethod-style signature
         if value is None:
             return None
         if hasattr(value, "name"):
