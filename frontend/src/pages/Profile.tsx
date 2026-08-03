@@ -14,6 +14,7 @@ const SKILL_LEVEL_OPTIONS = [
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
+  // Editable profile fields used by task recommendation and assignment workflows.
   const [profileForm, setProfileForm] = useState({
     first_name: "",
     last_name: "",
@@ -35,6 +36,7 @@ const Profile: React.FC = () => {
   const [securityMessage, setSecurityMessage] = useState("");
 
   useEffect(() => {
+    // Keep local form state synchronized with the authenticated user payload.
     if (!user) {
       return;
     }
@@ -55,6 +57,7 @@ const Profile: React.FC = () => {
   }
 
   const resetMessages = () => {
+    // Centralized reset avoids stale security notices between MFA actions.
     setSecurityError("");
     setSecurityMessage("");
   };
@@ -69,6 +72,7 @@ const Profile: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
+    // Validate required identity fields and email format before persistence.
     const emailError = validateEmail(profileForm.email);
     const firstNameError = validateRequired(profileForm.first_name, "First name");
     const lastNameError = validateRequired(profileForm.last_name, "Last name");
@@ -82,6 +86,7 @@ const Profile: React.FC = () => {
     setProfileMessage("");
     setIsSavingProfile(true);
     try {
+      // Optional profile fields are normalized to null for consistent backend storage.
       await api.put("/auth/me", {
         email: profileForm.email,
         first_name: profileForm.first_name,
@@ -100,6 +105,7 @@ const Profile: React.FC = () => {
   };
 
   const handleSetupMfa = async () => {
+    // Step 1 of MFA: generate secret + OTP URL for authenticator enrollment.
     resetMessages();
     setIsSubmitting(true);
     try {
@@ -115,6 +121,7 @@ const Profile: React.FC = () => {
   };
 
   const handleEnableMfa = async () => {
+    // Step 2 of MFA: verify TOTP code before enabling account protection.
     const codeError = validateRequired(enableCode, "MFA code");
     if (codeError) {
       setSecurityError(codeError);
@@ -138,6 +145,7 @@ const Profile: React.FC = () => {
   };
 
   const handleDisableMfa = async () => {
+    // Disable MFA requires a fresh code to prevent unauthorized deactivation.
     const codeError = validateRequired(disableCode, "MFA code");
     if (codeError) {
       setSecurityError(codeError);

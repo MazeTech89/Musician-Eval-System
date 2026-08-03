@@ -188,16 +188,13 @@ const MusicianResults: React.FC = () => {
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Hero */}
-        <div
-          className="rounded-2xl p-8 mb-8 text-white relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)" }}
-        >
-          <BarChart3 className="absolute right-8 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
+        <div className="perform-pro-hero rounded-2xl p-8 mb-8 text-white">
+          <BarChart3 className="absolute right-24 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
           <div className="flex items-center gap-3">
-            <BarChart3 className="h-8 w-8 text-amber-300" aria-hidden="true" />
+            <BarChart3 className="h-8 w-8 text-rose-100" aria-hidden="true" />
             <h2 className="text-3xl font-bold font-display">Musician Performance Results</h2>
           </div>
-          <p className="text-indigo-200 max-w-xl">
+          <p className="max-w-xl text-cyan-100">
             AI-generated scores for every musician's submission. Click a row to expand individual submission history.
           </p>
         </div>

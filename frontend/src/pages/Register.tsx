@@ -10,6 +10,7 @@ import {
 } from "../utils/form";
 
 const Register: React.FC = () => {
+  // Registration form captures identity, optional musician profile fields, and role.
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -27,6 +28,7 @@ const Register: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Generic form field updater used by all controlled inputs/selects.
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
@@ -38,6 +40,7 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate all required fields first so API calls only run with clean input.
     const nextFieldErrors: Record<string, string> = {};
 
     const usernameError = validateMinLength(formData.username, "Username", 3);
@@ -82,6 +85,7 @@ const Register: React.FC = () => {
     setError("");
 
     try {
+      // confirmPassword is local-only validation state and is not sent to the API.
       const { confirmPassword, ...registrationData } = formData;
       await api.post("/auth/register", {
         ...registrationData,
@@ -94,6 +98,7 @@ const Register: React.FC = () => {
       console.error("Registration failed", err);
       setError(getApiErrorMessage(err, "Registration failed"));
     } finally {
+      // Reset loading state regardless of success/failure to re-enable the submit button.
       setIsLoading(false);
     }
   };

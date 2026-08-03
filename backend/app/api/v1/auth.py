@@ -45,7 +45,9 @@ async def register(
         HTTPException: If user already exists or role is invalid
     """
     try:
+        # AuthService centralizes validation (duplicates, role checks, password hashing).
         user = AuthService.register_user(db, user_data)
+        # Every auth boundary action is audited for traceability and security reviews.
         record_audit_event(
             "auth.register.request",
             username=user.username,
@@ -79,6 +81,7 @@ async def login(
     Raises:
         HTTPException: If credentials are invalid
     """
+    # Validate credentials (+ optional TOTP) and issue signed access/refresh tokens.
     token = AuthService.authenticate_user(
         db,
         credentials.username,
@@ -98,6 +101,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Keep browser session state in secure cookies to protect protected routes.
     set_auth_cookies(response, token.access_token, token.refresh_token)
     record_audit_event(
         "auth.login.request_succeeded",
@@ -126,6 +130,7 @@ async def refresh_token(
     Raises:
         HTTPException: If refresh token is invalid or expired
     """
+    # Accept refresh token from JSON payload or cookie to support API + browser flows.
     refresh_token_value = None
     if payload and payload.refresh_token:
         refresh_token_value = payload.refresh_token
@@ -145,6 +150,7 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Rotate cookies on refresh so client state always tracks latest token pair.
     set_auth_cookies(response, token.access_token, token.refresh_token)
     record_audit_event(
         "auth.refresh.request_succeeded",
@@ -206,6 +212,7 @@ async def update_me(
                 detail="Cannot change your own role",
             )
 
+        # Profile updates feed later task allocation signals (instrument/skill/availability).
         user = AuthService.update_user(db, current_user, user_data)
         record_audit_event(
             "auth.profile.updated",
@@ -223,6 +230,7 @@ async def update_me(
 @router.post("/verify-email")
 async def verify_email(token: str, db: Session = Depends(get_db)) -> dict[str, str]:
     """Verify an email address using a verification token."""
+    # Token-based verification closes the loop for registration trust checks.
     if AuthService.verify_email(db, token):
         record_audit_event("auth.email_verified.request")
         return {"message": "Email verified successfully"}
@@ -235,6 +243,7 @@ async def request_password_reset(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Request a password reset email."""
+    # Deliberately returns a generic message to avoid account enumeration leaks.
     AuthService.request_password_reset(db, payload.email)
     record_audit_event("auth.password_reset.requested.request", email=payload.email)
     return {"message": "If the email exists, a password reset link has been sent"}
@@ -246,6 +255,7 @@ async def confirm_password_reset(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Reset a password using a token."""
+    # Reset is only accepted with a valid, non-expired one-time token.
     if AuthService.reset_password(db, payload.token, payload.new_password):
         record_audit_event("auth.password_reset.completed.request")
         return {"message": "Password reset successfully"}
@@ -258,6 +268,7 @@ async def setup_mfa(
     db: Session = Depends(get_db),
 ) -> MFASetupResponse:
     """Generate an MFA secret for the current user."""
+    # MFA setup returns secret + otpauth URI used by authenticator apps.
     secret, otpauth_url = AuthService.setup_mfa(db, current_user)
     record_audit_event("auth.mfa.setup.request", user_id=current_user.id, username=current_user.username)
     return MFASetupResponse(secret=secret, otpauth_url=otpauth_url)
@@ -270,6 +281,7 @@ async def enable_mfa(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Enable MFA for the current user."""
+    # Enabling MFA requires a valid code generated from the just-enrolled secret.
     if AuthService.enable_mfa(db, current_user, payload.code):
         record_audit_event("auth.mfa.enable.request", user_id=current_user.id, username=current_user.username)
         return {"message": "MFA enabled successfully"}
@@ -283,6 +295,7 @@ async def disable_mfa(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Disable MFA for the current user."""
+    # Disable is protected by a live MFA code to prevent unauthorized account takeover.
     if AuthService.disable_mfa(db, current_user, payload.code):
         record_audit_event("auth.mfa.disable.request", user_id=current_user.id, username=current_user.username)
         return {"message": "MFA disabled successfully"}
@@ -309,6 +322,7 @@ async def change_password(
         HTTPException: If password change fails
     """
     try:
+        # Password change validates the current password and applies policy checks.
         AuthService.change_password(
             db,
             current_user,
@@ -342,6 +356,7 @@ async def list_users(
     Returns:
         List of users
     """
+    # Admin-only user directory for operational management screens.
     return AuthService.list_users(db, skip=skip, limit=limit)
 
 
@@ -405,6 +420,7 @@ async def update_user(
         )
 
     try:
+        # Admin updates are separated from self-updates to enforce stronger privilege rules.
         user = AuthService.admin_update_user(db, current_user, user, user_data)
         record_audit_event(
             "auth.user_updated",
@@ -446,6 +462,7 @@ async def delete_user(
         )
 
     try:
+        # Admin deletion route applies service-level safeguards before hard delete.
         AuthService.admin_delete_user(db, current_user, user)
     except ValueError as err:
         raise HTTPException(

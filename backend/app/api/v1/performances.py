@@ -49,6 +49,7 @@ async def get_performances(
     Returns:
         List of performances
     """
+    # Start with the full dataset and narrow by role-specific visibility rules.
     query = db.query(Performance)
 
     if current_user.role.name == "musician":
@@ -123,7 +124,7 @@ async def create_performance(
             detail="Only musicians can create performances",
         )
 
-    # Create performance
+    # Lightweight create path used when the file is already stored/known.
     performance = Performance(
         title=performance_data.title,
         description=performance_data.description,
@@ -157,9 +158,11 @@ async def create_performance_with_audio_upload(
             detail="Only musicians can upload performances",
         )
 
+    # Upload validation enforces extension/content-type/signature/size constraints.
     validate_audio_upload(audio_file)
 
     try:
+        # Storage backend is selected by config (local dev vs S3 production).
         audio_file_url = upload_performance_audio_to_s3(
             audio_file=audio_file,
             musician_id=current_user.id,
@@ -221,6 +224,7 @@ async def analyze_performance_audio(
             detail="Performance has no uploaded audio to compare",
         )
 
+    # The reference file is transient: validated, materialized, used, then deleted.
     validate_audio_upload(reference_audio)
     reference_bytes = await reference_audio.read()
     if not reference_bytes:
@@ -238,6 +242,7 @@ async def analyze_performance_audio(
     candidate_is_temporary = False
     try:
         try:
+            # Candidate audio may come from local storage or S3 (downloaded temp file).
             candidate_audio_path, candidate_is_temporary = materialize_audio_file(
                 performance.audio_file_url
             )
@@ -259,6 +264,7 @@ async def analyze_performance_audio(
             )
 
         try:
+            # Core AI scoring: PyTorch + Librosa feature comparison.
             analysis = score_audio_similarity(candidate_audio_path, temp_reference_path)
         except ValueError as err:
             raise HTTPException(
@@ -266,10 +272,12 @@ async def analyze_performance_audio(
                 detail=str(err),
             ) from err
     finally:
+        # Always cleanup temporary files, even on validation/scoring failures.
         temp_reference_path.unlink(missing_ok=True)
         if candidate_is_temporary and candidate_audio_path is not None:
             candidate_audio_path.unlink(missing_ok=True)
 
+    # Persist explainable score as a completed evaluation record.
     evaluation = Evaluation(
         performance_id=performance.id,
         evaluator_id=current_user.id,
@@ -402,6 +410,7 @@ async def delete_performance(
             detail="Only admins can delete performances",
         )
 
+    # Delete storage object first, then remove dependent evaluation rows and record.
     audio_file_url = performance.audio_file_url
     delete_audio_file(audio_file_url)
     db.query(Evaluation).filter(Evaluation.performance_id == performance.id).delete(

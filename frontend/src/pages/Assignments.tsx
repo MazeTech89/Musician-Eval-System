@@ -75,6 +75,7 @@ interface SubmissionResponse {
 const Assignments: React.FC = () => {
   const { user, isLoading } = useAuth();
   const isMusician = user?.role === "musician";
+  // Task list, submission form, and scoring feedback states.
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -90,6 +91,7 @@ const Assignments: React.FC = () => {
   const [deletingPerformanceId, setDeletingPerformanceId] = useState<number | null>(null);
 
   useEffect(() => {
+    // Load active tasks plus evaluation history used for the musician history panel.
     if (!user) {
       setLoading(false);
       return;
@@ -116,6 +118,7 @@ const Assignments: React.FC = () => {
   }, [user]);
 
   const selectedAssignment = useMemo(
+    // Resolve the currently selected task object for display/submit defaults.
     () => assignments.find((assignment) => assignment.id === selectedAssignmentId),
     [assignments, selectedAssignmentId],
   );
@@ -125,6 +128,7 @@ const Assignments: React.FC = () => {
   }, [assignments]);
 
   const rankedHistory = useMemo(() => {
+    // Show newest feedback first for a clearer musician journey.
     return [...historyEvaluations].sort(
       (left, right) =>
         new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
@@ -133,6 +137,7 @@ const Assignments: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    // Validate task and audio inputs before posting submission payload.
 
     if (!selectedAssignmentId) {
       setFieldErrors((current) => ({ ...current, assignment: "Select an assignment first." }));
@@ -177,6 +182,7 @@ const Assignments: React.FC = () => {
     formData.append("audio_file", audioFile);
 
     try {
+      // Assignment submissions are sent to the task-specific endpoint for auto-scoring.
       const response = await api.post<SubmissionResponse>(
         `/assignments/${selectedAssignmentId}/submissions`,
         formData,
@@ -197,6 +203,7 @@ const Assignments: React.FC = () => {
   };
 
   const handleDeletePerformance = async (performanceId: number) => {
+    // Removes uploaded audio and associated evaluation record from the musician history.
     if (!window.confirm("Delete this uploaded performance and its related score?")) {
       return;
     }

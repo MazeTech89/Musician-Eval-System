@@ -72,6 +72,7 @@ class SimilarityAnalysis:
 
 def _scalar_similarity(a: float, b: float) -> float:
     """Return a 0–1 similarity for two scalar values."""
+    # Treat dual-zero values as identical instead of dividing by near-zero magnitude.
     if a == 0.0 and b == 0.0:
         return 1.0
     denominator = max(abs(a), abs(b), 1e-9)
@@ -82,6 +83,7 @@ def _cosine_sim_torch(u: tuple[float, ...], v: tuple[float, ...]) -> float:
     """Compute cosine similarity between two equal-length vectors via PyTorch."""
     if not u or not v:
         return 0.0
+    # Convert to rank-2 tensors so cosine similarity runs on a stable batch dimension.
     t_u = torch.tensor(list(u), dtype=torch.float32).unsqueeze(0)
     t_v = torch.tensor(list(v), dtype=torch.float32).unsqueeze(0)
     result = F.cosine_similarity(t_u, t_v, dim=1).item()
@@ -93,6 +95,7 @@ def _onset_profile(onset_env: np.ndarray) -> tuple[float, ...]:
     n = _ONSET_PROFILE_FRAMES
     if len(onset_env) == 0:
         return tuple([0.0] * n)
+    # Truncate or pad onset envelope so rhythm vectors remain comparable.
     if len(onset_env) >= n:
         profile = onset_env[:n].copy()
     else:
@@ -113,6 +116,7 @@ def build_audio_features(audio_path: str | Path) -> AudioFeatures:
     if not path.exists():
         raise FileNotFoundError(path)
 
+    # Keep original sample rate (sr=None) and mix to mono for consistent feature extraction.
     y, sr = librosa.load(str(path), sr=None, mono=True)
     if len(y) == 0:
         raise ValueError("Audio file contains no samples")
@@ -187,6 +191,7 @@ def score_audio_similarity(
     Returns a :class:`SimilarityAnalysis` with an overall score (0–100)
     and an explainable component breakdown (FR-08 through FR-11).
     """
+    # Extract comparable feature vectors from both recordings.
     ref = build_audio_features(reference_audio_path)
     cand = build_audio_features(candidate_audio_path)
 
@@ -208,6 +213,7 @@ def score_audio_similarity(
     timbre_similarity = _cosine_sim_torch(ref.mfcc_vector, cand.mfcc_vector)
 
     # Weighted aggregate
+    # Weighted score follows project rubric and yields a normalized 0-100 mark.
     raw_score = (
         pitch_accuracy * 0.25
         + tempo_stability * 0.20

@@ -62,16 +62,13 @@ const Dashboard: React.FC = () => {
       <AppHeader title="Musician Evaluation System" subtitle={`Welcome back, ${user?.first_name || user?.username}!`} />
 
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
-        <div
-          className="rounded-2xl p-8 mb-8 text-white relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)" }}
-        >
+        <div className="perform-pro-hero rounded-2xl p-8 mb-8 text-white">
           <Music4 className="absolute right-8 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
           <div className="flex items-center gap-3">
-            <LayoutDashboard className="h-8 w-8 text-amber-300" aria-hidden="true" />
+            <LayoutDashboard className="h-8 w-8 text-rose-100" aria-hidden="true" />
             <h2 className="text-3xl font-bold font-display">Dashboard</h2>
           </div>
-          <p className="text-indigo-200 max-w-xl">{journey.intro}</p>
+          <p className="max-w-xl text-cyan-100">{journey.intro}</p>
         </div>
 
         {primary ? (
@@ -84,7 +81,7 @@ const Dashboard: React.FC = () => {
               className="music-card flex items-start gap-5 bg-white rounded-2xl p-6 shadow-md border-l-4"
               style={{ borderLeftColor: "var(--color-accent)" }}
             >
-              <primary.Icon className="mt-1 h-10 w-10 text-amber-600" aria-hidden="true" />
+              <primary.Icon className="mt-1 h-10 w-10" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
               <div>
                 <h3 className="text-xl font-bold mb-1" style={{ color: "var(--color-primary)" }}>
                   {primary.title}
@@ -111,7 +108,7 @@ const Dashboard: React.FC = () => {
                   to={action.to}
                   className="music-card flex items-start gap-4 bg-white rounded-2xl p-5 shadow-sm hover:shadow-md"
                 >
-                  <action.Icon className="mt-0.5 h-8 w-8 text-amber-600" aria-hidden="true" />
+                  <action.Icon className="mt-0.5 h-8 w-8" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
                   <div>
                     <h4 className="font-semibold mb-1" style={{ color: "var(--color-primary)" }}>
                       {action.title}

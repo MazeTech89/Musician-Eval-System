@@ -21,6 +21,44 @@ def is_s3_configured() -> bool:
     return bool(settings.s3_bucket_name and settings.aws_region)
 
 
+def get_storage_health() -> dict[str, str | bool]:
+    """Return the configured storage backend and its health status."""
+    # Local storage is explicitly healthy when enabled.
+    if settings.use_local_upload_storage:
+        return {
+            "backend": "local",
+            "healthy": True,
+            "detail": "Local upload storage is enabled.",
+        }
+
+    # In S3 mode, missing configuration is a hard error (no silent local fallback).
+    if not is_s3_configured():
+        return {
+            "backend": "s3",
+            "healthy": False,
+            "detail": (
+                "S3 storage is not fully configured. Set AWS_REGION and "
+                "S3_BUCKET_NAME or enable USE_LOCAL_UPLOAD_STORAGE."
+            ),
+        }
+
+    s3_client = _build_s3_client()
+    try:
+        s3_client.head_bucket(Bucket=settings.s3_bucket_name)
+    except (BotoCoreError, ClientError) as err:
+        return {
+            "backend": "s3",
+            "healthy": False,
+            "detail": f"S3 bucket check failed: {err}",
+        }
+
+    return {
+        "backend": "s3",
+        "healthy": True,
+        "detail": "S3 bucket is reachable.",
+    }
+
+
 def _build_local_upload_path(musician_id: int, filename: str) -> Path:
     """Build a deterministic local path for uploaded audio files."""
     upload_dir = Path(settings.local_upload_dir)
@@ -70,12 +108,16 @@ def _build_object_key(musician_id: int, filename: str) -> str:
 
 def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> str:
     """Upload a performance audio file to the configured storage backend."""
+    # Keep upload validation close to persistence so every entrypoint enforces it.
     validate_audio_upload(audio_file)
     if settings.use_local_upload_storage:
         return upload_performance_audio_to_local_storage(audio_file, musician_id)
 
     if not is_s3_configured():
-        return upload_performance_audio_to_local_storage(audio_file, musician_id)
+        raise S3StorageError(
+            "S3 storage is not fully configured. Set AWS_REGION and "
+            "S3_BUCKET_NAME or enable USE_LOCAL_UPLOAD_STORAGE."
+        )
 
     if not settings.s3_bucket_name:
         raise S3StorageError("S3 bucket is not configured.")

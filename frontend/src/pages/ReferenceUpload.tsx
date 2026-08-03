@@ -32,12 +32,19 @@ interface Assignment {
   reference_track: ReferenceTrack;
 }
 
+interface StorageHealth {
+  backend: string;
+  healthy: boolean;
+  detail: string;
+}
+
 const ReferenceUpload: React.FC = () => {
   const [referenceTracks, setReferenceTracks] = useState<ReferenceTrack[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [storageHealth, setStorageHealth] = useState<StorageHealth | null>(null);
 
   // Reference track form
   const [rtTitle, setRtTitle] = useState("");
@@ -61,10 +68,16 @@ const ReferenceUpload: React.FC = () => {
   const [deletingAId, setDeletingAId] = useState<number | null>(null);
 
   useEffect(() => {
-    Promise.all([api.get("/reference-tracks"), api.get("/assignments")])
-      .then(([rtRes, aRes]) => {
+    // Load core admin data and storage status together to surface S3 issues early.
+    Promise.all([
+      api.get("/reference-tracks"),
+      api.get("/assignments"),
+      api.get<StorageHealth>("/reference-tracks/storage-health"),
+    ])
+      .then(([rtRes, aRes, storageRes]) => {
         setReferenceTracks(rtRes.data);
         setAssignments(aRes.data);
+        setStorageHealth(storageRes.data);
         if (rtRes.data.length > 0) setARefTrackId(rtRes.data[0].id);
       })
       .catch(() => setError("Failed to load data."))
@@ -199,16 +212,13 @@ const ReferenceUpload: React.FC = () => {
 
       <main className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Hero */}
-        <div
-          className="rounded-2xl p-8 text-white relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)" }}
-        >
-          <Music4 className="absolute right-8 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
+        <div className="perform-pro-hero rounded-2xl p-8 text-white">
+          <Music4 className="absolute right-24 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
           <div className="flex items-center gap-3">
-            <FileAudio2 className="h-8 w-8 text-amber-300" aria-hidden="true" />
+            <FileAudio2 className="h-8 w-8 text-rose-100" aria-hidden="true" />
             <h2 className="text-3xl font-bold font-display">Reference Audio Upload</h2>
           </div>
-          <p className="text-indigo-200 max-w-xl">
+          <p className="max-w-xl text-cyan-100">
             Upload a reference recording for each task. Musicians' submissions will be automatically
             scored by the AI engine against this audio.
           </p>
@@ -223,6 +233,17 @@ const ReferenceUpload: React.FC = () => {
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 px-5 py-3 text-red-700 text-sm">{error}</div>
         )}
+        {storageHealth ? (
+          <div
+            className={`rounded-xl border px-5 py-3 text-sm ${
+              storageHealth.healthy
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-amber-200 bg-amber-50 text-amber-700"
+            }`}
+          >
+            <strong>Storage backend:</strong> {storageHealth.backend.toUpperCase()} — {storageHealth.detail}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">

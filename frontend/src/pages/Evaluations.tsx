@@ -70,6 +70,7 @@ const Evaluations: React.FC = () => {
   const { user, isLoading } = useAuth();
   const isMusician = user?.role === "musician";
   const isAdmin = user?.role === "admin";
+  // Evaluation, analysis, and admin reference/assignment management states.
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,10 +109,12 @@ const Evaluations: React.FC = () => {
 
   const canCreateEvaluations = user?.role === "admin";
   const assignmentById = useMemo(() => {
+    // Fast assignment lookup map used when rendering evaluation rows/details.
     return new Map(assignments.map((assignment) => [assignment.id, assignment]));
   }, [assignments]);
 
   useEffect(() => {
+    // Role-aware bootstrap: admins get expanded data (performances + refs + assignments).
     if (isLoading) {
       return;
     }
@@ -158,6 +161,7 @@ const Evaluations: React.FC = () => {
 
   const handleCreateEvaluation = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Manual score path for admin-controlled evaluation entries.
     const nextError = !selectedPerformance
       ? "Select a performance."
       : validateScore(score);
@@ -192,6 +196,7 @@ const Evaluations: React.FC = () => {
 
   const handleAnalyzePerformance = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Ad-hoc similarity analysis path using a temporary reference file upload.
     if (!selectedPerformance) {
       setAnalysisFormError("Select a performance.");
       return;
@@ -236,6 +241,7 @@ const Evaluations: React.FC = () => {
 
   const handleCreateReferenceTrack = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Admin workflow: register reusable reference audio for later assignment binding.
     const titleError = validateRequired(newReferenceTrackTitle, "Title");
     if (titleError) {
       setReferenceTrackError(titleError);
@@ -282,6 +288,7 @@ const Evaluations: React.FC = () => {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Bind task metadata to one selected reference track for musician submissions.
     const titleError = validateRequired(newAssignmentTitle, "Assignment title");
     if (titleError) {
       setAssignmentError(titleError);
@@ -320,6 +327,7 @@ const Evaluations: React.FC = () => {
 
   const handleAnalyzeWithAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Deterministic analysis path: performance compared against assignment reference.
     if (!selectedPerformance) {
       setAssignmentAnalysisError("Select a performance.");
       return;
@@ -455,6 +463,7 @@ const Evaluations: React.FC = () => {
   }
 
   const rankedEvaluations = [...evaluations].sort((left, right) => {
+    // Keep highest-scoring results at the top for quicker admin review.
     const leftScore = left.score ?? -1;
     const rightScore = right.score ?? -1;
     return rightScore - leftScore;

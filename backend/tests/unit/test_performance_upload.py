@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
 from app.main import app
 from app.models.user import RoleEnum
-from app.services.s3_storage import upload_performance_audio_to_s3
+from app.services.s3_storage import S3StorageError, upload_performance_audio_to_s3
 
 
 class _DummyRole:
@@ -184,8 +184,10 @@ def test_local_upload_storage_fallback_writes_to_disk(tmp_path, monkeypatch) -> 
     assert saved_file.read_bytes() == _make_wav_bytes()
 
 
-def test_s3_fallback_to_local_storage_when_config_missing(tmp_path, monkeypatch) -> None:
-    """Uploads should fall back to local storage when S3 configuration is incomplete."""
+def test_s3_upload_requires_configuration_when_local_storage_is_disabled(
+    tmp_path, monkeypatch
+) -> None:
+    """S3 mode should fail fast when configuration is incomplete."""
     from app.core import config as config_module
 
     monkeypatch.setattr(config_module.settings, "use_local_upload_storage", False)
@@ -201,12 +203,11 @@ def test_s3_fallback_to_local_storage_when_config_missing(tmp_path, monkeypatch)
             self.content_type = "audio/wav"
             self.file = BytesIO(_make_wav_bytes())
 
-    uploaded_path = upload_performance_audio_to_s3(_DummyUploadFile(), 12)
-
-    assert uploaded_path.startswith("/uploads/")
-    saved_file = tmp_path / uploaded_path.split("/", 2)[-1]
-    assert saved_file.exists()
-    assert saved_file.read_bytes() == _make_wav_bytes()
+    try:
+        upload_performance_audio_to_s3(_DummyUploadFile(), 12)
+        raise AssertionError("Expected S3StorageError when S3 configuration is incomplete.")
+    except S3StorageError as err:
+        assert "S3 storage is not fully configured" in str(err)
 
 
 def test_upload_audio_rejects_signature_mismatch() -> None:
@@ -253,3 +254,24 @@ def test_upload_audio_respects_configured_max_size(monkeypatch) -> None:
 
     assert response.status_code == 413
     assert response.json()["detail"] == "Audio upload must be 0 MB or smaller"
+
+
+def test_reference_storage_health_reports_local_backend(monkeypatch) -> None:
+    """Admins should see local storage health when local mode is enabled."""
+    from app.core import config as config_module
+
+    async def _override_user():
+        return _DummyUser(user_id=1, role=RoleEnum.ADMIN.value)
+
+    monkeypatch.setattr(config_module.settings, "use_local_upload_storage", True)
+    app.dependency_overrides[get_current_active_user] = _override_user
+
+    client = TestClient(app)
+    response = client.get("/api/v1/reference-tracks/storage-health")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["backend"] == "local"
+    assert payload["healthy"] is True

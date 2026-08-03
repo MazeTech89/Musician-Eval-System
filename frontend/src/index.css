@@ -4,12 +4,13 @@
 
 /* ─── Musical design tokens ─────────────────────────────────────── */
 :root {
-  --bg-page: #f5f0e8;
+  --bg-page: #e9f3f3;
   --bg-card: #ffffff;
-  --color-primary: #1e1b4b;     /* deep indigo-navy */
-  --color-accent: #d97706;      /* warm amber-gold  */
-  --color-accent-light: #fef3c7;
-  --color-muted: #6b7280;
+  --color-primary: #0f3444;     /* deep teal-blue */
+  --color-accent: #c1121f;      /* poster red      */
+  --color-accent-light: #ffe6e8;
+  --color-muted: #5f6b73;
+  --hero-gradient: linear-gradient(135deg, #1f666a 0%, #1b5665 58%, #0f3444 100%);
 }
 
 body {
@@ -30,10 +31,27 @@ body {
     to bottom,
     transparent,
     transparent 18px,
-    rgba(30, 27, 75, 0.06) 18px,
-    rgba(30, 27, 75, 0.06) 19px
+    rgba(15, 52, 68, 0.05) 18px,
+    rgba(15, 52, 68, 0.05) 19px
   );
   pointer-events: none;
+}
+
+/* ─── Theme hero container inspired by the showcase poster ─────────── */
+.perform-pro-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--hero-gradient);
+}
+.perform-pro-hero::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 1.5rem;
+  width: 2.75rem;
+  height: 4.25rem;
+  background: var(--color-accent);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 /* ─── Waveform bar decoration ────────────────────────────────────── */

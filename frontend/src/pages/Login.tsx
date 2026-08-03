@@ -50,19 +50,31 @@ const Login: React.FC = () => {
       className="min-h-screen flex items-center justify-center staff-bg py-12 px-4 sm:px-6 lg:px-8"
       style={{ backgroundColor: "var(--bg-page)" }}
     >
-      <div className="max-w-md w-full space-y-8">
-        {/* Brand header */}
-        <div className="text-center">
-          <div className="mb-3 flex justify-center">
-            <Music4 className="h-14 w-14 text-amber-600" aria-hidden="true" />
+      <div className="max-w-5xl w-full rounded-2xl overflow-hidden shadow-2xl bg-white md:grid md:grid-cols-2">
+        <div className="hidden md:flex flex-col justify-between p-8 text-white relative" style={{ background: "var(--hero-gradient)" }}>
+          <div className="absolute top-0 right-8 h-16 w-10" style={{ backgroundColor: "var(--color-accent)" }} />
+          <div>
+            <Music4 className="h-12 w-12 text-rose-100 mb-4" aria-hidden="true" />
+            <h1 className="text-4xl font-bold font-display">Perform Pro</h1>
+            <p className="mt-3 text-cyan-100 text-sm">
+              Intelligent Musician Task Management and AI-driven Performance Evaluation.
+            </p>
           </div>
-          <h1 className="text-3xl font-bold font-display" style={{ color: "var(--color-primary)" }}>
-            Musician Evaluation System
-          </h1>
-          <p className="mt-2 text-sm text-gray-500">AI-powered performance scoring</p>
+          <p className="text-xs text-cyan-100/90">Secure role-based access for musicians and administrators.</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8">
+        <div className="p-8">
+          {/* Brand header */}
+          <div className="text-center mb-6">
+            <div className="mb-3 flex justify-center md:hidden">
+              <Music4 className="h-14 w-14" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
+            </div>
+            <h1 className="text-3xl font-bold font-display" style={{ color: "var(--color-primary)" }}>
+              Musician Evaluation System
+            </h1>
+            <p className="mt-2 text-sm text-gray-500">AI-powered performance scoring</p>
+          </div>
+
           <h2 className="text-xl font-semibold mb-6 text-center" style={{ color: "var(--color-primary)" }}>
             Sign in to your account
           </h2>
@@ -137,7 +149,7 @@ const Login: React.FC = () => {
               type="submit"
               disabled={isLoading}
               className="w-full flex justify-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white transition disabled:opacity-50"
-              style={{ backgroundColor: isLoading ? "#b45309" : "var(--color-accent)" }}
+              style={{ backgroundColor: isLoading ? "#991b1b" : "var(--color-accent)" }}
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </button>

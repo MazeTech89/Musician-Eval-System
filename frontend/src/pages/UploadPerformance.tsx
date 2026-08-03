@@ -26,6 +26,7 @@ interface PerformanceSummary extends UploadResponse {
 
 const UploadPerformance: React.FC = () => {
   const { user } = useAuth();
+  // Upload form state and feedback messages.
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -46,6 +47,7 @@ const UploadPerformance: React.FC = () => {
   ];
 
   useEffect(() => {
+    // Only musicians can load/manage their own uploads from this screen.
     if (!canUpload) {
       setLoadingPerformances(false);
       return;
@@ -66,12 +68,14 @@ const UploadPerformance: React.FC = () => {
   }, [canUpload]);
 
   const refreshPerformances = async () => {
+    // Re-query after create/delete so history always reflects persisted backend state.
     const response = await api.get<PerformanceSummary[]>("/performances");
     setPerformances(response.data);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Perform client-side validation for title and file constraints before upload.
     const nextFieldErrors: { title?: string; audioFile?: string } = {};
     const titleError = validateRequired(title, "Title");
     if (titleError) {
@@ -98,6 +102,7 @@ const UploadPerformance: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // Use multipart/form-data for binary audio payload + metadata.
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
@@ -121,6 +126,7 @@ const UploadPerformance: React.FC = () => {
   };
 
   const handleDeletePerformance = async (performanceId: number) => {
+    // Deleting a performance also removes the related score/evaluation server-side.
     if (!window.confirm("Delete this uploaded performance?")) {
       return;
     }

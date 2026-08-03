@@ -23,12 +23,28 @@ from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import (
     S3StorageError,
     delete_audio_file,
+    get_storage_health,
     materialize_audio_file,
     upload_performance_audio_to_s3,
 )
 from app.core.upload_security import validate_audio_upload
 
 router = APIRouter(tags=["reference-tracks"])
+
+
+@router.get("/reference-tracks/storage-health")
+async def get_reference_storage_health(
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, str | bool]:
+    """Report whether the active audio storage backend is reachable."""
+    if current_user.role.name != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can view storage health",
+        )
+
+    return get_storage_health()
+
 
 def _resolve_local_audio_path(audio_file_url: str) -> Path:
     """Resolve a locally stored audio file path from the stored URL."""
@@ -57,6 +73,7 @@ def _score_assignment_performance(
     current_user: User,
 ) -> tuple[object, Evaluation]:
     """Score a performance against an assignment reference track."""
+    # Guardrails: scoring requires both uploaded candidate audio and a task reference.
     if not performance.audio_file_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,6 +87,9 @@ def _score_assignment_performance(
         )
 
     try:
+        # Materialize both audio URLs as local filesystem paths:
+        # - local URLs resolve directly
+        # - S3 URLs are downloaded to temporary files
         reference_audio_path, reference_is_temporary = materialize_audio_file(
             assignment.reference_track.audio_file_url
         )
@@ -88,6 +108,7 @@ def _score_assignment_performance(
         ) from err
 
     try:
+        # Validate both files still exist before running feature extraction/scoring.
         if not reference_audio_path.exists() or not candidate_audio_path.exists():
             raise FileNotFoundError
 
@@ -103,6 +124,7 @@ def _score_assignment_performance(
             detail=str(err),
         ) from err
     finally:
+        # Temporary files are only created for S3 downloads and must be cleaned up.
         if reference_is_temporary:
             reference_audio_path.unlink(missing_ok=True)
         if candidate_is_temporary:
@@ -512,6 +534,7 @@ async def submit_performance_for_assignment(
     if not assignment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
+    # Enforce upload security checks before writing any bytes to storage.
     validate_audio_upload(audio_file)
 
     try:
@@ -525,6 +548,7 @@ async def submit_performance_for_assignment(
             detail=str(err),
         ) from err
 
+    # Persist submission first so any evaluation rows can reference a stable performance ID.
     performance = Performance(
         title=title,
         description=description,
@@ -536,6 +560,7 @@ async def submit_performance_for_assignment(
     db.add(performance)
     db.flush()
 
+    # Default path: attempt immediate AI scoring against assignment reference audio.
     analysis = None
     fallback_message = None
     try:
@@ -549,6 +574,8 @@ async def submit_performance_for_assignment(
         if err.status_code != status.HTTP_404_NOT_FOUND or err.detail != "Audio file could not be found":
             raise
 
+        # Graceful fallback: keep submission and create pending evaluation when
+        # reference media is temporarily unavailable.
         fallback_message = (
             "Upload succeeded, but automatic scoring is pending because the "
             "assignment reference audio file could not be found. Ask an admin "
@@ -576,6 +603,7 @@ async def submit_performance_for_assignment(
         scoring_pending=analysis is None,
     )
 
+    # Return both persisted entities and explainable analysis payload for the UI.
     return {
         "performance": performance,
         "evaluation": evaluation,
@@ -637,6 +665,7 @@ async def analyze_performance_with_assignment(
     if not performance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Performance not found")
 
+    # Re-run deterministic scoring for an existing task/performance pair.
     analysis, evaluation = _score_assignment_performance(
         db=db,
         assignment=assignment,
@@ -694,12 +723,14 @@ async def get_task_recommendations(
             detail="Only admins can view task recommendations",
         )
 
+    # Build recommendations only from active tasks.
     assignments = (
         db.query(Assignment).filter(Assignment.is_active.is_(True)).all()
     )
 
     recommendations = []
     for assignment in assignments:
+        # Submission count gives admins quick participation visibility per task.
         total_submissions = (
             db.query(Performance)
             .filter(Performance.assignment_id == assignment.id)
@@ -718,6 +749,7 @@ async def get_task_recommendations(
             .first()
         )
 
+        # Keep response shape stable by returning null when no completed score exists yet.
         best_musician = None
         if best_row:
             _perf, best_eval, best_user = best_row
