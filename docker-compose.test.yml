@@ -31,8 +31,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: musician_eval_test_backend
     environment:
       DATABASE_URL: postgresql+psycopg2://user:password@postgres:5432/musician_eval_test

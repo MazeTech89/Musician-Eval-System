@@ -20,7 +20,8 @@ services:
   - type: web
     runtime: docker
     name: musician-eval-backend
-    dockerfilePath: ./backend/Dockerfile
+    rootDir: backend
+    dockerfilePath: Dockerfile
     healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_URL
