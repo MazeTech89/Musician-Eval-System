@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import smtplib
 from email.message import EmailMessage
-from typing import Callable
 
 from app.core.config import settings
 
@@ -43,8 +42,7 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
 
 def send_verification_email(to_email: str, verification_url: str) -> bool:
     body = (
-        "Please verify your email address by visiting the link below:\n\n"
-        f"{verification_url}\n"
+        "Please verify your email address by visiting the link below:\n\n" f"{verification_url}\n"
     )
     return send_email(to_email, "Verify your email address", body)
 

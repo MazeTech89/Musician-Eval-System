@@ -18,7 +18,7 @@ router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 
 
 @router.get("/", response_model=list[EvaluationWithPerformanceResponse])
-async def get_evaluations(
+async def get_evaluations_for_role(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -34,7 +34,7 @@ async def get_evaluations(
 
 
 @router.get("/{evaluation_id}", response_model=EvaluationWithPerformanceResponse)
-async def get_evaluation(
+async def get_evaluation_for_role(
     evaluation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -52,7 +52,7 @@ async def get_evaluation(
 
 
 @router.post("/", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
-async def create_evaluation(
+async def create_evaluation_for_role(
     evaluation_data: EvaluationCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -85,7 +85,7 @@ async def create_evaluation(
 
 
 @router.put("/{evaluation_id}", response_model=EvaluationResponse)
-async def update_evaluation(
+async def update_evaluation_for_role(
     evaluation_id: int,
     evaluation_update: EvaluationUpdate,
     db: Session = Depends(get_db),
@@ -111,7 +111,7 @@ async def update_evaluation(
 
 
 @router.delete("/{evaluation_id}")
-async def delete_evaluation(
+async def delete_evaluation_for_role(
     evaluation_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -130,7 +130,6 @@ async def delete_evaluation(
     db.delete(evaluation)
     db.commit()
     return {"message": "Evaluation deleted successfully"}
-
 
 
 @router.get("/", response_model=list[EvaluationWithPerformanceResponse])

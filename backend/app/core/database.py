@@ -55,57 +55,61 @@ def _ensure_schema_columns() -> None:
         existing_columns = {column["name"] for column in inspector.get_columns(table.name)}
         for column in table.columns:
             if column.name in existing_columns:
-               continue
+                continue
 
             column_type = column.type.compile(dialect=engine.dialect)
             with engine.begin() as connection:
-               quoted_table = quote_identifier(table.name)
-               quoted_column = quote_identifier(column.name)
-               connection.execute(
-                   text(
-                       f"ALTER TABLE {quoted_table} ADD COLUMN IF NOT EXISTS "
-                       f"{quoted_column} {column_type}"
-                   )
-               )
+                quoted_table = quote_identifier(table.name)
+                quoted_column = quote_identifier(column.name)
+                connection.execute(
+                    text(
+                        f"ALTER TABLE {quoted_table} ADD COLUMN IF NOT EXISTS "
+                        f"{quoted_column} {column_type}"
+                    )
+                )
 
         for column in inspector.get_columns(table.name):
             if column["name"] in table.columns.keys():
-               continue
+                continue
             if not column["nullable"]:
-               with engine.begin() as connection:
-                   quoted_table = quote_identifier(table.name)
-                   quoted_column = quote_identifier(column["name"])
-                   connection.execute(
-                       text(
-                           f"ALTER TABLE {quoted_table} ALTER COLUMN {quoted_column} "
-                           "DROP NOT NULL"
-                       )
-                   )
+                with engine.begin() as connection:
+                    quoted_table = quote_identifier(table.name)
+                    quoted_column = quote_identifier(column["name"])
+                    connection.execute(
+                        text(
+                            f"ALTER TABLE {quoted_table} ALTER COLUMN {quoted_column} "
+                            "DROP NOT NULL"
+                        )
+                    )
 
         if "is_active" in existing_columns and table.name in {"reference_tracks", "assignments"}:
             with engine.begin() as connection:
-               quoted_table = quote_identifier(table.name)
-               connection.execute(
-                   text(f"UPDATE {quoted_table} SET is_active = TRUE WHERE is_active IS NULL")
-               )
+                quoted_table = quote_identifier(table.name)
+                connection.execute(
+                    text(
+                        f"UPDATE {quoted_table} SET is_active = TRUE WHERE is_active IS NULL"  # noqa: S608
+                    )
+                )
 
     if "user" in existing_tables:
         with engine.begin() as connection:
             quoted_user_table = quote_identifier("user")
             connection.execute(
-               text(
-                   f"UPDATE {quoted_user_table} SET email_verified = TRUE WHERE email_verified IS NULL"
-               )
+                text(
+                    f"UPDATE {quoted_user_table} SET email_verified = TRUE "  # noqa: S608
+                    "WHERE email_verified IS NULL"
+                )
             )
             connection.execute(
-               text(
-                   f"UPDATE {quoted_user_table} SET mfa_enabled = FALSE WHERE mfa_enabled IS NULL"
-               )
+                text(
+                    f"UPDATE {quoted_user_table} SET mfa_enabled = FALSE WHERE mfa_enabled IS NULL"  # noqa: S608
+                )
             )
             connection.execute(
-               text(
-                   f"UPDATE {quoted_user_table} SET failed_login_count = 0 WHERE failed_login_count IS NULL"
-               )
+                text(
+                    f"UPDATE {quoted_user_table} SET failed_login_count = 0 "  # noqa: S608
+                    "WHERE failed_login_count IS NULL"
+                )
             )
 
 

@@ -6,10 +6,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.audit import record_audit_event
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user
+from app.core.upload_security import validate_audio_upload
 from app.models.evaluation import Evaluation, EvaluationStatus, Performance
 from app.models.reference_track import Assignment, ReferenceTrack
 from app.models.user import User
@@ -27,7 +28,6 @@ from app.services.s3_storage import (
     materialize_audio_file,
     upload_performance_audio_to_s3,
 )
-from app.core.upload_security import validate_audio_upload
 
 router = APIRouter(tags=["reference-tracks"])
 
@@ -136,8 +136,7 @@ def _score_assignment_performance(
         evaluator_id=current_user.id,
         score=analysis.score,
         comments=(
-            "Auto-generated similarity analysis against "
-            f"{assignment.reference_track.title}"
+            "Auto-generated similarity analysis against " f"{assignment.reference_track.title}"
         ),
         status=EvaluationStatus.COMPLETED,
     )
@@ -571,7 +570,10 @@ async def submit_performance_for_assignment(
             current_user=current_user,
         )
     except HTTPException as err:
-        if err.status_code != status.HTTP_404_NOT_FOUND or err.detail != "Audio file could not be found":
+        if (
+            err.status_code != status.HTTP_404_NOT_FOUND
+            or err.detail != "Audio file could not be found"
+        ):
             raise
 
         # Graceful fallback: keep submission and create pending evaluation when
@@ -724,17 +726,13 @@ async def get_task_recommendations(
         )
 
     # Build recommendations only from active tasks.
-    assignments = (
-        db.query(Assignment).filter(Assignment.is_active.is_(True)).all()
-    )
+    assignments = db.query(Assignment).filter(Assignment.is_active.is_(True)).all()
 
     recommendations = []
     for assignment in assignments:
         # Submission count gives admins quick participation visibility per task.
         total_submissions = (
-            db.query(Performance)
-            .filter(Performance.assignment_id == assignment.id)
-            .count()
+            db.query(Performance).filter(Performance.assignment_id == assignment.id).count()
         )
 
         # Best completed evaluation for this assignment
@@ -770,9 +768,7 @@ async def get_task_recommendations(
                 "assignment_title": assignment.title,
                 "description": assignment.description,
                 "reference_track_title": (
-                    assignment.reference_track.title
-                    if assignment.reference_track
-                    else None
+                    assignment.reference_track.title if assignment.reference_track else None
                 ),
                 "total_submissions": total_submissions,
                 "best_musician": best_musician,

@@ -19,11 +19,7 @@ REFRESH_TOKEN_TYPE = "refresh"
 def _get_secret_keys() -> list[str]:
     keys = [settings.secret_key]
     if settings.secret_key_fallbacks.strip():
-        keys.extend(
-            key.strip()
-            for key in settings.secret_key_fallbacks.split(",")
-            if key.strip()
-        )
+        keys.extend(key.strip() for key in settings.secret_key_fallbacks.split(",") if key.strip())
     return keys
 
 
@@ -165,10 +161,10 @@ def create_refresh_token(
 
 def decode_refresh_token(token: str) -> TokenData | None:
     """Decode and validate a refresh JWT token.
-    
+
     Args:
         token: Refresh JWT token to decode
-    
+
     Returns:
         TokenData if valid, None otherwise
     """
@@ -202,7 +198,11 @@ def decode_refresh_token(token: str) -> TokenData | None:
     return None
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str | None = None) -> None:
+def set_auth_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str | None = None,
+) -> None:
     """Set auth cookies for the browser using HttpOnly cookies."""
     secure = not settings.debug
     samesite = "none" if not settings.debug else "lax"

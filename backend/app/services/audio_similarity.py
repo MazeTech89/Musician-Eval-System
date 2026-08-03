@@ -24,7 +24,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as functional
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ def _cosine_sim_torch(u: tuple[float, ...], v: tuple[float, ...]) -> float:
     # Convert to rank-2 tensors so cosine similarity runs on a stable batch dimension.
     t_u = torch.tensor(list(u), dtype=torch.float32).unsqueeze(0)
     t_v = torch.tensor(list(v), dtype=torch.float32).unsqueeze(0)
-    result = F.cosine_similarity(t_u, t_v, dim=1).item()
+    result = functional.cosine_similarity(t_u, t_v, dim=1).item()
     return float(max(0.0, result))
 
 
