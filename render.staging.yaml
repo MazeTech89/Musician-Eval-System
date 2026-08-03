@@ -8,7 +8,8 @@ services:
     runtime: docker
     name: musician-eval-staging-backend
     branch: staging
-    dockerfilePath: ./backend/Dockerfile
+    rootDir: backend
+    dockerfilePath: Dockerfile
     healthCheckPath: /api/v1/health
     disk:
       name: staging-uploads
