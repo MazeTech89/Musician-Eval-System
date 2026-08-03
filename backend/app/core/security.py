@@ -165,10 +165,10 @@ def create_refresh_token(
 
 def decode_refresh_token(token: str) -> TokenData | None:
     """Decode and validate a refresh JWT token.
-    
+
     Args:
         token: Refresh JWT token to decode
-    
+
     Returns:
         TokenData if valid, None otherwise
     """
@@ -202,7 +202,9 @@ def decode_refresh_token(token: str) -> TokenData | None:
     return None
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str | None = None) -> None:
+def set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str | None = None
+) -> None:
     """Set auth cookies for the browser using HttpOnly cookies."""
     secure = not settings.debug
     samesite = "none" if not settings.debug else "lax"

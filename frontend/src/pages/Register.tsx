@@ -85,8 +85,17 @@ const Register: React.FC = () => {
     setError("");
 
     try {
-      // confirmPassword is local-only validation state and is not sent to the API.
-      const { confirmPassword, ...registrationData } = formData;
+      const registrationData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        instrument_type: formData.instrument_type,
+        skill_level: formData.skill_level,
+        availability: formData.availability,
+        role: formData.role,
+      };
       await api.post("/auth/register", {
         ...registrationData,
         instrument_type: registrationData.instrument_type || undefined,

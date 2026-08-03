@@ -98,6 +98,10 @@ const UploadPerformance: React.FC = () => {
     setFieldErrors({});
     setError("");
     setSuccess("");
+    if (!audioFile) {
+      setError("Please choose an audio file to upload.");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -106,7 +110,7 @@ const UploadPerformance: React.FC = () => {
       const formData = new FormData();
       formData.append("title", title);
       formData.append("description", description);
-      formData.append("audio_file", audioFile!);
+      formData.append("audio_file", audioFile);
 
       const response = await api.post<UploadResponse>("/performances/upload-audio", formData);
 
