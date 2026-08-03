@@ -239,14 +239,14 @@ const Assignments: React.FC = () => {
   return (
     <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
       <AppHeader
-        title="Musician Evaluation System"
+        title="Perform Pro"
         subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}
       />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="space-y-6">
           {/* Active assignments */}
-          <section className="bg-white rounded-2xl shadow-md p-6">
+          <section className="rounded-2xl bg-white p-4 shadow-md sm:p-6">
             <div className="mb-4 flex items-center gap-2">
               <Music2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
               <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>

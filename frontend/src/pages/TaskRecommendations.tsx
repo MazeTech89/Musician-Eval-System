@@ -43,9 +43,9 @@ const TaskRecommendations: React.FC = () => {
 
   return (
     <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
-      <AppHeader title="Musician Evaluation System" subtitle="Task Rankings" />
+      <AppHeader title="Perform Pro" subtitle="Task Rankings" />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Page header */}
         <div className="perform-pro-hero rounded-2xl p-8 mb-8 text-white">
           <Trophy className="absolute right-24 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
@@ -83,7 +83,7 @@ const TaskRecommendations: React.FC = () => {
         )}
 
         {!loading && recommendations.length > 0 && (
-          <div className="overflow-hidden rounded-2xl shadow-md bg-white">
+          <div className="overflow-x-auto rounded-2xl bg-white shadow-md">
             <table className="min-w-full divide-y divide-gray-100">
               <thead>
                 <tr style={{ backgroundColor: "var(--color-primary)" }}>

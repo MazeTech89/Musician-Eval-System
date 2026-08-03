@@ -50,19 +50,19 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   ];
 
   return (
-    <nav className="shadow-lg" style={{ background: "linear-gradient(90deg, #0f3444 0%, #123f52 100%)" }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
+    <nav className="shadow-lg border-b border-white/10" style={{ background: "linear-gradient(90deg, #0f3444 0%, #123f52 100%)" }}>
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-3 py-3 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <Music4 className="h-6 w-6 text-amber-300" aria-hidden="true" />
+              <Music4 className="h-6 w-6 shrink-0 text-amber-300" aria-hidden="true" />
               <div>
-                <h1 className="text-lg font-bold text-white leading-tight">{title}</h1>
-                {subtitle ? <p className="text-xs text-amber-300">{subtitle}</p> : null}
+                <h1 className="text-base font-bold leading-tight text-white sm:text-lg">{title}</h1>
+                {subtitle ? <p className="text-[11px] text-amber-300 sm:text-xs">{subtitle}</p> : null}
               </div>
             </div>
             {user?.role ? (
-              <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize text-white" style={{ backgroundColor: "var(--color-accent)" }}>
+              <span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize text-white sm:text-xs" style={{ backgroundColor: "var(--color-accent)" }}>
                 {user.role}
               </span>
             ) : null}
@@ -77,15 +77,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm ${
                       active
                         ? 'text-white'
                         : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                     }`}
-                     style={active ? { backgroundColor: "var(--color-accent)" } : undefined}
+                    style={active ? { backgroundColor: "var(--color-accent)" } : undefined}
                   >
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                       <span>{item.label}</span>
                     </span>
                   </Link>
@@ -95,7 +95,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
             <button
               type="button"
               onClick={logout}
-              className="self-start text-xs font-medium text-slate-300 hover:text-white transition lg:self-end"
+              className="self-start text-xs font-medium text-slate-300 transition hover:text-white lg:self-end"
             >
               <span className="inline-flex items-center gap-1">
                 <LogOut className="h-3.5 w-3.5" aria-hidden="true" />

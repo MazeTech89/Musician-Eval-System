@@ -208,7 +208,7 @@ const ReferenceUpload: React.FC = () => {
 
   return (
     <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
-      <AppHeader title="Musician Evaluation System" subtitle="Reference Upload" />
+      <AppHeader title="Perform Pro" subtitle="Reference Upload" />
 
       <main className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Hero */}

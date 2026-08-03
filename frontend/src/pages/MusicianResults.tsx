@@ -184,9 +184,9 @@ const MusicianResults: React.FC = () => {
 
   return (
     <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
-      <AppHeader title="Musician Evaluation System" subtitle="Musician Results" />
+      <AppHeader title="Perform Pro" subtitle="Musician Results" />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Hero */}
         <div className="perform-pro-hero rounded-2xl p-8 mb-8 text-white">
           <BarChart3 className="absolute right-24 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
@@ -237,7 +237,7 @@ const MusicianResults: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+             <div className="overflow-x-auto rounded-2xl bg-white shadow-md">
                 <table className="min-w-full divide-y divide-gray-100">
                   <thead>
                     <tr style={{ backgroundColor: "var(--color-primary)" }}>
@@ -316,71 +316,73 @@ const MusicianResults: React.FC = () => {
                               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--color-primary)" }}>
                                 Submission history for {row.musician.first_name ?? row.musician.username}
                               </p>
-                              <table className="w-full text-sm divide-y divide-amber-200">
-                                <thead>
-                                  <tr className="text-left text-xs font-semibold text-gray-500">
-                                    <th className="pb-2 pr-6">Performance</th>
-                                    <th className="pb-2 pr-6">Task</th>
-                                    <th className="pb-2 pr-6">Submitted</th>
-                                    <th className="pb-2 pr-6">Status</th>
-                                    <th className="pb-2">AI Score</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-amber-100">
-                                  {row.submissions.map((s) => (
-                                    <tr key={s.evaluationId}>
-                                      <td className="py-2 pr-6 font-medium text-gray-700">{s.performanceTitle}</td>
-                                      <td className="py-2 pr-6 text-gray-500">{s.taskTitle}</td>
-                                      <td className="py-2 pr-6 text-gray-500">{formatDate(s.submittedAt)}</td>
-                                      <td className="py-2 pr-6">
-                                        <span
-                                          className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-                                            s.status === "completed"
-                                              ? "bg-green-100 text-green-700"
-                                              : s.status === "pending"
-                                              ? "bg-yellow-100 text-yellow-700"
-                                              : "bg-gray-100 text-gray-600"
-                                          }`}
-                                        >
-                                          {s.status}
-                                        </span>
-                                      </td>
-                                      <td className="py-2">
-                                        {s.score !== null ? (
-                                          <span className={`score-badge ${scoreBadgeClass(s.score)}`} style={{ width: "2.5rem", height: "2.5rem", fontSize: "0.75rem" }}>
-                                            {Math.round(s.score)}
-                                          </span>
-                                        ) : (
-                                          <div className="flex items-center gap-3">
-                                            <span className="text-gray-400 italic text-xs">Pending</span>
-                                            <button
-                                              type="button"
-                                              onClick={() => void handleRescore(s.evaluationId, s.assignmentId, s.performanceId)}
-                                              disabled={rescoringEvaluationId === s.evaluationId}
-                                              className="inline-flex items-center gap-1 rounded border border-amber-200 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-                                            >
-                                              {rescoringEvaluationId === s.evaluationId ? (
-                                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                                              ) : (
-                                                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                                              )}
-                                              <span>Re-score</span>
-                                            </button>
-                                          </div>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                             <div className="overflow-x-auto">
+                               <table className="w-full min-w-[560px] text-sm divide-y divide-amber-200">
+                                 <thead>
+                                   <tr className="text-left text-xs font-semibold text-gray-500">
+                                     <th className="pb-2 pr-6">Performance</th>
+                                     <th className="pb-2 pr-6">Task</th>
+                                     <th className="pb-2 pr-6">Submitted</th>
+                                     <th className="pb-2 pr-6">Status</th>
+                                     <th className="pb-2">AI Score</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-amber-100">
+                                   {row.submissions.map((s) => (
+                                     <tr key={s.evaluationId}>
+                                       <td className="py-2 pr-6 font-medium text-gray-700">{s.performanceTitle}</td>
+                                       <td className="py-2 pr-6 text-gray-500">{s.taskTitle}</td>
+                                       <td className="py-2 pr-6 text-gray-500">{formatDate(s.submittedAt)}</td>
+                                       <td className="py-2 pr-6">
+                                         <span
+                                           className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                                             s.status === "completed"
+                                               ? "bg-green-100 text-green-700"
+                                               : s.status === "pending"
+                                               ? "bg-yellow-100 text-yellow-700"
+                                               : "bg-gray-100 text-gray-600"
+                                           }`}
+                                         >
+                                           {s.status}
+                                         </span>
+                                       </td>
+                                       <td className="py-2">
+                                         {s.score !== null ? (
+                                           <span className={`score-badge ${scoreBadgeClass(s.score)}`} style={{ width: "2.5rem", height: "2.5rem", fontSize: "0.75rem" }}>
+                                             {Math.round(s.score)}
+                                           </span>
+                                         ) : (
+                                           <div className="flex items-center gap-3">
+                                             <span className="text-gray-400 italic text-xs">Pending</span>
+                                             <button
+                                               type="button"
+                                               onClick={() => void handleRescore(s.evaluationId, s.assignmentId, s.performanceId)}
+                                               disabled={rescoringEvaluationId === s.evaluationId}
+                                               className="inline-flex items-center gap-1 rounded border border-amber-200 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                                             >
+                                               {rescoringEvaluationId === s.evaluationId ? (
+                                                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                               ) : (
+                                                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                                               )}
+                                               <span>Re-score</span>
+                                             </button>
+                                           </div>
+                                         )}
+                                       </td>
+                                     </tr>
+                                   ))}
+                                 </tbody>
+                               </table>
+                             </div>
+                           </td>
+                         </tr>
+                       )}
+                     </React.Fragment>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
             )}
           </>
         )}

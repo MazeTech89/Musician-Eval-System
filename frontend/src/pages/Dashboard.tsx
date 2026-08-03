@@ -52,23 +52,23 @@ const journeyByRole: Record<string, JourneyPlan> = {
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const journey = journeyByRole[user?.role || ""] || {
-    intro: "Welcome to the Musician Evaluation System.",
+    intro: "Welcome to Perform Pro.",
     actions: [],
   };
   const [primary, ...secondary] = journey.actions;
 
   return (
     <div className="min-h-screen staff-bg" style={{ backgroundColor: 'var(--bg-page)' }}>
-      <AppHeader title="Musician Evaluation System" subtitle={`Welcome back, ${user?.first_name || user?.username}!`} />
+      <AppHeader title="Perform Pro" subtitle={`Welcome back, ${user?.first_name || user?.username}!`} />
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
-        <div className="perform-pro-hero rounded-2xl p-8 mb-8 text-white">
-          <Music4 className="absolute right-8 top-6 h-12 w-12 opacity-20" aria-hidden="true" />
+      <main className="relative mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="perform-pro-hero mb-8 rounded-2xl p-5 text-white sm:p-8">
+          <Music4 className="absolute right-6 top-6 h-10 w-10 opacity-20 sm:right-8 sm:h-12 sm:w-12" aria-hidden="true" />
           <div className="flex items-center gap-3">
             <LayoutDashboard className="h-8 w-8 text-rose-100" aria-hidden="true" />
-            <h2 className="text-3xl font-bold font-display">Dashboard</h2>
+            <h2 className="text-2xl font-bold font-display sm:text-3xl">Dashboard</h2>
           </div>
-          <p className="max-w-xl text-cyan-100">{journey.intro}</p>
+          <p className="mt-2 max-w-xl text-sm text-cyan-100 sm:text-base">{journey.intro}</p>
         </div>
 
         {primary ? (
@@ -78,15 +78,15 @@ const Dashboard: React.FC = () => {
             </p>
             <Link
               to={primary.to}
-              className="music-card flex items-start gap-5 bg-white rounded-2xl p-6 shadow-md border-l-4"
+              className="music-card flex flex-col items-start gap-4 rounded-2xl border-l-4 bg-white p-5 shadow-md sm:flex-row sm:gap-5 sm:p-6"
               style={{ borderLeftColor: "var(--color-accent)" }}
             >
-              <primary.Icon className="mt-1 h-10 w-10" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
+              <primary.Icon className="mt-1 h-10 w-10 shrink-0" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
               <div>
-                <h3 className="text-xl font-bold mb-1" style={{ color: "var(--color-primary)" }}>
+                <h3 className="mb-1 text-xl font-bold" style={{ color: "var(--color-primary)" }}>
                   {primary.title}
                 </h3>
-                <p className="text-gray-500 mb-3">{primary.description}</p>
+                <p className="mb-3 text-sm text-gray-500 sm:text-base">{primary.description}</p>
                 <span
                   className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold text-white"
                   style={{ backgroundColor: "var(--color-accent)" }}
