@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     use_local_upload_storage: bool = False
     local_upload_dir: str = "uploads"
     max_audio_upload_size_mb: int = 300
+    s3_fallback_to_local: bool = True
 
     # AWS S3
     aws_region: str | None = None
