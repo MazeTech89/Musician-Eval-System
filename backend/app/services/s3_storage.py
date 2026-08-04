@@ -114,12 +114,16 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
         return upload_performance_audio_to_local_storage(audio_file, musician_id)
 
     if not is_s3_configured():
+        if settings.s3_fallback_to_local:
+            return upload_performance_audio_to_local_storage(audio_file, musician_id)
         raise S3StorageError(
             "S3 storage is not fully configured. Set AWS_REGION and "
             "S3_BUCKET_NAME or enable USE_LOCAL_UPLOAD_STORAGE."
         )
 
     if not settings.s3_bucket_name:
+        if settings.s3_fallback_to_local:
+            return upload_performance_audio_to_local_storage(audio_file, musician_id)
         raise S3StorageError("S3 bucket is not configured.")
 
     object_key = _build_object_key(musician_id=musician_id, filename=audio_file.filename or "")
@@ -135,6 +139,8 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
             ExtraArgs={"ContentType": content_type},
         )
     except (BotoCoreError, ClientError) as err:
+        if settings.s3_fallback_to_local:
+            return upload_performance_audio_to_local_storage(audio_file, musician_id)
         raise S3StorageError("Failed to upload audio file to S3.") from err
 
     return f"s3://{settings.s3_bucket_name}/{object_key}"
