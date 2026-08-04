@@ -571,7 +571,9 @@ def test_musician_can_submit_assignment_and_receive_score(
     assert assignment_response.status_code == 201
     assignment_id = assignment_response.json()["id"]
 
-    list_response = client.get("/api/v1/assignments?limit=500", headers=_auth_headers(musician_user))  # noqa: E501
+    list_response = client.get(
+        "/api/v1/assignments?limit=500", headers=_auth_headers(musician_user)
+    )  # noqa: E501
     assert list_response.status_code == 200
     assert any(item["id"] == assignment_id for item in list_response.json())
 
@@ -633,7 +635,9 @@ def test_musician_submission_survives_missing_reference_audio(
     assert reference_response.status_code == 201
     reference_payload = reference_response.json()
 
-    missing_reference_path = Path.cwd() / settings.local_upload_dir / Path(reference_payload["audio_file_url"]).name  # noqa: E501
+    missing_reference_path = (
+        Path.cwd() / settings.local_upload_dir / Path(reference_payload["audio_file_url"]).name
+    )  # noqa: E501
     missing_reference_path.unlink(missing_ok=True)
 
     assignment_response = client.post(

@@ -55,9 +55,7 @@ def _make_wav_bytes() -> bytes:
         wav_file.setsampwidth(2)
         wav_file.setframerate(sample_rate)
         for sample_index in range(total_samples):
-            sample_value = int(
-                amplitude * math.sin(2 * math.pi * 440 * sample_index / sample_rate)
-            )
+            sample_value = int(amplitude * math.sin(2 * math.pi * 440 * sample_index / sample_rate))
             wav_file.writeframes(struct.pack("<h", sample_value))
 
     return buffer.getvalue()
@@ -160,7 +158,6 @@ def test_upload_audio_accepts_common_mp3_content_type_alias(monkeypatch) -> None
     assert data["title"] == "MP3 upload"
     assert data["audio_file_url"] == "s3://test-bucket/performances/7/sample.mp3"
     assert data["musician_id"] == 7
-
 
 
 def test_local_upload_storage_fallback_writes_to_disk(tmp_path, monkeypatch) -> None:

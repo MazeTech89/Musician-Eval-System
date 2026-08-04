@@ -28,6 +28,7 @@ from app.services.s3_storage import (
 
 router = APIRouter(prefix="/performances", tags=["performances"])
 
+
 @router.get("/", response_model=list[PerformanceResponse])
 async def get_performances(
     skip: int = 0,

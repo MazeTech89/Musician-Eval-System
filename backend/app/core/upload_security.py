@@ -33,7 +33,7 @@ def _matches_signature(content_type: str, header: bytes) -> bool:
     if content_type == "audio/flac":
         return header.startswith(b"fLaC")
     if content_type == "audio/webm":
-        return header.startswith(b"\x1A\x45\xDF\xA3")
+        return header.startswith(b"\x1a\x45\xdf\xa3")
     if content_type == "audio/mp4":
         return len(header) >= 8 and header[4:8] == b"ftyp"
     if content_type in {"audio/mpeg", "audio/mp3", "audio/x-mp3", "audio/x-mpeg"}:

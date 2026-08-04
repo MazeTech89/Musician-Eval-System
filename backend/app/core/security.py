@@ -19,11 +19,7 @@ REFRESH_TOKEN_TYPE = "refresh"
 def _get_secret_keys() -> list[str]:
     keys = [settings.secret_key]
     if settings.secret_key_fallbacks.strip():
-        keys.extend(
-            key.strip()
-            for key in settings.secret_key_fallbacks.split(",")
-            if key.strip()
-        )
+        keys.extend(key.strip() for key in settings.secret_key_fallbacks.split(",") if key.strip())
     return keys
 
 

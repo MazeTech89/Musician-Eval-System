@@ -131,7 +131,6 @@ def test_musician_user(setup_test_roles):
     return user
 
 
-
 class TestAuthentication:
     """Test authentication endpoints."""
 
@@ -265,7 +264,9 @@ class TestPasswordSecurity:
             )
 
             monkeypatch.setattr(settings, "secret_key", "new-secret-key-new-secret-key-new!")
-            monkeypatch.setattr(settings, "secret_key_fallbacks", "old-secret-key-old-secret-key-old!")  # noqa: E501
+            monkeypatch.setattr(
+                settings, "secret_key_fallbacks", "old-secret-key-old-secret-key-old!"
+            )  # noqa: E501
 
             decoded = decode_token(token)
             assert decoded is not None
@@ -504,6 +505,7 @@ class TestUserManagement:
 
         assert response.status_code == 200
         assert response.json()["is_active"] is False
+
 
 class TestRefreshToken:
     """Test refresh token functionality."""
