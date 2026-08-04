@@ -40,7 +40,7 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
         "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; "
-        "font-src 'self' data:; connect-src 'self' http://localhost:8000 https://musician-eval-backend.onrender.com; "
+        "font-src 'self' data:; connect-src 'self' http://localhost:8000 https://musician-eval-backend.onrender.com; "  # noqa: E501
         "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     )
     if not settings.debug:

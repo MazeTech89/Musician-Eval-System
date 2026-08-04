@@ -1,10 +1,10 @@
 """Tests for performance audio uploads."""
 
-from datetime import datetime
-from io import BytesIO
 import math
 import struct
 import wave
+from datetime import datetime
+from io import BytesIO
 
 from fastapi.testclient import TestClient
 

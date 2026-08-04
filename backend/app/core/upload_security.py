@@ -6,8 +6,8 @@ from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
 
-from app.core.config import settings
 from app.core.audit import record_security_alert
+from app.core.config import settings
 
 ALLOWED_AUDIO_CONTENT_TYPES = {
     "audio/mpeg",

@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin
-from app.models.user import User
 from app.core.security import clear_auth_cookies, set_auth_cookies
+from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
     MFASetupResponse,
@@ -234,7 +234,7 @@ async def verify_email(token: str, db: Session = Depends(get_db)) -> dict[str, s
     if AuthService.verify_email(db, token):
         record_audit_event("auth.email_verified.request")
         return {"message": "Email verified successfully"}
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")  # noqa: E501
 
 
 @router.post("/password-reset/request")
@@ -259,7 +259,7 @@ async def confirm_password_reset(
     if AuthService.reset_password(db, payload.token, payload.new_password):
         record_audit_event("auth.password_reset.completed.request")
         return {"message": "Password reset successfully"}
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired password reset token")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired password reset token")  # noqa: E501
 
 
 @router.post("/mfa/setup", response_model=MFASetupResponse)
@@ -270,7 +270,7 @@ async def setup_mfa(
     """Generate an MFA secret for the current user."""
     # MFA setup returns secret + otpauth URI used by authenticator apps.
     secret, otpauth_url = AuthService.setup_mfa(db, current_user)
-    record_audit_event("auth.mfa.setup.request", user_id=current_user.id, username=current_user.username)
+    record_audit_event("auth.mfa.setup.request", user_id=current_user.id, username=current_user.username)  # noqa: E501
     return MFASetupResponse(secret=secret, otpauth_url=otpauth_url)
 
 
@@ -283,7 +283,7 @@ async def enable_mfa(
     """Enable MFA for the current user."""
     # Enabling MFA requires a valid code generated from the just-enrolled secret.
     if AuthService.enable_mfa(db, current_user, payload.code):
-        record_audit_event("auth.mfa.enable.request", user_id=current_user.id, username=current_user.username)
+        record_audit_event("auth.mfa.enable.request", user_id=current_user.id, username=current_user.username)  # noqa: E501
         return {"message": "MFA enabled successfully"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
 
@@ -297,7 +297,7 @@ async def disable_mfa(
     """Disable MFA for the current user."""
     # Disable is protected by a live MFA code to prevent unauthorized account takeover.
     if AuthService.disable_mfa(db, current_user, payload.code):
-        record_audit_event("auth.mfa.disable.request", user_id=current_user.id, username=current_user.username)
+        record_audit_event("auth.mfa.disable.request", user_id=current_user.id, username=current_user.username)  # noqa: E501
         return {"message": "MFA disabled successfully"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
 
@@ -329,7 +329,7 @@ async def change_password(
             password_data.current_password,
             password_data.new_password,
         )
-        record_audit_event("auth.password_changed", user_id=current_user.id, username=current_user.username)
+        record_audit_event("auth.password_changed", user_id=current_user.id, username=current_user.username)  # noqa: E501
         return {"message": "Password changed successfully"}
     except ValueError as err:
         raise HTTPException(

@@ -78,6 +78,7 @@ jobs:
     name: Build and push container images
     runs-on: ubuntu-latest
     needs: resolve-target
+    if: vars.AWS_ECR_DEPLOY_ENABLED == 'true'
     environment:
       name: ${{ needs.resolve-target.outputs.environment }}
     outputs:

@@ -66,4 +66,4 @@ jobs:
         if: steps.detect.outputs.strategy == 'bootstrap'
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/musician_eval
-        run: python app/core/init_db.py
+        run: python -m app.core.init_db

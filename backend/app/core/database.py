@@ -86,7 +86,7 @@ def _ensure_schema_columns() -> None:
             with engine.begin() as connection:
                quoted_table = quote_identifier(table.name)
                connection.execute(
-                   text(f"UPDATE {quoted_table} SET is_active = TRUE WHERE is_active IS NULL")
+                   text(f"UPDATE {quoted_table} SET is_active = TRUE WHERE is_active IS NULL")  # noqa: S608  # nosec B608
                )
 
     if "user" in existing_tables:
@@ -94,17 +94,17 @@ def _ensure_schema_columns() -> None:
             quoted_user_table = quote_identifier("user")
             connection.execute(
                text(
-                   f"UPDATE {quoted_user_table} SET email_verified = TRUE WHERE email_verified IS NULL"
+                   f"UPDATE {quoted_user_table} SET email_verified = TRUE WHERE email_verified IS NULL"  # noqa: S608, E501  # nosec B608
                )
             )
             connection.execute(
                text(
-                   f"UPDATE {quoted_user_table} SET mfa_enabled = FALSE WHERE mfa_enabled IS NULL"
+                   f"UPDATE {quoted_user_table} SET mfa_enabled = FALSE WHERE mfa_enabled IS NULL"  # noqa: S608  # nosec B608
                )
             )
             connection.execute(
                text(
-                   f"UPDATE {quoted_user_table} SET failed_login_count = 0 WHERE failed_login_count IS NULL"
+                   f"UPDATE {quoted_user_table} SET failed_login_count = 0 WHERE failed_login_count IS NULL"  # noqa: S608, E501  # nosec B608
                )
             )
 

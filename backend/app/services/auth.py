@@ -8,11 +8,9 @@ import pyotp
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.audit import record_audit_event, record_security_alert
+from app.core.config import settings
 from app.core.email import send_password_reset_email, send_verification_email
-from app.models.evaluation import Evaluation, Performance
-from app.models.reference_track import Assignment, ReferenceTrack
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -20,6 +18,8 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.evaluation import Evaluation, Performance
+from app.models.reference_track import Assignment, ReferenceTrack
 from app.models.user import Role, RoleEnum, User
 from app.schemas.auth import TokenResponse, UserCreate, UserUpdate
 from app.services.s3_storage import delete_audio_file
@@ -141,15 +141,15 @@ class AuthService:
                     failed_login_count=user.failed_login_count,
                 )
             db.commit()
-            record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_password")
+            record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_password")  # noqa: E501
             return None
 
         if user.mfa_enabled:
             if not totp_code:
-                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa")
+                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa")  # noqa: E501
                 return None
             if not user.mfa_secret:
-                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa_secret")
+                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa_secret")  # noqa: E501
                 return None
             totp = pyotp.TOTP(user.mfa_secret)
             if not totp.verify(totp_code, valid_window=1):
@@ -163,7 +163,7 @@ class AuthService:
                         failed_login_count=user.failed_login_count,
                     )
                 db.commit()
-                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_mfa")
+                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_mfa")  # noqa: E501
                 return None
 
         user.failed_login_count = 0
@@ -390,7 +390,7 @@ class AuthService:
         user = db.query(User).filter(User.email_verification_token == token).first()
         if not user:
             return False
-        if user.email_verification_token_expires_at and user.email_verification_token_expires_at < datetime.now(UTC):
+        if user.email_verification_token_expires_at and user.email_verification_token_expires_at < datetime.now(UTC):  # noqa: E501
             return False
 
         user.email_verified = True
@@ -426,7 +426,7 @@ class AuthService:
         user = db.query(User).filter(User.password_reset_token == token).first()
         if not user:
             return False
-        if user.password_reset_token_expires_at and user.password_reset_token_expires_at < datetime.now(UTC):
+        if user.password_reset_token_expires_at and user.password_reset_token_expires_at < datetime.now(UTC):  # noqa: E501
             return False
 
         user.hashed_password = hash_password(new_password)
@@ -446,7 +446,7 @@ class AuthService:
         user.mfa_enabled = False
         db.commit()
         record_audit_event("auth.mfa.setup", user_id=user.id, username=user.username)
-        provisioning_uri = pyotp.TOTP(secret).provisioning_uri(name=user.email or user.username, issuer_name="Musician Evaluation")
+        provisioning_uri = pyotp.TOTP(secret).provisioning_uri(name=user.email or user.username, issuer_name="Musician Evaluation")  # noqa: E501
         return secret, provisioning_uri
 
     @staticmethod

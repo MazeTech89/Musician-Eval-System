@@ -2,12 +2,13 @@
 
 from datetime import timedelta
 from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.core.database import SessionLocal
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -264,7 +265,7 @@ class TestPasswordSecurity:
             )
 
             monkeypatch.setattr(settings, "secret_key", "new-secret-key-new-secret-key-new!")
-            monkeypatch.setattr(settings, "secret_key_fallbacks", "old-secret-key-old-secret-key-old!")
+            monkeypatch.setattr(settings, "secret_key_fallbacks", "old-secret-key-old-secret-key-old!")  # noqa: E501
 
             decoded = decode_token(token)
             assert decoded is not None

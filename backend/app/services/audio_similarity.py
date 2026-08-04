@@ -24,7 +24,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 
 logger = logging.getLogger(__name__)
 
