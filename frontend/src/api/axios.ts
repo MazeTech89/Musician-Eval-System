@@ -52,12 +52,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Auth endpoints must never trigger the refresh-and-retry flow below, otherwise a
+// plain invalid-credentials 401 on login recurses into /auth/refresh indefinitely.
+const AUTH_ENDPOINT_PATHS = ["/auth/login", "/auth/register", "/auth/refresh"];
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const isAuthEndpoint = AUTH_ENDPOINT_PATHS.some((path) =>
+      originalRequest?.url?.includes(path),
+    );
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
