@@ -28,7 +28,9 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = "your-secret-key-change-in-production"  # noqa: S105 - Default for dev, change in production
-    secret_key_fallbacks: str = ""
+    secret_key_fallbacks: str = (
+        ""  # Comma-separated older secrets, still accepted for token verification during rotation
+    )
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -50,7 +52,7 @@ class Settings(BaseSettings):
     use_local_upload_storage: bool = False
     local_upload_dir: str = "uploads"
     max_audio_upload_size_mb: int = 300
-    s3_fallback_to_local: bool = True
+    s3_fallback_to_local: bool = True  # Fall back to local disk storage if S3 upload fails
 
     # AWS S3
     aws_region: str | None = None
@@ -60,4 +62,5 @@ class Settings(BaseSettings):
     s3_endpoint_url: str | None = None
 
 
+# Singleton settings instance loaded once at import time and reused across the app
 settings = Settings()

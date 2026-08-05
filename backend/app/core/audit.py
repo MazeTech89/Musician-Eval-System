@@ -14,6 +14,7 @@ logger = logging.getLogger("app.audit")
 
 
 def _serialize_details(details: dict[str, Any]) -> str:
+    """Combine a timestamp with arbitrary details into a single JSON string for logging."""
     payload = {"timestamp": datetime.now(UTC).isoformat(), **details}
     return json.dumps(payload, sort_keys=True, default=str)
 
@@ -29,6 +30,7 @@ def record_security_alert(event: str, **details: Any) -> None:
     logger.warning("%s", message)
 
     if not settings.security_alert_email:
+        # No recipient configured; logging above is the only notification
         return
 
     try:
@@ -38,6 +40,7 @@ def record_security_alert(event: str, **details: Any) -> None:
             message,
         )
     except RuntimeError:
+        # Don't let a failed notification email break the request that triggered the alert
         logger.exception("Failed to deliver security alert email")
         return
 

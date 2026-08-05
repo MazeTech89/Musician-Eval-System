@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api/axios";
-import { getApiErrorMessage, validatePassword, validateRequired } from "../utils/form";
+import {
+  getApiErrorMessage,
+  validatePassword,
+  validateRequired,
+} from "../utils/form";
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -15,6 +19,7 @@ const ResetPassword: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    // Validate all fields client-side before calling the reset-confirm endpoint
     const tokenError = validateRequired(token, "Reset token");
     const passwordError = validatePassword(password);
     const confirmError = validateRequired(confirmPassword, "Confirm password");
@@ -45,7 +50,9 @@ const ResetPassword: React.FC = () => {
         token,
         new_password: password,
       });
-      setMessage("Your password has been reset successfully. You can now sign in.");
+      setMessage(
+        "Your password has been reset successfully. You can now sign in.",
+      );
       setPassword("");
       setConfirmPassword("");
     } catch (err: unknown) {
@@ -66,7 +73,10 @@ const ResetPassword: React.FC = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="password-reset-token" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password-reset-token"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Reset token
               </label>
               <input
@@ -80,7 +90,10 @@ const ResetPassword: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="password-reset-new" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password-reset-new"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 New password
               </label>
               <input
@@ -96,7 +109,10 @@ const ResetPassword: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="password-reset-confirm" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password-reset-confirm"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Confirm new password
               </label>
               <input
@@ -113,8 +129,12 @@ const ResetPassword: React.FC = () => {
             </div>
           </div>
 
-          {error ? <p className="text-sm text-red-600 text-center">{error}</p> : null}
-          {message ? <p className="text-sm text-green-600 text-center">{message}</p> : null}
+          {error ? (
+            <p className="text-sm text-red-600 text-center">{error}</p>
+          ) : null}
+          {message ? (
+            <p className="text-sm text-green-600 text-center">{message}</p>
+          ) : null}
 
           <button
             type="submit"

@@ -6,8 +6,8 @@ from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
 
-from app.core.config import settings
 from app.core.audit import record_security_alert
+from app.core.config import settings
 
 ALLOWED_AUDIO_CONTENT_TYPES = {
     "audio/mpeg",
@@ -26,6 +26,7 @@ ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".webm", ".mp4", ".flac"}
 
 
 def _matches_signature(content_type: str, header: bytes) -> bool:
+    """Verify the file's magic-byte signature matches its declared content type (anti-spoofing)."""
     if content_type in {"audio/wav", "audio/x-wav"}:
         return len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WAVE"
     if content_type == "audio/ogg":
@@ -33,12 +34,14 @@ def _matches_signature(content_type: str, header: bytes) -> bool:
     if content_type == "audio/flac":
         return header.startswith(b"fLaC")
     if content_type == "audio/webm":
-        return header.startswith(b"\x1A\x45\xDF\xA3")
+        return header.startswith(b"\x1a\x45\xdf\xa3")  # EBML/Matroska magic number
     if content_type == "audio/mp4":
         return len(header) >= 8 and header[4:8] == b"ftyp"
     if content_type in {"audio/mpeg", "audio/mp3", "audio/x-mp3", "audio/x-mpeg"}:
         return header.startswith(b"ID3") or (
-            len(header) >= 2 and header[0] == 0xFF and header[1] & 0xE0 == 0xE0
+            len(header) >= 2
+            and header[0] == 0xFF
+            and header[1] & 0xE0 == 0xE0  # MPEG frame sync bits
         )
     return False
 
@@ -71,6 +74,7 @@ def validate_audio_upload(audio_file: UploadFile) -> None:
             detail="Unsupported audio file extension",
         )
 
+    # Determine the actual upload size by seeking to the end, then rewind for later reads
     audio_file.file.seek(0, 2)
     file_size = audio_file.file.tell()
     audio_file.file.seek(0)
@@ -99,6 +103,7 @@ def validate_audio_upload(audio_file: UploadFile) -> None:
             detail=f"Audio upload must be {settings.max_audio_upload_size_mb} MB or smaller",
         )
 
+    # Read just enough bytes to check the file signature, then rewind so downstream code sees the full file
     header = audio_file.file.read(16)
     audio_file.file.seek(0)
     if not _matches_signature(audio_file.content_type, header):

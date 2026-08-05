@@ -25,7 +25,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string, totpCode?: string) => Promise<void>;
+  login: (
+    username: string,
+    password: string,
+    totpCode?: string,
+  ) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -68,10 +72,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
+    // On first mount, try to restore the session using any stored/cookie-based token
     const initializeAuth = async () => {
       try {
         await refreshUser();
       } catch (error) {
+        // No valid session; ensure stale tokens don't linger
         clearStoredAuthTokens();
         setUser(null);
       } finally {
@@ -82,7 +88,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (username: string, password: string, totpCode?: string) => {
+  const login = async (
+    username: string,
+    password: string,
+    totpCode?: string,
+  ) => {
     try {
       const response = await api.post("/auth/login", {
         username,
@@ -92,6 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { access_token, refresh_token } = response.data ?? {};
       setStoredAuthTokens(access_token, refresh_token);
 
+      // Fetch the full profile now that we're authenticated
       const profileResponse = await api.get("/auth/me");
       setUser(profileResponse.data);
     } catch (error) {
@@ -110,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     clearStoredAuthTokens();
+    // Best-effort server-side logout (clears auth cookies); ignore network failures
     api.post("/auth/logout").catch(() => undefined);
     setUser(null);
   };

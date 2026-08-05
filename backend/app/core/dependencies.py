@@ -32,8 +32,10 @@ async def get_current_user(
     """
     token = None
     if credentials and credentials.credentials:
+        # Prefer an explicit Authorization: Bearer header if provided
         token = credentials.credentials
     else:
+        # Fall back to the HttpOnly cookie set at login
         token = request.cookies.get("access_token")
 
     if not token:

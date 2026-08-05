@@ -27,6 +27,7 @@ async def get_evaluations(
     """Get evaluations. Musicians see their own; admins see all."""
     query = db.query(Evaluation)
     if current_user.role.name == "musician":
+        # Restrict to evaluations tied to performances the musician submitted
         query = query.join(Evaluation.performance).filter(
             Evaluation.performance.has(musician_id=current_user.id)
         )
@@ -45,6 +46,7 @@ async def get_evaluation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evaluation not found")
 
     if current_user.role.name == "musician":
+        # Musicians can only view evaluations of performances they submitted
         if evaluation.performance.musician_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
@@ -130,7 +132,6 @@ async def delete_evaluation(
     db.delete(evaluation)
     db.commit()
     return {"message": "Evaluation deleted successfully"}
-
 
 
 @router.get("/", response_model=list[EvaluationWithPerformanceResponse])

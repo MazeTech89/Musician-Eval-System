@@ -63,9 +63,11 @@ class UserResponse(UserBase):
     @field_validator("role", mode="before")
     @classmethod
     def validate_role(cls, value):
+        """Normalize the incoming role (SQLAlchemy Role object or enum) to its string value."""
         if value is None:
             return None
         if hasattr(value, "name"):
+            # value is a Role ORM object; unwrap its `name` (a RoleEnum or plain string)
             name = value.name
             if isinstance(name, RoleEnum):
                 return name.value
@@ -74,6 +76,7 @@ class UserResponse(UserBase):
 
     @field_serializer("role")
     def serialize_role(self, role):
+        """Ensure the role is always serialized to the API as a plain string."""
         if isinstance(role, str):
             return role
         if hasattr(role, "name"):

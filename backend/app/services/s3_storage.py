@@ -85,6 +85,7 @@ def upload_performance_audio_to_local_storage(audio_file: UploadFile, musician_i
 
 
 def _build_s3_client():
+    """Construct a boto3 S3 client from configured credentials/region/endpoint."""
     session_kwargs: dict[str, str] = {}
     if settings.aws_access_key_id:
         session_kwargs["aws_access_key_id"] = settings.aws_access_key_id
@@ -97,6 +98,7 @@ def _build_s3_client():
         "region_name": settings.aws_region,
     }
     if settings.s3_endpoint_url:
+        # Custom endpoint supports S3-compatible services (e.g. MinIO) for local/dev use
         client_kwargs["endpoint_url"] = settings.s3_endpoint_url
     return session.client(**client_kwargs)
 
@@ -149,6 +151,7 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
 def delete_audio_file(audio_file_url: str | None) -> None:
     """Delete a stored audio file from the configured backend."""
     if not audio_file_url:
+        # Nothing to delete (e.g. performance never had audio attached)
         return
 
     if audio_file_url.startswith("s3://"):
@@ -167,6 +170,7 @@ def delete_audio_file(audio_file_url: str | None) -> None:
             raise S3StorageError("Failed to delete audio file from S3.") from err
         return
 
+    # Local file: resolve its path (never temporary since it's on disk) and remove it
     candidate_path, _ = materialize_audio_file(audio_file_url)
     candidate_path.unlink(missing_ok=True)
 
@@ -195,6 +199,7 @@ def materialize_audio_file(audio_file_url: str) -> tuple[Path, bool]:
 
         s3_client = _build_s3_client()
         try:
+            # Stream the S3 object directly to a temp file so scoring code can open it by path
             with Path(temp_file.name).open("wb") as local_file:
                 s3_client.download_fileobj(bucket_name, object_key, local_file)
         except (BotoCoreError, ClientError) as err:

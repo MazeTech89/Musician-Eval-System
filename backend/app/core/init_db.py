@@ -58,7 +58,7 @@ def init_roles_and_permissions(db: Session) -> None:
                 description=f"Permission to {perm_enum.value}",
             )
             db.add(perm)
-            db.flush()
+            db.flush()  # Flush to get perm.id available before it's referenced by roles below
             permission_map[perm_enum] = perm
         else:
             permission_map[perm_enum] = existing
@@ -76,7 +76,7 @@ def init_roles_and_permissions(db: Session) -> None:
                 role.permissions.append(permission_map[perm_enum])
             db.add(role)
         else:
-            # Update permissions for existing role
+            # Role already exists; reset its permissions to match the current definition above
             existing_role.permissions.clear()
             for perm_enum in perms:
                 existing_role.permissions.append(permission_map[perm_enum])

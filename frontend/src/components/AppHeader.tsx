@@ -20,6 +20,7 @@ type NavItem = {
   Icon: LucideIcon;
 };
 
+// Navigation links shown in the header differ per role; unknown roles fall back to just Dashboard
 const navItemsByRole: Record<string, NavItem[]> = {
   admin: [
     { to: "/", label: "Dashboard", Icon: LayoutDashboard },
@@ -50,19 +51,34 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   ];
 
   return (
-    <nav className="shadow-lg border-b border-white/10" style={{ background: "linear-gradient(90deg, #0f3444 0%, #123f52 100%)" }}>
+    <nav
+      className="shadow-lg border-b border-white/10"
+      style={{ background: "linear-gradient(90deg, #0f3444 0%, #123f52 100%)" }}
+    >
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 py-3 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <Music4 className="h-6 w-6 shrink-0 text-amber-300" aria-hidden="true" />
+              <Music4
+                className="h-6 w-6 shrink-0 text-amber-300"
+                aria-hidden="true"
+              />
               <div>
-                <h1 className="text-base font-bold leading-tight text-white sm:text-lg">{title}</h1>
-                {subtitle ? <p className="text-[11px] text-amber-300 sm:text-xs">{subtitle}</p> : null}
+                <h1 className="text-base font-bold leading-tight text-white sm:text-lg">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="text-[11px] text-amber-300 sm:text-xs">
+                    {subtitle}
+                  </p>
+                ) : null}
               </div>
             </div>
             {user?.role ? (
-              <span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize text-white sm:text-xs" style={{ backgroundColor: "var(--color-accent)" }}>
+              <span
+                className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize text-white sm:text-xs"
+                style={{ backgroundColor: "var(--color-accent)" }}
+              >
                 {user.role}
               </span>
             ) : null}
@@ -79,10 +95,14 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
                     to={item.to}
                     className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm ${
                       active
-                        ? 'text-white'
-                        : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                        ? "text-white"
+                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }`}
-                    style={active ? { backgroundColor: "var(--color-accent)" } : undefined}
+                    style={
+                      active
+                        ? { backgroundColor: "var(--color-accent)" }
+                        : undefined
+                    }
                   >
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

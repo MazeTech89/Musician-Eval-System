@@ -17,7 +17,9 @@ class ReferenceTrack(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text)
     audio_file_url = Column(String(500), nullable=False)
-    created_by_id = Column("uploaded_by_id", Integer, ForeignKey("user.id"), nullable=False)
+    created_by_id = Column(
+        "uploaded_by_id", Integer, ForeignKey("user.id"), nullable=False
+    )  # DB column kept as uploaded_by_id for compatibility
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True, nullable=False)
@@ -26,7 +28,7 @@ class ReferenceTrack(Base):
     assignments = relationship(
         "Assignment",
         back_populates="reference_track",
-        cascade="all, delete-orphan",
+        cascade="all, delete-orphan",  # Deleting a reference track removes its assignments too
     )
 
 

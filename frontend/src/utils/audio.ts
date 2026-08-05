@@ -1,6 +1,9 @@
+// Keep these in sync with the backend's MAX_AUDIO_UPLOAD_SIZE_MB / ALLOWED_AUDIO_EXTENSIONS
 export const MAX_AUDIO_UPLOAD_SIZE_MB = 300;
-export const MAX_AUDIO_UPLOAD_SIZE_BYTES = MAX_AUDIO_UPLOAD_SIZE_MB * 1024 * 1024;
+export const MAX_AUDIO_UPLOAD_SIZE_BYTES =
+  MAX_AUDIO_UPLOAD_SIZE_MB * 1024 * 1024;
 
+// Both MIME types and extensions are listed since browsers report content type inconsistently
 export const ACCEPTED_AUDIO_FILE_TYPES = [
   "audio/wav",
   "audio/x-wav",
@@ -20,6 +23,7 @@ export const ACCEPTED_AUDIO_FILE_TYPES = [
   ".flac",
 ].join(",");
 
+// Client-side pre-check to give instant feedback before hitting the server-side validator
 export function validateAudioFileSize(
   file: File | null,
   label = "Audio file",

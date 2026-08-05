@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import smtplib
 from email.message import EmailMessage
-from typing import Callable
 
 from app.core.config import settings
 
@@ -13,12 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 def _is_email_configured() -> bool:
+    """Check whether SMTP settings are present so we can attempt delivery."""
     return bool(settings.smtp_host and settings.smtp_from)
 
 
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """Send a simple email if SMTP is configured."""
     if not _is_email_configured():
+        # Silently skip in environments without SMTP (e.g. local dev/tests)
         logger.info("SMTP not configured; skipping email delivery to %s", to_email)
         return False
 
@@ -42,14 +43,15 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
 
 
 def send_verification_email(to_email: str, verification_url: str) -> bool:
+    """Send the account email-verification link to a new user."""
     body = (
-        "Please verify your email address by visiting the link below:\n\n"
-        f"{verification_url}\n"
+        "Please verify your email address by visiting the link below:\n\n" f"{verification_url}\n"
     )
     return send_email(to_email, "Verify your email address", body)
 
 
 def send_password_reset_email(to_email: str, reset_url: str) -> bool:
+    """Send a password-reset link to a user who requested one."""
     body = (
         "You requested a password reset. Use the link below to create a new password:\n\n"
         f"{reset_url}\n"

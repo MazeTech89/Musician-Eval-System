@@ -125,8 +125,10 @@ class User(Base):
     email_verification_token_expires_at = Column(DateTime, nullable=True)
     password_reset_token = Column(String(255), nullable=True)
     password_reset_token_expires_at = Column(DateTime, nullable=True)
-    failed_login_count = Column(Integer, default=0, nullable=False)
-    lockout_until = Column(DateTime, nullable=True)
+    failed_login_count = Column(
+        Integer, default=0, nullable=False
+    )  # Used to trigger account lockout
+    lockout_until = Column(DateTime, nullable=True)  # Set after too many failed login attempts
     role_id = Column(Integer, ForeignKey("role.id"), nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

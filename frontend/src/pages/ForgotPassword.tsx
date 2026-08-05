@@ -23,6 +23,7 @@ const ForgotPassword: React.FC = () => {
 
     try {
       await api.post("/auth/password-reset/request", { email });
+      // Backend always returns a generic success message to avoid leaking whether the email exists
       setMessage("If the email exists, a password reset link has been sent.");
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Unable to request password reset."));
@@ -44,7 +45,10 @@ const ForgotPassword: React.FC = () => {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="reset-request-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="reset-request-email"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Email
             </label>
             <input
@@ -59,8 +63,12 @@ const ForgotPassword: React.FC = () => {
             />
           </div>
 
-          {error ? <p className="text-sm text-red-600 text-center">{error}</p> : null}
-          {message ? <p className="text-sm text-green-600 text-center">{message}</p> : null}
+          {error ? (
+            <p className="text-sm text-red-600 text-center">{error}</p>
+          ) : null}
+          {message ? (
+            <p className="text-sm text-green-600 text-center">{message}</p>
+          ) : null}
 
           <button
             type="submit"

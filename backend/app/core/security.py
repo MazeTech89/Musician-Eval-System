@@ -17,13 +17,10 @@ REFRESH_TOKEN_TYPE = "refresh"
 
 
 def _get_secret_keys() -> list[str]:
+    """Return the active secret key plus any fallback keys used during key rotation."""
     keys = [settings.secret_key]
     if settings.secret_key_fallbacks.strip():
-        keys.extend(
-            key.strip()
-            for key in settings.secret_key_fallbacks.split(",")
-            if key.strip()
-        )
+        keys.extend(key.strip() for key in settings.secret_key_fallbacks.split(",") if key.strip())
     return keys
 
 
@@ -73,6 +70,7 @@ def create_access_token(
     to_encode = data.copy()
 
     if "sub" in to_encode:
+        # JWT "sub" claim must be a string per spec, even though user IDs are ints
         to_encode["sub"] = str(to_encode["sub"])
 
     if expires_delta:
@@ -108,6 +106,7 @@ def decode_token(token: str) -> TokenData | None:
                 algorithms=[settings.algorithm],
             )
         except InvalidTokenError:
+            # Try the next candidate key (supports zero-downtime secret rotation)
             continue
 
         user_id = payload.get("sub")
@@ -152,7 +151,9 @@ def create_refresh_token(
         # Refresh token expires in 7 days
         expire = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
 
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update(
+        {"exp": expire, "type": "refresh"}
+    )  # "type" distinguishes it from access tokens
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -165,10 +166,10 @@ def create_refresh_token(
 
 def decode_refresh_token(token: str) -> TokenData | None:
     """Decode and validate a refresh JWT token.
-    
+
     Args:
         token: Refresh JWT token to decode
-    
+
     Returns:
         TokenData if valid, None otherwise
     """
@@ -185,6 +186,7 @@ def decode_refresh_token(token: str) -> TokenData | None:
         # Verify token type
         payload_token_type = payload.get("type")
         if payload_token_type != REFRESH_TOKEN_TYPE:
+            # Reject access tokens presented where a refresh token is expected
             return None
 
         user_id = payload.get("sub")
@@ -202,14 +204,18 @@ def decode_refresh_token(token: str) -> TokenData | None:
     return None
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str | None = None) -> None:
+def set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str | None = None
+) -> None:
     """Set auth cookies for the browser using HttpOnly cookies."""
-    secure = not settings.debug
-    samesite = "none" if not settings.debug else "lax"
+    secure = not settings.debug  # Require HTTPS for cookies in production
+    samesite = (
+        "none" if not settings.debug else "lax"
+    )  # "none" allows cross-site use in prod (needs secure=True)
     response.set_cookie(
         key=settings.access_token_cookie_name,
         value=access_token,
-        httponly=True,
+        httponly=True,  # Not accessible from JavaScript, mitigates XSS token theft
         secure=secure,
         samesite=samesite,
         path="/",

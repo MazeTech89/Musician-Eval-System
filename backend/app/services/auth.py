@@ -8,11 +8,9 @@ import pyotp
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.audit import record_audit_event, record_security_alert
+from app.core.config import settings
 from app.core.email import send_password_reset_email, send_verification_email
-from app.models.evaluation import Evaluation, Performance
-from app.models.reference_track import Assignment, ReferenceTrack
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -20,6 +18,8 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.models.evaluation import Evaluation, Performance
+from app.models.reference_track import Assignment, ReferenceTrack
 from app.models.user import Role, RoleEnum, User
 from app.schemas.auth import TokenResponse, UserCreate, UserUpdate
 from app.services.s3_storage import delete_audio_file
@@ -127,12 +127,14 @@ class AuthService:
             return None
 
         if user.lockout_until and user.lockout_until > datetime.now(UTC):
+            # Account is temporarily locked out from a prior brute-force attempt
             record_audit_event("auth.login.failed", username=username, reason="locked_out")
             return None
 
         if not verify_password(password, user.hashed_password):
             user.failed_login_count += 1
             if user.failed_login_count >= 5:
+                # Lock the account for 15 minutes after 5 consecutive failures
                 user.lockout_until = datetime.now(UTC) + timedelta(minutes=15)
                 record_security_alert(
                     "auth.account_locked",
@@ -141,18 +143,31 @@ class AuthService:
                     failed_login_count=user.failed_login_count,
                 )
             db.commit()
-            record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_password")
+            record_audit_event(
+                "auth.login.failed", user_id=user.id, username=user.username, reason="bad_password"
+            )
             return None
 
         if user.mfa_enabled:
             if not totp_code:
-                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa")
+                record_audit_event(
+                    "auth.login.failed",
+                    user_id=user.id,
+                    username=user.username,
+                    reason="missing_mfa",
+                )
                 return None
             if not user.mfa_secret:
-                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="missing_mfa_secret")
+                record_audit_event(
+                    "auth.login.failed",
+                    user_id=user.id,
+                    username=user.username,
+                    reason="missing_mfa_secret",
+                )
                 return None
             totp = pyotp.TOTP(user.mfa_secret)
             if not totp.verify(totp_code, valid_window=1):
+                # valid_window=1 tolerates minor clock drift (+/- one 30s step)
                 user.failed_login_count += 1
                 if user.failed_login_count >= 5:
                     user.lockout_until = datetime.now(UTC) + timedelta(minutes=15)
@@ -163,9 +178,12 @@ class AuthService:
                         failed_login_count=user.failed_login_count,
                     )
                 db.commit()
-                record_audit_event("auth.login.failed", user_id=user.id, username=user.username, reason="bad_mfa")
+                record_audit_event(
+                    "auth.login.failed", user_id=user.id, username=user.username, reason="bad_mfa"
+                )
                 return None
 
+        # Successful login clears prior failed-attempt counters
         user.failed_login_count = 0
         user.lockout_until = None
 
@@ -285,6 +303,7 @@ class AuthService:
         target_is_active = update_data.get("is_active")
 
         if user.id == acting_user.id:
+            # Prevent an admin from locking themselves out or self-demoting
             if target_is_active is False:
                 raise ValueError("You cannot deactivate your own account")
             if target_role is not None and target_role != RoleEnum.ADMIN:
@@ -295,6 +314,7 @@ class AuthService:
                 target_role is not None and target_role != RoleEnum.ADMIN
             )
             if removing_admin_access and AuthService._count_active_admins(db) <= 1:
+                # Guard against leaving the system with zero admins
                 raise ValueError("You cannot remove the last active admin")
 
         return AuthService.update_user(db, user, user_data)
@@ -312,6 +332,7 @@ class AuthService:
         if user.role.name == RoleEnum.ADMIN and AuthService._count_active_admins(db) <= 1:
             raise ValueError("You cannot delete the last active admin")
 
+        # Gather all records owned by this user before deleting, so foreign keys can be cleaned up
         performances = db.query(Performance).filter(Performance.musician_id == user.id).all()
         performance_ids = [performance.id for performance in performances]
 
@@ -327,21 +348,25 @@ class AuthService:
         assignment_ids = [assignment.id for assignment in assignments]
 
         if assignment_ids:
+            # Detach performances from assignments being removed rather than deleting them
             db.query(Performance).filter(Performance.assignment_id.in_(assignment_ids)).update(
                 {Performance.assignment_id: None},
                 synchronize_session=False,
             )
 
         if performance_ids:
+            # Remove evaluations tied to this user's performances before the performances themselves
             db.query(Evaluation).filter(Evaluation.performance_id.in_(performance_ids)).delete(
                 synchronize_session=False
             )
 
+        # Remove evaluations this user authored as an evaluator
         db.query(Evaluation).filter(Evaluation.evaluator_id == user.id).delete(
             synchronize_session=False
         )
 
         for performance in performances:
+            # Remove the underlying audio file from storage, then the DB row
             delete_audio_file(performance.audio_file_url)
             db.delete(performance)
 
@@ -390,7 +415,10 @@ class AuthService:
         user = db.query(User).filter(User.email_verification_token == token).first()
         if not user:
             return False
-        if user.email_verification_token_expires_at and user.email_verification_token_expires_at < datetime.now(UTC):
+        if (
+            user.email_verification_token_expires_at
+            and user.email_verification_token_expires_at < datetime.now(UTC)
+        ):
             return False
 
         user.email_verified = True
@@ -426,7 +454,10 @@ class AuthService:
         user = db.query(User).filter(User.password_reset_token == token).first()
         if not user:
             return False
-        if user.password_reset_token_expires_at and user.password_reset_token_expires_at < datetime.now(UTC):
+        if (
+            user.password_reset_token_expires_at
+            and user.password_reset_token_expires_at < datetime.now(UTC)
+        ):
             return False
 
         user.hashed_password = hash_password(new_password)
@@ -446,7 +477,9 @@ class AuthService:
         user.mfa_enabled = False
         db.commit()
         record_audit_event("auth.mfa.setup", user_id=user.id, username=user.username)
-        provisioning_uri = pyotp.TOTP(secret).provisioning_uri(name=user.email or user.username, issuer_name="Musician Evaluation")
+        provisioning_uri = pyotp.TOTP(secret).provisioning_uri(
+            name=user.email or user.username, issuer_name="Musician Evaluation"
+        )
         return secret, provisioning_uri
 
     @staticmethod

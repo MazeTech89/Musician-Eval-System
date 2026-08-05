@@ -4,13 +4,18 @@ type ApiErrorResponse = {
   detail?: string | string[] | Array<{ msg?: string }>;
 };
 
+// FastAPI error payloads vary in shape (plain string, list of strings, or Pydantic validation errors)
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     const detail = error.response?.data?.detail;
     if (Array.isArray(detail)) {
+      // Pydantic validation errors: extract each item's message and join them
       const messages = detail
         .map((item) => (typeof item === "string" ? item : item.msg))
-        .filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+        .filter(
+          (item): item is string =>
+            typeof item === "string" && item.trim().length > 0,
+        );
       if (messages.length > 0) {
         return messages.join(", ");
       }
