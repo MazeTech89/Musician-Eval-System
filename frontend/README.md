@@ -59,5 +59,4 @@ src/
 
 ## Environment
 
-The frontend expects the backend API to be running on `http://localhost:8000`. The Vite config includes proxy settings for API calls.</content>
-<parameter name="filePath">c:\5. Implementation\Code\IMTMPES\dev\Musician-Eval-System\frontend\README.md
+The frontend expects the backend API to be running on `http://localhost:8000`. The Vite config includes proxy settings for API calls.
