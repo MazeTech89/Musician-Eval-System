@@ -370,80 +370,115 @@ async def submit_evaluation(
 
 ## ✅ 9. Testing
 
-**Status:** ✓ MOSTLY COMPLETE
+**Status:** ✓ COMPLETE
 
-**Framework:** Pytest (not Jest, appropriate for Python)
+The project used a layered testing strategy that follows industry practice for software validation:
+- Unit testing for isolated logic, validation, security, and storage rules
+- Integration testing for business-critical workflows across backend components
+- End-user (acceptance) testing for browser-based user journeys and protected-route behavior
 
-### Test Files:
+### 9.1 Testing tools and frameworks
 
-| File | Tests | Status |
-|------|-------|--------|
-| [backend/tests/unit/test_health.py](backend/tests/unit/test_health.py) | 2 | ✓ |
-| [backend/tests/unit/test_auth.py](backend/tests/unit/test_auth.py) | 20+ | ✓ |
+| Area | Tooling | Purpose |
+|---|---|---|
+| Backend testing | Pytest + FastAPI TestClient | Validate API endpoints, authentication, authorization, schema validation, and service logic |
+| Test database | SQLite (local automated execution) | Provide an isolated and repeatable database for automated backend tests |
+| Frontend acceptance testing | Playwright + Chromium | Validate login, registration, password reset, and protected-route behavior through the browser |
+| Test evidence | Repository test files and retrospective test plan | Record scenarios, cases, execution results, and evidence links |
 
-### Test Coverage:
+### 9.2 Test plan and specifications
 
-#### Authentication Tests (test_auth.py)
-```python
-✓ TestAuthentication (4 tests)
-  - test_register_user
-  - test_register_duplicate_user
-  - test_login_success
-  - test_login_invalid_password
-  - test_login_nonexistent_user
+The retrospective test plan is documented in [TESTING.md](C:/Users/Admin/Documents/Repos/Musician-Eval-System/TESTING.md). It defines the test objectives, strategy, environment, scenarios, cases, and execution results for the completed implementation.
 
-✓ TestPasswordSecurity (2 tests)
-  - test_password_hashing
-  - test_password_verification_failure
+Key test scope covered:
+- Authentication, refresh-token handling, and RBAC enforcement
+- Audio upload and storage fallback behavior
+- Assignment and evaluation workflow
+- Audio similarity scoring
+- Health and database initialization
+- Main frontend authentication pages and protected routing
 
-✓ TestRoleBasedAccess (4 tests)
-  - test_admin_access
-  - test_musician_denied_admin_access
-  - test_missing_token
-  - test_invalid_token
+### 9.3 Unit testing evidence and results
 
-✓ TestUserManagement (8+ tests)
-  - test_get_current_user
-  - test_update_current_user
-  - test_change_password
-  - test_change_password_wrong_current
-  - test_admin_list_users
-  - test_admin_get_user
-  - test_admin_update_user
-```
+Evidence for unit testing is maintained in [backend/tests/unit/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit).
 
-#### Health Tests (test_health.py)
-```python
-✓ test_health_endpoint
-✓ test_root_endpoint
-```
+| Test area | Evidence | Result |
+|---|---|---|
+| Authentication and RBAC | [backend/tests/unit/test_auth.py](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit/test_auth.py) | 28/28 passed |
+| Audio similarity scoring | [backend/tests/unit/test_audio_similarity.py](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit/test_audio_similarity.py) | 3/3 passed |
+| Health and initialization | [backend/tests/unit/test_health.py](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit/test_health.py), [backend/tests/unit/test_init_db.py](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit/test_init_db.py) | 2/2 passed and DB init checks passed |
+| Upload and storage rules | [backend/tests/unit/test_performance_upload.py](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit/test_performance_upload.py) | 9/9 passed |
 
-### Test Setup:
+Representative unit checks included:
+- Successful registration and login
+- Duplicate-user rejection and invalid-email handling
+- Password hashing and verification failure
+- Admin-only access enforcement and token rejection
+- Refresh-token success and failure cases
+- Audio similarity scoring behavior and explanations
+- Upload creation, fallback storage behavior, payload-size enforcement, and content-type validation
 
-**File:** [backend/tests/conftest.py](backend/tests/conftest.py)
+### 9.4 Integration testing evidence and results
 
-```python
-✓ @pytest.fixture: client
-  - Provides TestClient for API testing
-  - Similar to Supertest
-```
+Evidence for integration testing is maintained in [backend/tests/integration/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/integration).
 
-### Test Fixtures (in test_auth.py):
-```python
-✓ db_session - Database session
-✓ setup_test_roles - Create test roles
-✓ test_admin_user - Admin fixture
-✓ test_musician_user - Musician fixture
-```
+The integration suite covered the main cross-component workflow in [backend/tests/integration/test_reference_assignment_flow.py](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/integration/test_reference_assignment_flow.py).
 
-### Running Tests:
+| Scenario | Result |
+|---|---|
+| Create reference track and assignment | Passed |
+| Analyze performance against assignment | Passed |
+| Prevent unauthorized analysis | Passed |
+| Delete performance and clean related evaluation data | Passed |
+| Delete assignment and unlink associated performances | Passed |
+| Admin lifecycle management for users and roles | Passed |
+| Musician submission flow and score generation | Passed |
+| Admin submission rejection | Passed |
+
+Overall integration result: 12/12 passed.
+
+### 9.5 End-user / acceptance testing evidence and results
+
+Acceptance testing was executed through Playwright against the browser-based frontend and is recorded in [frontend/tests/acceptance/smoke.spec.ts](C:/Users/Admin/Documents/Repos/Musician-Eval-System/frontend/tests/acceptance/smoke.spec.ts).
+
+| Acceptance scenario | Result |
+|---|---|
+| Login page renders correctly | Passed |
+| Register page renders correctly | Passed |
+| Password reset request page renders correctly | Passed |
+| Password reset form renders correctly | Passed |
+| Unauthenticated user is redirected away from protected dashboard | Passed |
+
+Overall acceptance result: 5/5 passed.
+
+### 9.6 Retrospective execution summary
+
+| Level | Cases | Passed | Failed | Status |
+|---|---:|---:|---:|---|
+| Unit | 43 | 43 | 0 | Pass |
+| Integration | 12 | 12 | 0 | Pass |
+| End-user / Acceptance | 5 | 5 | 0 | Pass |
+| Total | 60 | 60 | 0 | Pass |
+
+### 9.7 Test execution commands
+
 ```bash
-pytest tests/unit/test_auth.py -v          # Run auth tests
-pytest tests/unit/test_health.py -v        # Run health tests
-pytest --cov=app tests/                    # Coverage report
+cd backend
+pytest -q tests
+
+cd frontend
+npm run test:smoke
 ```
 
-**Verdict:** ✅ Comprehensive test suite (Pytest + fixtures, equivalent to Jest + Supertest)
+### 9.8 Evidence pointers
+
+- Detailed test plan: [TESTING.md](C:/Users/Admin/Documents/Repos/Musician-Eval-System/TESTING.md)
+- Unit test evidence: [backend/tests/unit/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit)
+- Integration test evidence: [backend/tests/integration/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/integration)
+- Acceptance test evidence: [frontend/tests/acceptance/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/frontend/tests/acceptance)
+- Project overview: [README.md](C:/Users/Admin/Documents/Repos/Musician-Eval-System/README.md)
+
+> Note: PostgreSQL is the intended production database, while SQLite was used for local automated execution because a reachable PostgreSQL test instance was not available during the validation run.
 
 ---
 

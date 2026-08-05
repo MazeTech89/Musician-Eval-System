@@ -245,20 +245,18 @@ uvicorn app.main:app --reload
 
 ## Testing
 
-Run authentication tests:
+See [TESTING.md](../TESTING.md) for the full current
+test plan, case catalog, and execution results.
 
-```bash
-pytest tests/unit/test_auth.py -v
-```
+The test plan now covers:
 
-Test coverage includes:
-- User registration and validation
-- Login and token generation
-- Password hashing and verification
+- Authentication and refresh token flows
 - Role-based access control
-- Permission checking
-- User management (admin)
-- Password change functionality
+- User management
+- Performance upload and storage resilience
+- Assignment and evaluation workflows
+- Audio similarity scoring
+- Frontend login/register smoke coverage
 
 ## Migration Path
 

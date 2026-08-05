@@ -156,3 +156,15 @@ Set these backend environment variables to enable object-store uploads:
 - optional `S3_ENDPOINT_URL` (for LocalStack/custom endpoints)
 
 If these values are not provided, the backend automatically falls back to local disk storage so the MVP flow still works.
+
+## Testing and Validation
+
+A retrospective testing strategy was applied to validate the completed system end to end. The project used a layered approach that covered unit, integration, and acceptance testing to verify core business logic, cross-component workflows, and end-user experience. The testing effort focused on authentication, role-based access control, audio upload/storage handling, assignment and evaluation flows, audio similarity scoring, and the main frontend user journeys.
+
+| Test level | Scope | Evidence | Result |
+|---|---|---|---|
+| Unit | Authentication, RBAC, password handling, refresh tokens, upload validation, health checks, audio similarity scoring | [backend/tests/unit/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/unit) | 43/43 passed |
+| Integration | Reference-track creation, assignment workflow, performance analysis, admin/user lifecycle operations | [backend/tests/integration/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/backend/tests/integration) | 12/12 passed |
+| Acceptance | Login, registration, password reset, protected-route access | [frontend/tests/acceptance/](C:/Users/Admin/Documents/Repos/Musician-Eval-System/frontend/tests/acceptance) | 5/5 passed |
+
+In total, 60 automated test cases were executed successfully with no failures. The detailed retrospective test plan, scenario matrices, and evidence links are available in [TESTING.md](TESTING.md).
