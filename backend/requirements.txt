@@ -20,6 +20,6 @@ pyotp==2.9.0
 # AI / Audio Processing
 # torch is installed separately (CPU-only wheel) in the Dockerfile to avoid
 # pulling in multi-GB CUDA dependencies that OOM small production instances.
-numpy>=1.24.0
+numpy>=2.4.6
 soundfile>=0.12.1
 librosa>=0.10.0
