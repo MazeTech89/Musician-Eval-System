@@ -18,6 +18,8 @@ REFRESH_TOKEN_TYPE = "refresh"
 
 
 def _get_secret_keys() -> list[str]:
+    # Fallback keys let an old signing secret keep validating existing tokens for a grace
+    # period while a new primary secret is rotated in, avoiding a mass session invalidation.
     keys = [settings.secret_key]
     if settings.secret_key_fallbacks.strip():
         keys.extend(key.strip() for key in settings.secret_key_fallbacks.split(",") if key.strip())
@@ -115,6 +117,7 @@ def decode_token(token: str) -> TokenData | None:
                 algorithms=[settings.algorithm],
             )
         except InvalidTokenError:
+            # Wrong/expired signature under this key: try the next fallback before giving up.
             continue
 
         user_id = payload.get("sub")
@@ -192,6 +195,7 @@ def decode_refresh_token(token: str) -> TokenData | None:
         # Verify token type
         payload_token_type = payload.get("type")
         if payload_token_type != REFRESH_TOKEN_TYPE:
+            # Reject access tokens presented at the refresh endpoint (they lack this claim).
             return None
 
         user_id = payload.get("sub")
@@ -213,6 +217,8 @@ def set_auth_cookies(
     response: Response, access_token: str, refresh_token: str | None = None
 ) -> None:
     """Set auth cookies for the browser using HttpOnly cookies."""
+    # Secure cookies require HTTPS, which local debug/dev doesn't have; SameSite=None (needed
+    # for cross-origin frontend/backend hosts in prod) is only valid when Secure is also set.
     secure = not settings.debug
     samesite = "none" if not settings.debug else "lax"
     response.set_cookie(

@@ -26,6 +26,9 @@ ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".webm", ".mp4", ".flac"}
 
 
 def _matches_signature(content_type: str, header: bytes) -> bool:
+    # Check magic bytes against the claimed content type: a client-supplied Content-Type
+    # header and file extension can both be spoofed, so this is the one check that verifies
+    # the actual file bytes rather than trusting client-provided metadata.
     if content_type in {"audio/wav", "audio/x-wav"}:
         return len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WAVE"
     if content_type == "audio/ogg":
@@ -45,6 +48,7 @@ def _matches_signature(content_type: str, header: bytes) -> bool:
 
 def validate_audio_upload(audio_file: UploadFile) -> None:
     """Validate an uploaded audio file before persistence."""
+    # Layer 1: reject based on the client-reported MIME type (cheap, first line of defense).
     if audio_file.content_type not in ALLOWED_AUDIO_CONTENT_TYPES:
         record_security_alert(
             "upload.rejected",
@@ -60,6 +64,8 @@ def validate_audio_upload(audio_file: UploadFile) -> None:
     filename = audio_file.filename or ""
     suffix = Path(filename).suffix.lower()
     if suffix not in ALLOWED_AUDIO_EXTENSIONS:
+        # Layer 2: extension check guards against a filename like "track.exe" being served back
+        # with an audio Content-Type, since static file serving may key off the extension.
         record_security_alert(
             "upload.rejected",
             reason="unsupported_extension",
@@ -102,6 +108,8 @@ def validate_audio_upload(audio_file: UploadFile) -> None:
     header = audio_file.file.read(16)
     audio_file.file.seek(0)
     if not _matches_signature(audio_file.content_type, header):
+        # Layer 3: magic-byte signature check — the strongest guard, catches a malicious file
+        # renamed/relabeled to look like audio (e.g. a script with a spoofed .mp3 extension).
         record_security_alert(
             "upload.rejected",
             reason="bad_signature",

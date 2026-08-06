@@ -8,9 +8,14 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<ApiErrorResponse>(error)) {
     const detail = error.response?.data?.detail;
     if (Array.isArray(detail)) {
+      // FastAPI/Pydantic validation errors return `detail` as an array of {msg} objects
+      // (422 responses) rather than a single string, so join them into one readable message.
       const messages = detail
         .map((item) => (typeof item === "string" ? item : item.msg))
-        .filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+        .filter(
+          (item): item is string =>
+            typeof item === "string" && item.trim().length > 0,
+        );
       if (messages.length > 0) {
         return messages.join(", ");
       }
@@ -60,7 +65,9 @@ export function validateMinLength(
 }
 
 export function validatePassword(password: string): string | null {
-  return validateMinLength(password, "Password", 8);
+  // Mirrors the backend's Pydantic Field(min_length=6) constraint so users get instant
+  // feedback instead of waiting for a round-trip 422 error.
+  return validateMinLength(password, "Password", 6);
 }
 
 export function validateScore(score: number): string | null {

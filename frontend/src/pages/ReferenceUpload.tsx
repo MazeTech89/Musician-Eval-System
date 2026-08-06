@@ -81,6 +81,8 @@ const ReferenceUpload: React.FC = () => {
   const [aTitle, setATitle] = useState("");
   const [aDescription, setADescription] = useState("");
   const [aRefTrackId, setARefTrackId] = useState<number>(0);
+  // Mutually exclusive targeting modes map to the backend's target_musician_id /
+  // target_instrument_type fields; only one (or neither, for "all") is sent per submit.
   const [aTargetMode, setATargetMode] = useState<
     "all" | "musician" | "instrument"
   >("all");

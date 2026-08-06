@@ -39,6 +39,8 @@ const Login: React.FC = () => {
     setError("");
 
     try {
+      // totpCode is only meaningful for MFA-enabled accounts; the backend ignores it
+      // otherwise, so it's safe to always pass whatever (possibly empty) value is typed.
       await login(username, password, totpCode || undefined);
       navigate("/");
     } catch (err: unknown) {

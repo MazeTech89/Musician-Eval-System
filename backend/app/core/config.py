@@ -28,7 +28,9 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = "your-secret-key-change-in-production"  # noqa: S105 - Default for dev, change in production
-    secret_key_fallbacks: str = ""
+    secret_key_fallbacks: str = (
+        ""  # comma-separated old secrets, still accepted during key rotation
+    )
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -40,6 +42,8 @@ class Settings(BaseSettings):
     login_lockout_minutes: int = 1
     password_reset_cooldown_seconds: int = 60
     # RSA keys for RS256 (should be set in production environment)
+    # Currently unused: algorithm is HS256 and no code path signs/verifies with these keys.
+    # Reserved for a future RS256 migration.
     rsa_private_key: str = ""
     rsa_public_key: str = ""
     smtp_host: str | None = None
@@ -53,7 +57,9 @@ class Settings(BaseSettings):
     use_local_upload_storage: bool = False
     local_upload_dir: str = "uploads"
     max_audio_upload_size_mb: int = 300
-    s3_fallback_to_local: bool = True
+    s3_fallback_to_local: bool = (
+        True  # if S3 isn't configured/reachable, save to local disk instead
+    )
 
     # AWS S3
     aws_region: str | None = None

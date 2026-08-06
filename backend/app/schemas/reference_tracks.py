@@ -103,5 +103,7 @@ class AssignmentSubmissionResponse(BaseModel):
 
     performance: PerformanceResponse
     evaluation: EvaluationResponse
+    # Always None on submission: scoring runs in a background task, so the analysis is
+    # filled in later — the frontend polls GET /evaluations/{id} until it's populated.
     analysis: SimilarityAnalysisResponse | None = None
     message: str | None = None

@@ -115,7 +115,7 @@ async def create_evaluation(
             detail="Only admins can create evaluations",
         )
 
-    # Check if performance exists
+    # Imported here (not at module top) to avoid a circular import with app.models.evaluation.
     from app.models.evaluation import Performance
 
     performance = (

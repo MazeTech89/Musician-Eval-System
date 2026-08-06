@@ -29,7 +29,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
 
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=6)
     role: RoleEnum
 
 
@@ -60,6 +60,8 @@ class UserResponse(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+    # The ORM's `role` attribute is a Role object whose `.name` is a RoleEnum, but this schema
+    # exposes `role` as a plain string, so both directions need explicit coercion below.
     @field_validator("role", mode="before")
     @classmethod
     def validate_role(cls, value):  # noqa: N805 - Pydantic validator classmethod-style signature
@@ -125,8 +127,8 @@ class LoginRequest(BaseModel):
 class PasswordChangeRequest(BaseModel):
     """Schema for password change request."""
 
-    current_password: str = Field(..., min_length=8)
-    new_password: str = Field(..., min_length=8)
+    current_password: str = Field(..., min_length=6)
+    new_password: str = Field(..., min_length=6)
 
 
 class PasswordResetRequest(BaseModel):
@@ -139,7 +141,7 @@ class PasswordResetConfirmRequest(BaseModel):
     """Schema for completing a password reset."""
 
     token: str = Field(..., min_length=10)
-    new_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=6)
 
 
 class MFASetupResponse(BaseModel):

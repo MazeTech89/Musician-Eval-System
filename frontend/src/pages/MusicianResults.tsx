@@ -64,6 +64,7 @@ interface MusicianRow {
 }
 
 function scoreBadgeClass(score: number): string {
+  // Thresholds mirror the visual color-coding used across the admin results/rankings views.
   if (score >= 70) return "high";
   if (score >= 40) return "medium";
   return "low";
@@ -228,6 +229,8 @@ const MusicianResults: React.FC = () => {
   const sortedRows = useMemo(
     () =>
       [...filteredRows].sort((a, b) => {
+        // Musicians with no completed score yet are pushed to the bottom rather than
+        // sorting as 0, so "no submissions" isn't visually indistinguishable from "failed".
         if (b.bestScore === null && a.bestScore === null) return 0;
         if (b.bestScore === null) return -1;
         if (a.bestScore === null) return 1;

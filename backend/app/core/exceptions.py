@@ -90,6 +90,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         Returns:
             JSON response with generic error message
         """
+        # Deliberately generic message: never leak stack traces/internals to the client.
+        # The real exception is still captured by FastAPI's/uvicorn's logging.
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

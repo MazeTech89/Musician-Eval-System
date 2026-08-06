@@ -17,6 +17,8 @@ class ReferenceTrack(Base):
     title = Column(String(200), nullable=False)
     description = Column(Text)
     audio_file_url = Column(String(500), nullable=False)
+    # Attribute renamed to created_by_id for consistency, but the underlying DB column keeps
+    # its original name to avoid a destructive rename migration on deployed databases.
     created_by_id = Column("uploaded_by_id", Integer, ForeignKey("user.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -26,6 +28,8 @@ class ReferenceTrack(Base):
     assignments = relationship(
         "Assignment",
         back_populates="reference_track",
+        # ORM-level cascade only (no DB-level ON DELETE CASCADE): deleting a reference track
+        # also deletes its assignments via SQLAlchemy, not a database constraint.
         cascade="all, delete-orphan",
     )
 

@@ -32,11 +32,14 @@ const AdminPanel: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<number, UserDraft>>({});
+  // Edits are staged in `drafts` (keyed by user id) and only sent to the API on explicit
+  // Save, so admins can change a role/active toggle without every keystroke hitting the server.
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== "admin") {
+      // Client-side guard for UX only; the backend independently enforces admin-only access.
       setLoading(false);
       return;
     }
@@ -181,7 +184,9 @@ const AdminPanel: React.FC = () => {
 
     try {
       await api.delete(`/auth/users/${targetUser.id}`);
-      setUsers((current) => current.filter((existingUser) => existingUser.id !== targetUser.id));
+      setUsers((current) =>
+        current.filter((existingUser) => existingUser.id !== targetUser.id),
+      );
       setDrafts((current) => {
         const nextDrafts = { ...current };
         delete nextDrafts[targetUser.id];
@@ -248,13 +253,19 @@ const AdminPanel: React.FC = () => {
                           <div className="text-sm text-gray-500">
                             @{user.username} • {user.email}
                           </div>
-                          {(user.instrument_type || user.skill_level || user.availability) ? (
+                          {user.instrument_type ||
+                          user.skill_level ||
+                          user.availability ? (
                             <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                               {user.instrument_type ? (
                                 <p>Instrument: {user.instrument_type}</p>
                               ) : null}
-                              {user.skill_level ? <p>Skill level: {user.skill_level}</p> : null}
-                              {user.availability ? <p>Availability: {user.availability}</p> : null}
+                              {user.skill_level ? (
+                                <p>Skill level: {user.skill_level}</p>
+                              ) : null}
+                              {user.availability ? (
+                                <p>Availability: {user.availability}</p>
+                              ) : null}
                             </div>
                           ) : null}
                         </div>
@@ -262,7 +273,13 @@ const AdminPanel: React.FC = () => {
                       <div className="flex items-center space-x-4">
                         <select
                           value={drafts[user.id]?.role ?? user.role}
-                          onChange={(event) => handleDraftChange(user.id, "role", event.target.value)}
+                          onChange={(event) =>
+                            handleDraftChange(
+                              user.id,
+                              "role",
+                              event.target.value,
+                            )
+                          }
                           className="rounded-md border border-gray-300 px-2 py-1 text-sm"
                         >
                           {ROLE_OPTIONS.map((roleOption) => (
@@ -272,9 +289,15 @@ const AdminPanel: React.FC = () => {
                           ))}
                         </select>
                         <select
-                          value={String(drafts[user.id]?.is_active ?? user.is_active)}
+                          value={String(
+                            drafts[user.id]?.is_active ?? user.is_active,
+                          )}
                           onChange={(event) =>
-                            handleDraftChange(user.id, "is_active", event.target.value === "true")
+                            handleDraftChange(
+                              user.id,
+                              "is_active",
+                              event.target.value === "true",
+                            )
                           }
                           className="rounded-md border border-gray-300 px-2 py-1 text-sm"
                         >
@@ -295,7 +318,9 @@ const AdminPanel: React.FC = () => {
                           disabled={deletingUserId === user.id}
                           className="text-red-600 hover:text-red-800 text-sm disabled:opacity-50"
                         >
-                          {deletingUserId === user.id ? "Deleting..." : "Delete"}
+                          {deletingUserId === user.id
+                            ? "Deleting..."
+                            : "Delete"}
                         </button>
                       </div>
                     </div>

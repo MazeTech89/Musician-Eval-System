@@ -108,6 +108,8 @@ def _build_object_key(musician_id: int, filename: str) -> str:
 
 def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> str:
     """Upload a performance audio file to the configured storage backend."""
+    # Despite the name, this is the single entrypoint for all uploads: it transparently
+    # routes to local disk when S3 isn't configured/enabled, or as a fallback on S3 errors.
     # Keep upload validation close to persistence so every entrypoint enforces it.
     validate_audio_upload(audio_file)
     if settings.use_local_upload_storage:

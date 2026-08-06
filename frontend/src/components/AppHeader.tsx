@@ -21,6 +21,8 @@ type NavItem = {
 };
 
 const navItemsByRole: Record<string, NavItem[]> = {
+  // Nav links are derived from the user's role rather than checked per-route, keeping the
+  // header in sync with backend RBAC (admin vs musician) without duplicating access rules here.
   admin: [
     { to: "/", label: "Dashboard", Icon: LayoutDashboard },
     { to: "/admin", label: "Users", Icon: Users },

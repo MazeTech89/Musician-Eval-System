@@ -9,7 +9,8 @@ from app.core.config import settings
 engine = create_engine(
     settings.database_url,
     echo=settings.debug,
-    pool_pre_ping=True,
+    pool_pre_ping=True,  # validates connections before use so recycled/dropped DB connections
+    # (common on managed Postgres after idle periods) don't surface as request failures.
     pool_size=10,
     max_overflow=20,
 )
@@ -37,6 +38,9 @@ def get_db() -> Session:
 
 def _ensure_schema_columns() -> None:
     """Add missing columns for newer model fields to existing databases."""
+    # This project has no Alembic migrations: schema changes ship as new nullable model
+    # columns, and this function reconciles an already-deployed DB with the current models
+    # by diffing SQLAlchemy metadata against `information_schema` and running ALTER TABLE.
     from app.models.evaluation import Performance
     from app.models.reference_track import Assignment, ReferenceTrack
     from app.models.user import User
@@ -57,6 +61,8 @@ def _ensure_schema_columns() -> None:
             if column.name in existing_columns:
                 continue
 
+            # Table/column names come from trusted SQLAlchemy model metadata (not request
+            # input), so string-built DDL here isn't a SQL-injection vector.
             column_type = column.type.compile(dialect=engine.dialect)
             with engine.begin() as connection:
                 quoted_table = quote_identifier(table.name)
@@ -72,6 +78,8 @@ def _ensure_schema_columns() -> None:
             if column["name"] in table.columns.keys():
                 continue
             if not column["nullable"]:
+                # A column that exists in the DB but not in current models, and is NOT NULL,
+                # would block inserts from the new model — relax it rather than fail writes.
                 with engine.begin() as connection:
                     quoted_table = quote_identifier(table.name)
                     quoted_column = quote_identifier(column["name"])
@@ -83,6 +91,8 @@ def _ensure_schema_columns() -> None:
                     )
 
         if "is_active" in existing_columns and table.name in {"reference_tracks", "assignments"}:
+            # Backfill newly-added is_active column on pre-existing rows so old data doesn't
+            # silently disappear from "active" filters after the column was introduced.
             with engine.begin() as connection:
                 quoted_table = quote_identifier(table.name)
                 connection.execute(
@@ -90,6 +100,7 @@ def _ensure_schema_columns() -> None:
                 )
 
     if "user" in existing_tables:
+        # Same backfill pattern for user-table columns added after initial deployment.
         with engine.begin() as connection:
             quoted_user_table = quote_identifier("user")
             connection.execute(
@@ -115,5 +126,7 @@ def init_db() -> None:
     from app.models.reference_track import Assignment, ReferenceTrack  # noqa: F401
     from app.models.user import Base
 
+    # create_all only adds brand-new tables; it never alters existing ones, hence the
+    # follow-up _ensure_schema_columns() call to patch columns onto already-deployed tables.
     Base.metadata.create_all(bind=engine)
     _ensure_schema_columns()

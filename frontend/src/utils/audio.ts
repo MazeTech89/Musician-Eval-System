@@ -1,6 +1,10 @@
 export const MAX_AUDIO_UPLOAD_SIZE_MB = 300;
-export const MAX_AUDIO_UPLOAD_SIZE_BYTES = MAX_AUDIO_UPLOAD_SIZE_MB * 1024 * 1024;
+export const MAX_AUDIO_UPLOAD_SIZE_BYTES =
+  MAX_AUDIO_UPLOAD_SIZE_MB * 1024 * 1024;
 
+// Kept in sync with backend/app/core/config.py's max_audio_upload_size_mb and
+// upload_security.py's allowed types/extensions — this is a client-side pre-check only;
+// the backend independently re-validates (including magic-byte signature checks).
 export const ACCEPTED_AUDIO_FILE_TYPES = [
   "audio/wav",
   "audio/x-wav",

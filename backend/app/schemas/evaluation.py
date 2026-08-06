@@ -92,4 +92,6 @@ class SimilarityAnalysisResponse(BaseModel):
     score: float
     reference_filename: str
     created_evaluation_id: int
+    # Per-metric scores (pitch/tempo/rhythm/dynamics/timbre/etc.) so the score is explainable
+    # rather than an opaque number — mirrors the weighted components in audio_similarity.py.
     breakdown: dict[str, float]

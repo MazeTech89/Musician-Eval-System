@@ -76,7 +76,8 @@ def init_roles_and_permissions(db: Session) -> None:
                 role.permissions.append(permission_map[perm_enum])
             db.add(role)
         else:
-            # Update permissions for existing role
+            # Update permissions for existing role: keeps a role's permission set in sync with
+            # role_permissions above if this script is re-run after the mapping changes.
             existing_role.permissions.clear()
             for perm_enum in perms:
                 existing_role.permissions.append(permission_map[perm_enum])

@@ -206,6 +206,9 @@ async def analyze_performance_audio(
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
     """Create a similarity evaluation by comparing a performance against a reference audio file."""
+    # NOTE: unlike the assignment-based re-score flow, this endpoint runs librosa/torch
+    # analysis synchronously and can be slow for long tracks; acceptable here because it's an
+    # ad-hoc admin tool, but a candidate for the same background-task pattern if it starts timing out.
     if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

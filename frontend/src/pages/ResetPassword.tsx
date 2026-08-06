@@ -1,10 +1,16 @@
 import React, { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api/axios";
-import { getApiErrorMessage, validatePassword, validateRequired } from "../utils/form";
+import {
+  getApiErrorMessage,
+  validatePassword,
+  validateRequired,
+} from "../utils/form";
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
+  // Pre-filled from the ?token= query param in the password-reset email link, but still
+  // editable/required so the form works even if the user pastes the token manually.
   const [token, setToken] = useState(searchParams.get("token") ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -45,7 +51,9 @@ const ResetPassword: React.FC = () => {
         token,
         new_password: password,
       });
-      setMessage("Your password has been reset successfully. You can now sign in.");
+      setMessage(
+        "Your password has been reset successfully. You can now sign in.",
+      );
       setPassword("");
       setConfirmPassword("");
     } catch (err: unknown) {
@@ -66,7 +74,10 @@ const ResetPassword: React.FC = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="password-reset-token" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password-reset-token"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Reset token
               </label>
               <input
@@ -80,30 +91,36 @@ const ResetPassword: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="password-reset-new" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password-reset-new"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 New password
               </label>
               <input
                 id="password-reset-new"
                 type="password"
                 required
-                minLength={8}
+                minLength={6}
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="At least 8 characters"
+                placeholder="At least 6 characters"
               />
             </div>
             <div>
-              <label htmlFor="password-reset-confirm" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="password-reset-confirm"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Confirm new password
               </label>
               <input
                 id="password-reset-confirm"
                 type="password"
                 required
-                minLength={8}
+                minLength={6}
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -113,8 +130,12 @@ const ResetPassword: React.FC = () => {
             </div>
           </div>
 
-          {error ? <p className="text-sm text-red-600 text-center">{error}</p> : null}
-          {message ? <p className="text-sm text-green-600 text-center">{message}</p> : null}
+          {error ? (
+            <p className="text-sm text-red-600 text-center">{error}</p>
+          ) : null}
+          {message ? (
+            <p className="text-sm text-green-600 text-center">{message}</p>
+          ) : null}
 
           <button
             type="submit"

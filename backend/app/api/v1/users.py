@@ -9,6 +9,9 @@ from app.models.user import User
 from app.schemas.auth import UserResponse, UserUpdate
 from app.services.auth import AuthService
 
+# NOTE: this duplicates the admin user-management endpoints already under
+# /auth/users in auth.py (both routers are registered). Frontend currently
+# calls the /auth/users versions; kept here for backward compatibility.
 router = APIRouter(prefix="/users", tags=["users"])
 
 

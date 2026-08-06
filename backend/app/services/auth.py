@@ -132,6 +132,8 @@ class AuthService:
         user = db.query(User).filter(User.username == username).first()
 
         if not user or not user.is_active:
+            # Same generic outcome for "no such user" and "inactive user" as for a bad
+            # password below, so responses never reveal whether a username exists.
             record_audit_event("auth.login.failed", username=username, reason="inactive_or_missing")
             return None
 
@@ -142,6 +144,8 @@ class AuthService:
 
         if not verify_password(password, user.hashed_password):
             user.failed_login_count += 1
+            # Lockout kicks in only once the configured attempt threshold is crossed, and
+            # is time-limited (not permanent) so a legitimate user can retry after cooldown.
             locked_out = user.failed_login_count >= settings.login_lockout_max_attempts
             if locked_out:
                 user.lockout_until = datetime.now(UTC) + timedelta(
@@ -180,6 +184,8 @@ class AuthService:
                 return None
             totp = pyotp.TOTP(user.mfa_secret)
             if not totp.verify(totp_code, valid_window=1):
+                # valid_window=1 tolerates minor clock drift by also accepting the previous
+                # and next 30-second TOTP windows, not just the current one.
                 user.failed_login_count += 1
                 locked_out = user.failed_login_count >= settings.login_lockout_max_attempts
                 if locked_out:
@@ -331,6 +337,8 @@ class AuthService:
                 target_role is not None and target_role != RoleEnum.ADMIN
             )
             if removing_admin_access and AuthService._count_active_admins(db) <= 1:
+                # Prevents a full lockout of the admin panel by ensuring at least one
+                # active admin always remains, even via a different admin's action.
                 raise ValueError("You cannot remove the last active admin")
 
         return AuthService.update_user(db, user, user_data)
@@ -348,6 +356,9 @@ class AuthService:
         if user.role.name == RoleEnum.ADMIN and AuthService._count_active_admins(db) <= 1:
             raise ValueError("You cannot delete the last active admin")
 
+        # Manually cascade every table that FK-references this user (performances,
+        # evaluations, reference tracks, assignments) since there's no DB-level
+        # ON DELETE CASCADE — deleting the user row directly would violate FK constraints.
         performances = db.query(Performance).filter(Performance.musician_id == user.id).all()
         performance_ids = [performance.id for performance in performances]
 
@@ -501,6 +512,8 @@ class AuthService:
         """Generate MFA secret and provisioning URL for a user."""
         secret = pyotp.random_base32()
         user.mfa_secret = secret
+        # Not enabled yet: the secret is only provisioned here, and enable_mfa() below must
+        # confirm the user actually scanned it correctly before MFA is enforced at login.
         user.mfa_enabled = False
         db.commit()
         record_audit_event("auth.mfa.setup", user_id=user.id, username=user.username)
@@ -566,6 +579,8 @@ class AuthService:
             return None
 
         # Create new access token
+        # Note: only a new access token is issued here, not a new refresh token — the same
+        # refresh token remains valid until its own expiry (no rotation-on-use in this flow).
         access_token, access_expires = create_access_token(
             data={
                 "sub": user.id,

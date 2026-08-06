@@ -34,6 +34,7 @@ async def get_current_user(
     if credentials and credentials.credentials:
         token = credentials.credentials
     else:
+        # Fall back to the HttpOnly cookie so both bearer-token and cookie-based auth work.
         token = request.cookies.get("access_token")
 
     if not token:
@@ -108,6 +109,7 @@ def require_role(*allowed_roles: RoleEnum):
             HTTPException: If user doesn't have required role
         """
         if current_user.role.name not in allowed_roles:
+            # Deliberately generic message: don't reveal which roles/permissions would have passed.
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions for this action",
@@ -146,6 +148,7 @@ def require_permission(*permissions: str):
         user_permissions = RoleService.get_user_permissions(db, current_user)
 
         if not any(perm in user_permissions for perm in permissions):
+            # Any one of the listed permissions is sufficient (OR semantics), not all of them.
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions for this action",

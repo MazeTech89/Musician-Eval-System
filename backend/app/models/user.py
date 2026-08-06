@@ -14,6 +14,9 @@ Base = declarative_base()
 class RoleEnum(str, Enum):
     """Available roles in the system."""
 
+    # Simplified to 2 roles; removing an old role value (e.g. a prior EVALUATOR role) from
+    # this enum without migrating existing DB rows leaves orphaned role strings that fail
+    # Pydantic validation on read — always clean up existing rows before shrinking this enum.
     ADMIN = "admin"
     MUSICIAN = "musician"
 
@@ -120,9 +123,11 @@ class User(Base):
     mfa_secret = Column(String(64), nullable=True)
     email_verification_token = Column(String(255), nullable=True)
     email_verification_token_expires_at = Column(DateTime, nullable=True)
+    # Reset tokens are stored hashed (see security.hash_token), never in plaintext.
     password_reset_token = Column(String(255), nullable=True)
     password_reset_token_expires_at = Column(DateTime, nullable=True)
     password_reset_last_requested_at = Column(DateTime, nullable=True)
+    # Backs the login-lockout policy in config.py (login_lockout_max_attempts/_minutes).
     failed_login_count = Column(Integer, default=0, nullable=False)
     lockout_until = Column(DateTime, nullable=True)
     role_id = Column(Integer, ForeignKey("role.id"), nullable=False, index=True)

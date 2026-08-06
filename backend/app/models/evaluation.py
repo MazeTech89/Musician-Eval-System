@@ -13,6 +13,9 @@ from app.models.user import Base
 class EvaluationStatus(str, Enum):
     """Evaluation status."""
 
+    # PENDING/CANCELLED are used by the async scoring flow: an evaluation starts PENDING
+    # while a background task runs librosa/torch analysis, and moves to COMPLETED (score set)
+    # or CANCELLED (scoring failed) once that task finishes.
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"

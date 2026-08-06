@@ -25,7 +25,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string, totpCode?: string) => Promise<void>;
+  login: (
+    username: string,
+    password: string,
+    totpCode?: string,
+  ) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -71,6 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // On page load/refresh there's no in-memory user yet, so re-validate whatever
+        // token/cookie is stored by calling /auth/me rather than trusting stale state.
         await refreshUser();
       } catch (error) {
         clearStoredAuthTokens();
@@ -83,7 +89,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initializeAuth();
   }, []);
 
-  const login = async (username: string, password: string, totpCode?: string) => {
+  const login = async (
+    username: string,
+    password: string,
+    totpCode?: string,
+  ) => {
     try {
       const response = await api.post("/auth/login", {
         username,
@@ -111,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     clearStoredAuthTokens();
+    // Best-effort: clear local state immediately even if the server-side cookie clear fails.
     api.post("/auth/logout").catch(() => undefined);
     setUser(null);
   };

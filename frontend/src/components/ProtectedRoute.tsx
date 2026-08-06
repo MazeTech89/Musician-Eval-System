@@ -13,6 +13,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isLoading } = useAuth();
 
+  // Wait for the initial /auth/me check (AuthContext) before deciding to redirect,
+  // otherwise a logged-in user would flash to /login on every page refresh.
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">

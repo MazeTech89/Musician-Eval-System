@@ -18,6 +18,7 @@ def _is_email_configured() -> bool:
 def send_email(to_email: str, subject: str, body: str) -> bool:
     """Send a simple email if SMTP is configured."""
     if not _is_email_configured():
+        # No SMTP creds set (e.g. local dev): degrade gracefully instead of failing the caller.
         logger.info("SMTP not configured; skipping email delivery to %s", to_email)
         return False
 
@@ -37,6 +38,8 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         return True
     except Exception as exc:  # pragma: no cover - network dependent
         logger.exception("Failed to send email to %s", to_email)
+        # Re-raised as RuntimeError so callers (e.g. password reset) can distinguish
+        # "SMTP not configured" (returns False) from "SMTP configured but delivery failed" (raises).
         raise RuntimeError("Unable to send email") from exc
 
 
