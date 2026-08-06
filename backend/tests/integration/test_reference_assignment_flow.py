@@ -101,27 +101,6 @@ def musician_user(setup_roles):
     return user
 
 
-@pytest.fixture
-def evaluator_user(setup_roles):
-    """Create a test evaluator user."""
-    db = setup_roles
-    role = db.query(Role).filter(Role.name == RoleEnum.EVALUATOR).first()
-    username = f"evaluator-{uuid4().hex[:8]}"
-    user = User(
-        username=username,
-        email=f"{username}@example.com",
-        hashed_password=hash_password("secret123"),
-        first_name="Evaluator",
-        last_name="User",
-        role_id=role.id,
-        is_active=True,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
 def _auth_headers(user: User) -> dict[str, str]:
     token, _ = create_access_token(
         {"sub": user.id, "username": user.username, "role": user.role.name.value}
@@ -224,13 +203,12 @@ def test_analyze_performance_with_assignment(
         db.close()
 
 
-def test_evaluator_cannot_analyze_performance(
+def test_musician_cannot_analyze_performance(
     tmp_path: Path,
     admin_user: User,
     musician_user: User,
-    evaluator_user: User,
 ) -> None:
-    """Evaluators cannot upload reference audio for similarity analysis."""
+    """Non-admins cannot upload reference audio for similarity analysis."""
     reference_path = tmp_path / "reference.wav"
     _write_wav(reference_path, 440.0)
 
@@ -270,7 +248,7 @@ def test_evaluator_cannot_analyze_performance(
         analyze_response = client.post(
             f"/api/v1/performances/{performance_id}/analyze-audio",
             files={"reference_audio": ("reference.wav", blocked_reference_file, "audio/wav")},
-            headers=_auth_headers(evaluator_user),
+            headers=_auth_headers(musician_user),
         )
 
     assert analyze_response.status_code == 403
@@ -949,9 +927,9 @@ def test_update_assignment_can_set_and_clear_targeting(
 
 
 def test_create_assignment_rejects_invalid_target_musician(
-    tmp_path: Path, admin_user: User, evaluator_user: User
+    tmp_path: Path, admin_user: User
 ) -> None:
-    """target_musician_id must reference an existing musician (not e.g. an evaluator)."""
+    """target_musician_id must reference an existing musician (not e.g. an admin)."""
     reference_track_id = _create_reference_track(tmp_path, admin_user, "invalid-target-reference")
 
     response = client.post(
@@ -959,7 +937,7 @@ def test_create_assignment_rejects_invalid_target_musician(
         data={
             "title": "Invalid target task",
             "reference_track_id": reference_track_id,
-            "target_musician_id": evaluator_user.id,
+            "target_musician_id": admin_user.id,
         },
         headers=_auth_headers(admin_user),
     )

@@ -27,7 +27,6 @@ async def get_evaluations(
     """Get evaluations for current user.
 
     For musicians: their own evaluations
-    For evaluators: evaluations they've created
     For admins: all evaluations
 
     Args:
@@ -46,9 +45,6 @@ async def get_evaluations(
         query = query.join(Evaluation.performance).filter(
             Evaluation.performance.has(musician_id=current_user.id)
         )
-    elif current_user.role.name == "evaluator":
-        # Evaluators see evaluations they've created
-        query = query.filter(Evaluation.evaluator_id == current_user.id)
     # Admins see all evaluations (no filter)
 
     evaluations = query.offset(skip).limit(limit).all()
@@ -89,12 +85,6 @@ async def get_evaluation(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied",
             )
-    elif current_user.role.name == "evaluator":
-        if evaluation.evaluator_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied",
-            )
     # Admins can access all evaluations
 
     return evaluation
@@ -106,7 +96,7 @@ async def create_evaluation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Evaluation:
-    """Create a new evaluation (evaluators and admins only).
+    """Create a new evaluation (admins only).
 
     Args:
         evaluation_data: Evaluation creation data
@@ -119,10 +109,10 @@ async def create_evaluation(
     Raises:
         HTTPException: If user doesn't have permission or performance not found
     """
-    if current_user.role.name not in ["evaluator", "admin"]:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only evaluators and admins can create evaluations",
+            detail="Only admins can create evaluations",
         )
 
     # Check if performance exists
@@ -158,7 +148,7 @@ async def update_evaluation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Evaluation:
-    """Update evaluation (evaluators and admins only).
+    """Update evaluation (admins only).
 
     Args:
         evaluation_id: Evaluation ID
@@ -180,16 +170,10 @@ async def update_evaluation(
         )
 
     # Check permissions
-    if current_user.role.name not in ["evaluator", "admin"]:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only evaluators and admins can update evaluations",
-        )
-
-    if current_user.role.name == "evaluator" and evaluation.evaluator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
+            detail="Only admins can update evaluations",
         )
 
     # Update evaluation fields
@@ -207,7 +191,7 @@ async def delete_evaluation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:
-    """Delete evaluation (owner evaluator or admin).
+    """Delete evaluation (admin only).
 
     Args:
         evaluation_id: Evaluation ID
@@ -227,15 +211,10 @@ async def delete_evaluation(
             detail="Evaluation not found",
         )
 
-    if current_user.role.name == "evaluator" and evaluation.evaluator_id != current_user.id:
+    if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied",
-        )
-    if current_user.role.name not in ["admin", "evaluator"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only evaluators and admins can delete evaluations",
+            detail="Only admins can delete evaluations",
         )
 
     db.delete(evaluation)

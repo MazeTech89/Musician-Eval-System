@@ -39,7 +39,7 @@ async def get_performances(
     """Get performances.
 
     For musicians: their own performances
-    For evaluators/admins: all performances
+    For admins: all performances
 
     Args:
         skip: Number of performances to skip
@@ -56,7 +56,7 @@ async def get_performances(
     if current_user.role.name == "musician":
         # Musicians see only their own performances
         query = query.filter(Performance.musician_id == current_user.id)
-    # Admins and evaluators see all performances (no filter)
+    # Admins see all performances (no filter)
 
     performances = query.offset(skip).limit(limit).all()
     return performances
@@ -356,7 +356,7 @@ async def update_performance(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied",
             )
-    elif current_user.role.name not in ["admin", "moderator"]:
+    elif current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update performances",

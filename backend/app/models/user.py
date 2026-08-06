@@ -15,10 +15,7 @@ class RoleEnum(str, Enum):
     """Available roles in the system."""
 
     ADMIN = "admin"
-    EVALUATOR = "evaluator"
     MUSICIAN = "musician"
-    MODERATOR = "moderator"
-    ANALYST = "analyst"
 
 
 class PermissionEnum(str, Enum):

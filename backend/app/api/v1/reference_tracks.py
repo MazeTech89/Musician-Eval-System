@@ -454,10 +454,10 @@ async def list_assignments(
     current_user: User = Depends(get_current_active_user),
 ) -> list[Assignment]:
     """List assignments."""
-    if current_user.role.name not in ["admin", "evaluator", "musician"]:
+    if current_user.role.name not in ["admin", "musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins, evaluators, and musicians can view assignments",
+            detail="Only admins and musicians can view assignments",
         )
 
     query = db.query(Assignment).filter(Assignment.is_active.is_(True))
@@ -540,10 +540,10 @@ async def get_assignment(
     current_user: User = Depends(get_current_active_user),
 ) -> Assignment:
     """Get one assignment by ID."""
-    if current_user.role.name not in ["admin", "evaluator", "musician"]:
+    if current_user.role.name not in ["admin", "musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins, evaluators, and musicians can view assignments",
+            detail="Only admins and musicians can view assignments",
         )
 
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()

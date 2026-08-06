@@ -11,7 +11,7 @@ A complete Role-Based Access Control (RBAC) system has been implemented for the 
 **Location:** `backend/app/models/user.py`
 
 - **User**: Stores user account information with role assignment
-- **Role**: Defines available roles (Admin, Evaluator, Musician, Moderator, Analyst)
+- **Role**: Defines available roles (Admin, Musician)
 - **Permission**: Granular permissions assignable to roles
 - **Enums**: `RoleEnum` and `PermissionEnum` for type safety
 
@@ -21,25 +21,22 @@ A complete Role-Based Access Control (RBAC) system has been implemented for the 
 
 | Role | Description | Use Case |
 |------|-------------|----------|
-| **Admin** | Full system access | System administrators |
-| **Evaluator** | Submit evaluations, view performances | Judges/Teachers |
+| **Admin** | Full system access, including all evaluation/scoring actions | System administrators |
 | **Musician** | Submit performances, view own evaluations | Students/Performers |
-| **Moderator** | Review evaluation consistency | Quality assurance |
-| **Analyst** | Read-only access to reports | Data analysts |
 
 #### Permission Matrix
 
 ```
-┌─────────────────────┬───────┬────────────┬──────────┬────────────┬────────┐
-│ Resource            │ Admin │ Evaluator  │ Musician │ Moderator  │Analyst │
-├─────────────────────┼───────┼────────────┼──────────┼────────────┼────────┤
-│ Users               │ CRUD* │ R (self)   │ R (self) │ R          │ -      │
-│ Performances        │ R     │ R (all)    │ CU (own) │ R (all)    │ R      │
-│ Evaluations         │ RUD   │ CU (own)   │ R (own)  │ R (all)    │ R      │
-│ Settings            │ CUD   │ -          │ -        │ -          │ -      │
-│ Reports             │ R     │ R (own)    │ R (own)  │ R+Export   │ R+Exp  │
-│ Audit Logs          │ R     │ -          │ -        │ -          │ -      │
-└─────────────────────┴───────┴────────────┴──────────┴────────────┴────────┘
+┌─────────────────────┬───────┬──────────┐
+│ Resource            │ Admin │ Musician │
+├─────────────────────┼───────┼──────────┤
+│ Users               │ CRUD* │ R (self) │
+│ Performances        │ R     │ CU (own) │
+│ Evaluations         │ CRUD  │ R (own)  │
+│ Settings            │ CUD   │ -        │
+│ Reports             │ R     │ R (own)  │
+│ Audit Logs          │ R     │ -        │
+└─────────────────────┴───────┴──────────┘
 *C=Create, U=Update, D=Delete, R=Read
 ```
 
@@ -158,7 +155,7 @@ async def admin_endpoint(user = Depends(get_current_admin)):
 # Specific role requirement
 @router.post("/evaluations")
 async def submit_evaluation(
-    user = Depends(require_role(RoleEnum.EVALUATOR, RoleEnum.ADMIN))
+    user = Depends(require_role(RoleEnum.ADMIN))
 ):
     return {"message": "Evaluation submitted"}
 
