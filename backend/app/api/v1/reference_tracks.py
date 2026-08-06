@@ -455,7 +455,7 @@ async def delete_reference_track(
 @router.get("/assignments", response_model=list[AssignmentWithReferenceResponse])
 async def list_assignments(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 500,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> list[Assignment]:
@@ -481,7 +481,15 @@ async def list_assignments(
             conditions.append(Assignment.target_instrument_type.ilike(instrument))
         query = query.filter(or_(*conditions))
 
-    return query.offset(skip).limit(limit).all()
+    # Without an explicit order, Postgres does not guarantee row order, so once the
+    # result set exceeds `limit` the newest (most relevant) assignments could silently
+    # be excluded from the page. Order newest-first so truncation drops the oldest rows.
+    return (
+        query.order_by(Assignment.created_at.desc(), Assignment.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.post(
