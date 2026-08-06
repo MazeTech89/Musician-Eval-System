@@ -14,6 +14,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit_event
@@ -42,6 +43,30 @@ from app.services.s3_storage import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["reference-tracks"])
+
+
+def _assignment_visible_to_musician(assignment: Assignment, musician: User) -> bool:
+    """A musician can see/submit to a task only if it targets them (or targets nobody specific)."""
+    if assignment.target_musician_id is not None and assignment.target_musician_id != musician.id:
+        return False
+    if assignment.target_instrument_type:
+        musician_instrument = (musician.instrument_type or "").strip().lower()
+        if musician_instrument != assignment.target_instrument_type.strip().lower():
+            return False
+    return True
+
+
+def _resolve_target_musician_id(db: Session, target_musician_id: int | None) -> int | None:
+    """Validate an optional target musician ID; 0 clears targeting to 'no specific musician'."""
+    if not target_musician_id:
+        return None
+    target_user = db.query(User).filter(User.id == target_musician_id).first()
+    if not target_user or target_user.role.name != "musician":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="target_musician_id must reference an existing musician",
+        )
+    return target_user.id
 
 
 @router.get("/reference-tracks/storage-health")
@@ -442,6 +467,20 @@ async def list_assignments(
         )
 
     query = db.query(Assignment).filter(Assignment.is_active.is_(True))
+
+    if current_user.role.name == "musician":
+        instrument = (current_user.instrument_type or "").strip()
+        conditions = [
+            and_(
+                Assignment.target_musician_id.is_(None),
+                Assignment.target_instrument_type.is_(None),
+            ),
+            Assignment.target_musician_id == current_user.id,
+        ]
+        if instrument:
+            conditions.append(Assignment.target_instrument_type.ilike(instrument))
+        query = query.filter(or_(*conditions))
+
     return query.offset(skip).limit(limit).all()
 
 
@@ -454,6 +493,8 @@ async def create_assignment(
     title: str = Form(...),
     description: str | None = Form(None),
     reference_track_id: int = Form(...),
+    target_musician_id: int | None = Form(None),
+    target_instrument_type: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Assignment:
@@ -481,6 +522,8 @@ async def create_assignment(
         description=description,
         reference_track_id=reference_track.id,
         created_by_id=current_user.id,
+        target_musician_id=_resolve_target_musician_id(db, target_musician_id),
+        target_instrument_type=(target_instrument_type or "").strip() or None,
         is_active=True,
     )
     db.add(assignment)
@@ -509,6 +552,11 @@ async def get_assignment(
     if not assignment.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
+    if current_user.role.name == "musician" and not _assignment_visible_to_musician(
+        assignment, current_user
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
     return assignment
 
 
@@ -519,6 +567,8 @@ async def update_assignment(
     description: str | None = Form(None),
     reference_track_id: int | None = Form(None),
     is_active: bool | None = Form(None),
+    target_musician_id: int | None = Form(None),
+    target_instrument_type: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Assignment:
@@ -540,6 +590,10 @@ async def update_assignment(
         assignment.description = description
     if is_active is not None:
         assignment.is_active = is_active
+    if target_musician_id is not None:
+        assignment.target_musician_id = _resolve_target_musician_id(db, target_musician_id)
+    if target_instrument_type is not None:
+        assignment.target_instrument_type = target_instrument_type.strip() or None
     if reference_track_id is not None:
         reference_track = (
             db.query(ReferenceTrack)
@@ -626,6 +680,9 @@ async def submit_performance_for_assignment(
         .first()
     )
     if not assignment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+
+    if not _assignment_visible_to_musician(assignment, current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
     # Enforce upload security checks before writing any bytes to storage.

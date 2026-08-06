@@ -40,10 +40,14 @@ class Assignment(Base):
     description = Column(Text)
     reference_track_id = Column(Integer, ForeignKey("reference_tracks.id"), nullable=False)
     created_by_id = Column("created_by_id", Integer, ForeignKey("user.id"), nullable=False)
+    # Null targeting fields mean the task is open to every musician.
+    target_musician_id = Column(Integer, ForeignKey("user.id"), nullable=True)
+    target_instrument_type = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True, nullable=False)
 
     reference_track = relationship("ReferenceTrack", back_populates="assignments")
     created_by = relationship("User", foreign_keys=[created_by_id])
+    target_musician = relationship("User", foreign_keys=[target_musician_id])
     performances = relationship("Performance", back_populates="assignment")

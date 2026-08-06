@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.auth import UserResponse
 from app.schemas.evaluation import (
     EvaluationResponse,
     PerformanceResponse,
@@ -53,6 +54,9 @@ class AssignmentBase(BaseModel):
     description: str | None = Field(None, max_length=1000)
     reference_track_id: int
     is_active: bool = True
+    # Null targeting fields mean the task is open to every musician.
+    target_musician_id: int | None = None
+    target_instrument_type: str | None = Field(None, max_length=100)
 
 
 class AssignmentCreate(AssignmentBase):
@@ -68,6 +72,8 @@ class AssignmentUpdate(BaseModel):
     description: str | None = Field(None, max_length=1000)
     reference_track_id: int | None = None
     is_active: bool | None = None
+    target_musician_id: int | None = None
+    target_instrument_type: str | None = Field(None, max_length=100)
 
 
 class AssignmentResponse(AssignmentBase):
@@ -86,6 +92,7 @@ class AssignmentWithReferenceResponse(AssignmentResponse):
     """Assignment response with nested reference track details."""
 
     reference_track: ReferenceTrackResponse
+    target_musician: UserResponse | None = None
 
     class Config:
         from_attributes = True

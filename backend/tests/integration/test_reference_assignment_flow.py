@@ -750,3 +750,217 @@ def test_admin_cannot_submit_performance(
         )
     assert submission_response.status_code == 403
     assert "musician" in submission_response.json()["detail"].lower()
+
+
+def _create_reference_track(tmp_path: Path, admin_user: User, name: str) -> int:
+    reference_path = tmp_path / f"{name}.wav"
+    _write_wav(reference_path, 440.0)
+    with reference_path.open("rb") as reference_file:
+        response = client.post(
+            "/api/v1/reference-tracks",
+            data={"title": name, "description": "Targeting test reference"},
+            files={"audio_file": (f"{name}.wav", reference_file, "audio/wav")},
+            headers=_auth_headers(admin_user),
+        )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
+def test_assignment_targeted_to_specific_musician_is_hidden_from_others(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+    setup_roles,
+) -> None:
+    """An assignment targeted at one musician should not be visible/submittable by another."""
+    db = setup_roles
+    role = db.query(Role).filter(Role.name == RoleEnum.MUSICIAN).first()
+    other_username = f"musician-{uuid4().hex[:8]}"
+    other_musician = User(
+        username=other_username,
+        email=f"{other_username}@example.com",
+        hashed_password=hash_password("secret123"),
+        first_name="Other",
+        last_name="Musician",
+        role_id=role.id,
+        is_active=True,
+    )
+    db.add(other_musician)
+    db.commit()
+    db.refresh(other_musician)
+
+    reference_track_id = _create_reference_track(tmp_path, admin_user, "targeted-reference")
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Targeted task",
+            "reference_track_id": reference_track_id,
+            "target_musician_id": musician_user.id,
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assert assignment_response.status_code == 201
+    assignment_id = assignment_response.json()["id"]
+    assert assignment_response.json()["target_musician_id"] == musician_user.id
+
+    # Targeted musician can see and fetch it.
+    targeted_list = client.get("/api/v1/assignments", headers=_auth_headers(musician_user))
+    assert any(a["id"] == assignment_id for a in targeted_list.json())
+    assert (
+        client.get(
+            f"/api/v1/assignments/{assignment_id}", headers=_auth_headers(musician_user)
+        ).status_code
+        == 200
+    )
+
+    # Other musician cannot see or fetch it.
+    other_list = client.get("/api/v1/assignments", headers=_auth_headers(other_musician))
+    assert all(a["id"] != assignment_id for a in other_list.json())
+    assert (
+        client.get(
+            f"/api/v1/assignments/{assignment_id}", headers=_auth_headers(other_musician)
+        ).status_code
+        == 404
+    )
+
+    # Other musician cannot submit a performance against it.
+    performance_path = tmp_path / "other-perf.wav"
+    _write_wav(performance_path, 440.0)
+    with performance_path.open("rb") as performance_file:
+        submission_response = client.post(
+            f"/api/v1/assignments/{assignment_id}/submissions",
+            data={"title": "Sneaky submission"},
+            files={"audio_file": ("other-perf.wav", performance_file, "audio/wav")},
+            headers=_auth_headers(other_musician),
+        )
+    assert submission_response.status_code == 404
+
+
+def test_assignment_targeted_to_instrument_filters_by_instrument_type(
+    tmp_path: Path,
+    admin_user: User,
+    setup_roles,
+) -> None:
+    """An assignment targeted at an instrument type is only visible to matching musicians."""
+    db = setup_roles
+    role = db.query(Role).filter(Role.name == RoleEnum.MUSICIAN).first()
+
+    def _make_musician(instrument: str | None) -> User:
+        username = f"musician-{uuid4().hex[:8]}"
+        user = User(
+            username=username,
+            email=f"{username}@example.com",
+            hashed_password=hash_password("secret123"),
+            first_name="Musician",
+            last_name="User",
+            role_id=role.id,
+            is_active=True,
+            instrument_type=instrument,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
+    pianist = _make_musician("Piano")
+    guitarist = _make_musician("Guitar")
+
+    reference_track_id = _create_reference_track(tmp_path, admin_user, "piano-reference")
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Piano-only task",
+            "reference_track_id": reference_track_id,
+            "target_instrument_type": "piano",
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assert assignment_response.status_code == 201
+    assignment_id = assignment_response.json()["id"]
+
+    pianist_list = client.get("/api/v1/assignments", headers=_auth_headers(pianist))
+    assert any(a["id"] == assignment_id for a in pianist_list.json())
+
+    guitarist_list = client.get("/api/v1/assignments", headers=_auth_headers(guitarist))
+    assert all(a["id"] != assignment_id for a in guitarist_list.json())
+    assert (
+        client.get(
+            f"/api/v1/assignments/{assignment_id}", headers=_auth_headers(guitarist)
+        ).status_code
+        == 404
+    )
+
+
+def test_untargeted_assignment_is_visible_to_all_musicians(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Assignments without targeting fields remain open to every musician (backward compatible)."""
+    reference_track_id = _create_reference_track(tmp_path, admin_user, "open-reference")
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={"title": "Open task", "reference_track_id": reference_track_id},
+        headers=_auth_headers(admin_user),
+    )
+    assert assignment_response.status_code == 201
+    assignment_id = assignment_response.json()["id"]
+    assert assignment_response.json()["target_musician_id"] is None
+    assert assignment_response.json()["target_instrument_type"] is None
+
+    musician_list = client.get("/api/v1/assignments", headers=_auth_headers(musician_user))
+    assert any(a["id"] == assignment_id for a in musician_list.json())
+
+
+def test_update_assignment_can_set_and_clear_targeting(
+    tmp_path: Path,
+    admin_user: User,
+    musician_user: User,
+) -> None:
+    """Admins can add targeting to an existing assignment and later clear it."""
+    reference_track_id = _create_reference_track(tmp_path, admin_user, "update-reference")
+
+    assignment_response = client.post(
+        "/api/v1/assignments",
+        data={"title": "Task to retarget", "reference_track_id": reference_track_id},
+        headers=_auth_headers(admin_user),
+    )
+    assignment_id = assignment_response.json()["id"]
+
+    update_response = client.put(
+        f"/api/v1/assignments/{assignment_id}",
+        data={"target_musician_id": musician_user.id},
+        headers=_auth_headers(admin_user),
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["target_musician_id"] == musician_user.id
+
+    # Clearing targeting: 0 means "no specific musician".
+    clear_response = client.put(
+        f"/api/v1/assignments/{assignment_id}",
+        data={"target_musician_id": 0},
+        headers=_auth_headers(admin_user),
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["target_musician_id"] is None
+
+
+def test_create_assignment_rejects_invalid_target_musician(
+    tmp_path: Path, admin_user: User, evaluator_user: User
+) -> None:
+    """target_musician_id must reference an existing musician (not e.g. an evaluator)."""
+    reference_track_id = _create_reference_track(tmp_path, admin_user, "invalid-target-reference")
+
+    response = client.post(
+        "/api/v1/assignments",
+        data={
+            "title": "Invalid target task",
+            "reference_track_id": reference_track_id,
+            "target_musician_id": evaluator_user.id,
+        },
+        headers=_auth_headers(admin_user),
+    )
+    assert response.status_code == 400
