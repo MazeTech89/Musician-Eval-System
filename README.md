@@ -6,7 +6,7 @@ Final-year cybersecurity capstone: an AI-driven musician performance evaluation 
 - Backend: FastAPI · PostgreSQL · Celery · Redis · Librosa
 - Frontend: React + TypeScript + Vite
 - Infra: Docker · Render · S3-compatible storage
-- Security: JWT (RS256) · Argon2id · OWASP ASVS L2
+- Security: JWT (HS256) · Argon2id · OWASP ASVS L2
 
 ## Quick start
 ```bash
@@ -20,7 +20,7 @@ This project uses Docker Compose for local development and Docker-based validati
 This project is set up around four environments:
 
 ### 1. Development
-- File: [docker-compose.yml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/docker-compose.yml)
+- File: [docker-compose.yml](docker-compose.yml)
 - Purpose: local day-to-day development
 - Characteristics:
   - local frontend against Dockerized backend/services
@@ -33,8 +33,15 @@ Run it with:
 docker compose up --build
 ```
 
+Stop it with:
+```bash
+docker compose down
+```
+(Use `docker compose stop` instead if you want to keep the containers around — e.g. to resume
+quickly later — rather than removing them.)
+
 ### 2. Test
-- File: [docker-compose.test.yml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/docker-compose.test.yml)
+- File: [docker-compose.test.yml](docker-compose.test.yml)
 - Purpose: isolated local test/staging-like validation without clashing with dev
 - Characteristics:
   - separate database volume and ports
@@ -47,8 +54,13 @@ Run it with:
 docker compose -f docker-compose.test.yml up --build
 ```
 
+Stop it with:
+```bash
+docker compose -f docker-compose.test.yml down
+```
+
 ### 3. Staging
-- File: [render.staging.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.staging.yaml)
+- File: [render.staging.yaml](render.staging.yaml)
 - Purpose: real hosted MVP validation before production promotion
 - Characteristics:
   - dedicated `staging` branch deploy target
@@ -59,7 +71,7 @@ docker compose -f docker-compose.test.yml up --build
   - intended for real browser/user validation of the current assignment-scoring flow
 
 ### 4. Production
-- File: [render.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.yaml)
+- File: [render.yaml](render.yaml)
 - Purpose: hosted deployment
 - Characteristics:
   - Dockerized backend on Render
@@ -78,6 +90,27 @@ npm run dev
 
 The frontend will be available at http://localhost:5173/ and the backend at http://localhost:8000.
 
+### Troubleshooting local runs
+
+- **`Conflict. The container name "/musician_eval_..." is already in use`**: a container from a
+  previous run (or a different Compose project/worktree using the same `container_name`) is still
+  around. Run `docker compose down` first, or remove the specific container with
+  `docker rm -f <container_name>`, then re-run `up --build`.
+- **`docker compose up --build <service>` also rebuilds/starts services you didn't name**: this is
+  expected — `depends_on` pulls in the dependency chain (e.g. `frontend` depends on `backend`,
+  which depends on `postgres`/`redis`). Run `docker compose up --build` with no service name to
+  bring up the full stack.
+- **Postgres/Redis data persists across restarts**: both the dev and test stacks use named Docker
+  volumes (`postgres_data`, `backend_uploads`, etc.), so `docker compose down` does not wipe data —
+  add `-v` (`docker compose down -v`) if you need a truly clean database, or see stale-data notes
+  below.
+- **Stale enum/role data causes `ResponseValidationError`/`LookupError` on endpoints like
+  `/api/v1/auth/users`**: the test stack's Postgres volume is long-lived and not reset between runs.
+  If a Python enum (e.g. `RoleEnum`) was ever shrunk, old rows referencing a removed value will
+  break serialization on read. Fix by clearing the affected rows in the test DB (e.g.
+  `docker exec musician_eval_test_db psql -U user -d musician_eval_test -c "DELETE FROM \"user\" WHERE role_id NOT IN (SELECT id FROM role);"`)
+  or reset entirely with `docker compose -f docker-compose.test.yml down -v`.
+
 ## Deployment
 
 ### Staging (Render)
@@ -89,7 +122,7 @@ The staging environment is designed to validate the current MVP exactly as it wo
 
 #### One-time staging setup
 
-1. Push this repo to GitHub, including [render.staging.yaml](C:/Users/Admin/Documents/Repos/Musician-Eval-System.worktrees/update-status-summary/render.staging.yaml)
+1. Push this repo to GitHub, including [render.staging.yaml](render.staging.yaml)
 2. In Render, create a **new Blueprint** and point it at `render.staging.yaml`
 3. Render will create:
    - `musician-eval-staging-backend`
