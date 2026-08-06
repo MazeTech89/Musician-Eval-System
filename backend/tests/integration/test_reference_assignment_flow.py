@@ -72,6 +72,7 @@ def admin_user(setup_roles):
         last_name="User",
         role_id=role.id,
         is_active=True,
+        mfa_enabled=True,
     )
     db.add(user)
     db.commit()

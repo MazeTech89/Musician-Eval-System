@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     access_token_cookie_name: str = "access_token"
     refresh_token_cookie_name: str = "refresh_token"
     security_alert_email: str | None = None
+    login_lockout_max_attempts: int = 5
+    login_lockout_minutes: int = 1
     # RSA keys for RS256 (should be set in production environment)
     rsa_private_key: str = ""
     rsa_public_key: str = ""

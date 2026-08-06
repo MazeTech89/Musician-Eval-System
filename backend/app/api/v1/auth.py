@@ -21,7 +21,7 @@ from app.schemas.auth import (
     UserResponse,
     UserUpdate,
 )
-from app.services.auth import AuthService
+from app.services.auth import AccountLockedError, AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -82,12 +82,28 @@ async def login(
         HTTPException: If credentials are invalid
     """
     # Validate credentials (+ optional TOTP) and issue signed access/refresh tokens.
-    token = AuthService.authenticate_user(
-        db,
-        credentials.username,
-        credentials.password,
-        totp_code=credentials.totp_code,
-    )
+    try:
+        token = AuthService.authenticate_user(
+            db,
+            credentials.username,
+            credentials.password,
+            totp_code=credentials.totp_code,
+        )
+    except AccountLockedError as err:
+        record_audit_event(
+            "auth.login.request_failed",
+            username=credentials.username,
+            reason="locked_out",
+            ip=request.client.host if request.client else None,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "Too many failed login attempts. "
+                f"Try again in {err.retry_after_seconds} seconds."
+            ),
+            headers={"Retry-After": str(err.retry_after_seconds)},
+        ) from err
 
     if not token:
         record_audit_event(

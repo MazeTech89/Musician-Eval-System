@@ -22,10 +22,17 @@ class _DummyRole:
 
 
 class _DummyUser:
-    def __init__(self, user_id: int, role: str, username: str = "test-user") -> None:
+    def __init__(
+        self,
+        user_id: int,
+        role: str,
+        username: str = "test-user",
+        mfa_enabled: bool = False,
+    ) -> None:
         self.id = user_id
         self.role = _DummyRole(role)
         self.username = username
+        self.mfa_enabled = mfa_enabled
 
 
 class _DummyDB:
@@ -295,7 +302,7 @@ def test_reference_storage_health_reports_local_backend(monkeypatch) -> None:
     from app.core import config as config_module
 
     async def _override_user():
-        return _DummyUser(user_id=1, role=RoleEnum.ADMIN.value)
+        return _DummyUser(user_id=1, role=RoleEnum.ADMIN.value, mfa_enabled=True)
 
     monkeypatch.setattr(config_module.settings, "use_local_upload_storage", True)
     app.dependency_overrides[get_current_active_user] = _override_user

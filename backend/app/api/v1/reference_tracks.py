@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import record_audit_event
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db
-from app.core.dependencies import get_current_active_user
+from app.core.dependencies import ensure_admin_mfa_verified, get_current_active_user
 from app.core.upload_security import validate_audio_upload
 from app.models.evaluation import Evaluation, EvaluationStatus, Performance
 from app.models.reference_track import Assignment, ReferenceTrack
@@ -54,6 +54,7 @@ async def get_reference_storage_health(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can view storage health",
         )
+    ensure_admin_mfa_verified(current_user)
 
     return get_storage_health()
 
@@ -235,6 +236,7 @@ async def list_reference_tracks(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can view reference tracks",
         )
+    ensure_admin_mfa_verified(current_user)
 
     return (
         db.query(ReferenceTrack)
@@ -263,6 +265,7 @@ async def create_reference_track(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can create reference tracks",
         )
+    ensure_admin_mfa_verified(current_user)
 
     validate_audio_upload(audio_file)
 
@@ -308,6 +311,7 @@ async def get_reference_track(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can view reference tracks",
         )
+    ensure_admin_mfa_verified(current_user)
 
     reference_track = (
         db.query(ReferenceTrack).filter(ReferenceTrack.id == reference_track_id).first()
@@ -341,6 +345,7 @@ async def update_reference_track(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can update reference tracks",
         )
+    ensure_admin_mfa_verified(current_user)
 
     reference_track = (
         db.query(ReferenceTrack).filter(ReferenceTrack.id == reference_track_id).first()
@@ -394,6 +399,7 @@ async def delete_reference_track(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can delete reference tracks",
         )
+    ensure_admin_mfa_verified(current_user)
 
     reference_track = (
         db.query(ReferenceTrack).filter(ReferenceTrack.id == reference_track_id).first()
@@ -457,6 +463,7 @@ async def create_assignment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can create assignments",
         )
+    ensure_admin_mfa_verified(current_user)
 
     reference_track = (
         db.query(ReferenceTrack)
@@ -521,6 +528,7 @@ async def update_assignment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can update assignments",
         )
+    ensure_admin_mfa_verified(current_user)
 
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
@@ -562,6 +570,7 @@ async def delete_assignment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can delete assignments",
         )
+    ensure_admin_mfa_verified(current_user)
 
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     if not assignment:
@@ -701,6 +710,7 @@ async def analyze_performance_with_assignment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can analyze performances",
         )
+    ensure_admin_mfa_verified(current_user)
 
     assignment = (
         db.query(Assignment)
@@ -772,6 +782,7 @@ async def get_task_recommendations(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can view task recommendations",
         )
+    ensure_admin_mfa_verified(current_user)
 
     # Build recommendations only from active tasks.
     assignments = db.query(Assignment).filter(Assignment.is_active.is_(True)).all()

@@ -25,6 +25,14 @@ from app.schemas.auth import TokenResponse, UserCreate, UserUpdate
 from app.services.s3_storage import delete_audio_file
 
 
+class AccountLockedError(Exception):
+    """Raised when a login attempt is rejected because the account is locked out."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(f"Account locked for {retry_after_seconds} more seconds")
+
+
 class AuthService:
     """Service for authentication operations."""
 
@@ -127,13 +135,17 @@ class AuthService:
             return None
 
         if user.lockout_until and user.lockout_until > datetime.now(UTC):
+            retry_after = int((user.lockout_until - datetime.now(UTC)).total_seconds())
             record_audit_event("auth.login.failed", username=username, reason="locked_out")
-            return None
+            raise AccountLockedError(retry_after_seconds=max(retry_after, 1))
 
         if not verify_password(password, user.hashed_password):
             user.failed_login_count += 1
-            if user.failed_login_count >= 5:
-                user.lockout_until = datetime.now(UTC) + timedelta(minutes=15)
+            locked_out = user.failed_login_count >= settings.login_lockout_max_attempts
+            if locked_out:
+                user.lockout_until = datetime.now(UTC) + timedelta(
+                    minutes=settings.login_lockout_minutes
+                )
                 record_security_alert(
                     "auth.account_locked",
                     user_id=user.id,
@@ -144,6 +156,8 @@ class AuthService:
             record_audit_event(
                 "auth.login.failed", user_id=user.id, username=user.username, reason="bad_password"
             )  # noqa: E501
+            if locked_out:
+                raise AccountLockedError(retry_after_seconds=settings.login_lockout_minutes * 60)
             return None
 
         if user.mfa_enabled:
@@ -166,8 +180,11 @@ class AuthService:
             totp = pyotp.TOTP(user.mfa_secret)
             if not totp.verify(totp_code, valid_window=1):
                 user.failed_login_count += 1
-                if user.failed_login_count >= 5:
-                    user.lockout_until = datetime.now(UTC) + timedelta(minutes=15)
+                locked_out = user.failed_login_count >= settings.login_lockout_max_attempts
+                if locked_out:
+                    user.lockout_until = datetime.now(UTC) + timedelta(
+                        minutes=settings.login_lockout_minutes
+                    )
                     record_security_alert(
                         "auth.account_locked",
                         user_id=user.id,
@@ -178,6 +195,10 @@ class AuthService:
                 record_audit_event(
                     "auth.login.failed", user_id=user.id, username=user.username, reason="bad_mfa"
                 )  # noqa: E501
+                if locked_out:
+                    raise AccountLockedError(
+                        retry_after_seconds=settings.login_lockout_minutes * 60
+                    )
                 return None
 
         user.failed_login_count = 0

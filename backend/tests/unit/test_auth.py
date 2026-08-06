@@ -74,6 +74,7 @@ def test_admin_user(setup_test_roles):
         existing.availability = None
         existing.role_id = role.id
         existing.is_active = True
+        existing.mfa_enabled = True
         existing.last_login = None
         db.commit()
         db.refresh(existing)
@@ -87,6 +88,7 @@ def test_admin_user(setup_test_roles):
         last_name="Admin",
         role_id=role.id,
         is_active=True,
+        mfa_enabled=True,
     )
     db.add(user)
     db.commit()
@@ -229,6 +231,36 @@ class TestAuthentication:
 
         assert response.status_code == 401
 
+    def test_login_locks_account_after_five_failures(self, db_session, setup_test_roles):
+        """Fifth failed login should lock the account and return 429 for one minute."""
+        role = db_session.query(Role).filter(Role.name == RoleEnum.MUSICIAN).first()
+        username = f"lockout-{uuid4().hex[:8]}"
+        user = User(
+            username=username,
+            email=f"{username}@example.com",
+            hashed_password=hash_password("correct-password-123"),
+            role_id=role.id,
+            is_active=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        for _ in range(4):
+            response = client.post(
+                "/api/v1/auth/login",
+                json={"username": username, "password": "wrong-password"},
+            )
+            assert response.status_code == 401
+
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"username": username, "password": "wrong-password"},
+        )
+
+        assert response.status_code == 429
+        assert "Too many failed login attempts" in response.json()["detail"]
+        assert response.headers.get("Retry-After") == "60"
+
 
 class TestPasswordSecurity:
     """Test password hashing and verification."""
@@ -325,6 +357,25 @@ class TestRoleBasedAccess:
         )
 
         assert response.status_code == 403
+
+    def test_admin_requires_mfa_for_admin_endpoints(self, test_admin_user, db_session):
+        """Admin users without MFA enabled should be blocked from admin routes."""
+        test_admin_user.mfa_enabled = False
+        db_session.commit()
+        db_session.refresh(test_admin_user)
+
+        token, _ = create_access_token(
+            {
+                "sub": test_admin_user.id,
+                "username": test_admin_user.username,
+                "role": "admin",
+            }
+        )
+
+        response = client.get("/api/v1/auth/users", headers={"Authorization": f"Bearer {token}"})
+
+        assert response.status_code == 403
+        assert "MFA setup is required for admin accounts" in response.json()["detail"]
 
 
 class TestUserManagement:
