@@ -191,8 +191,17 @@ def test_analyze_performance_with_assignment(
         headers=_auth_headers(admin_user),
     )
 
-    assert analyze_response.status_code == 201
-    assert analyze_response.json()["score"] > 0.0
+    assert analyze_response.status_code == 202
+    evaluation_id = analyze_response.json()["evaluation_id"]
+
+    # The background task runs synchronously within TestClient's request/response cycle.
+    evaluation_response = client.get(
+        f"/api/v1/evaluations/{evaluation_id}",
+        headers=_auth_headers(admin_user),
+    )
+    assert evaluation_response.status_code == 200
+    assert evaluation_response.json()["status"] == "completed"
+    assert evaluation_response.json()["score"] > 0.0
 
     db = SessionLocal()
     try:

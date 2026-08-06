@@ -25,7 +25,6 @@ from app.core.upload_security import validate_audio_upload
 from app.models.evaluation import Evaluation, EvaluationStatus, Performance
 from app.models.reference_track import Assignment, ReferenceTrack
 from app.models.user import User
-from app.schemas.evaluation import SimilarityAnalysisResponse
 from app.schemas.reference_tracks import (
     AssignmentSubmissionResponse,
     AssignmentWithReferenceResponse,
@@ -129,59 +128,6 @@ def _materialize_and_score(assignment: Assignment, performance: Performance) -> 
             reference_audio_path.unlink(missing_ok=True)
         if candidate_is_temporary:
             candidate_audio_path.unlink(missing_ok=True)
-
-
-def _score_assignment_performance(
-    db: Session,
-    assignment: Assignment,
-    performance: Performance,
-    current_user: User,
-) -> tuple[object, Evaluation]:
-    """Score a performance against an assignment reference track (synchronous, admin re-analyze only)."""
-    # Guardrails: scoring requires both uploaded candidate audio and a task reference.
-    if not performance.audio_file_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Performance has no uploaded audio to compare",
-        )
-
-    if not assignment.reference_track or not assignment.reference_track.audio_file_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Assignment has no reference audio track",
-        )
-
-    try:
-        analysis = _materialize_and_score(assignment, performance)
-    except S3StorageError as err:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(err),
-        ) from err
-    except ValueError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(err),
-        ) from err
-    except FileNotFoundError as err:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Audio file could not be found",
-        ) from err
-
-    performance.assignment_id = assignment.id
-    evaluation = Evaluation(
-        performance_id=performance.id,
-        evaluator_id=current_user.id,
-        score=analysis.score,
-        comments=(
-            "Auto-generated similarity analysis against " f"{assignment.reference_track.title}"
-        ),
-        status=EvaluationStatus.COMPLETED,
-    )
-    db.add(evaluation)
-
-    return analysis, evaluation
 
 
 def _score_submission_in_background(
@@ -751,16 +697,25 @@ async def submit_performance_for_assignment(
 
 @router.post(
     "/assignments/{assignment_id}/performances/{performance_id}/analyze",
-    response_model=SimilarityAnalysisResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def analyze_performance_with_assignment(
     assignment_id: int,
     performance_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
-    """Analyze a performance using the reference track from an assignment."""
+    """Re-analyze a performance using the reference track from an assignment.
+
+    Scoring runs librosa/torch analysis that can take well over a minute for
+    longer recordings, which exceeds the proxy/edge timeout in production and
+    breaks the response before it can be returned (this previously ran
+    synchronously here and could fail with a client-side network error on
+    longer files). The request now returns immediately with a pending
+    evaluation, and the heavy analysis runs as a background task; the
+    frontend polls the evaluation for the final score.
+    """
     if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -780,43 +735,50 @@ async def analyze_performance_with_assignment(
     if not performance:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Performance not found")
 
-    # Re-run deterministic scoring for an existing task/performance pair.
-    analysis, evaluation = _score_assignment_performance(
-        db=db,
-        assignment=assignment,
-        performance=performance,
-        current_user=current_user,
+    if not performance.audio_file_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Performance has no uploaded audio to compare",
+        )
+    if not assignment.reference_track or not assignment.reference_track.audio_file_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Assignment has no reference audio track",
+        )
+
+    evaluation = Evaluation(
+        performance_id=performance.id,
+        evaluator_id=current_user.id,
+        score=None,
+        comments="Automatic scoring is running in the background.",
+        status=EvaluationStatus.PENDING,
     )
+    db.add(evaluation)
     db.commit()
     db.refresh(evaluation)
-    db.refresh(performance)
+
+    background_tasks.add_task(
+        _score_submission_in_background,
+        assignment_id=assignment.id,
+        performance_id=performance.id,
+        evaluation_id=evaluation.id,
+    )
+
     record_audit_event(
-        "assignment.performance.analyzed",
+        "assignment.performance.analyze_requested",
         assignment_id=assignment.id,
         performance_id=performance.id,
         evaluation_id=evaluation.id,
         user_id=current_user.id,
         username=current_user.username,
+        scoring_pending=True,
     )
 
     return {
         "performance_id": performance.id,
-        "score": analysis.score,
-        "reference_filename": assignment.reference_track.title,
-        "created_evaluation_id": evaluation.id,
-        "breakdown": {
-            "pitch_accuracy": analysis.pitch_accuracy,
-            "tempo_stability": analysis.tempo_stability,
-            "rhythm_consistency": analysis.rhythm_consistency,
-            "dynamics_similarity": analysis.dynamics_similarity,
-            "timbre_similarity": analysis.timbre_similarity,
-            "duration_similarity": analysis.duration_similarity,
-            "energy_similarity": analysis.energy_similarity,
-            "reference_tempo_bpm": analysis.reference_tempo_bpm,
-            "candidate_tempo_bpm": analysis.candidate_tempo_bpm,
-            "reference_pitch_hz": analysis.reference_pitch_hz,
-            "candidate_pitch_hz": analysis.candidate_pitch_hz,
-        },
+        "evaluation_id": evaluation.id,
+        "status": evaluation.status,
+        "message": "Analysis started. Scoring is running in the background — check back shortly.",
     }
 
 

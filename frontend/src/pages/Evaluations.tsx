@@ -43,6 +43,13 @@ interface AnalysisResult {
   breakdown: Record<string, number>;
 }
 
+interface AssignmentAnalysisResult {
+  evaluationId: number;
+  status: string;
+  score: number | null;
+  comments: string | null;
+}
+
 interface ReferenceTrack {
   id: number;
   title: string;
@@ -82,35 +89,59 @@ const Evaluations: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
+    null,
+  );
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [referenceTracks, setReferenceTracks] = useState<ReferenceTrack[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [newReferenceTrackTitle, setNewReferenceTrackTitle] = useState("");
-  const [newReferenceTrackDescription, setNewReferenceTrackDescription] = useState("");
-  const [referenceTrackFile, setReferenceTrackFile] = useState<File | null>(null);
+  const [newReferenceTrackDescription, setNewReferenceTrackDescription] =
+    useState("");
+  const [referenceTrackFile, setReferenceTrackFile] = useState<File | null>(
+    null,
+  );
   const [creatingReferenceTrack, setCreatingReferenceTrack] = useState(false);
-  const [referenceTrackError, setReferenceTrackError] = useState<string | null>(null);
+  const [referenceTrackError, setReferenceTrackError] = useState<string | null>(
+    null,
+  );
   const [newAssignmentTitle, setNewAssignmentTitle] = useState("");
   const [newAssignmentDescription, setNewAssignmentDescription] = useState("");
-  const [selectedReferenceTrackId, setSelectedReferenceTrackId] = useState<number>(0);
+  const [selectedReferenceTrackId, setSelectedReferenceTrackId] =
+    useState<number>(0);
   const [creatingAssignment, setCreatingAssignment] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number>(0);
-  const [assignmentAnalysisLoading, setAssignmentAnalysisLoading] = useState(false);
-  const [assignmentAnalysisError, setAssignmentAnalysisError] = useState<string | null>(null);
-  const [assignmentAnalysisResult, setAssignmentAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [evaluationFormError, setEvaluationFormError] = useState<string | null>(null);
-  const [analysisFormError, setAnalysisFormError] = useState<string | null>(null);
+  const [assignmentAnalysisLoading, setAssignmentAnalysisLoading] =
+    useState(false);
+  const [assignmentAnalysisError, setAssignmentAnalysisError] = useState<
+    string | null
+  >(null);
+  const [assignmentAnalysisResult, setAssignmentAnalysisResult] =
+    useState<AssignmentAnalysisResult | null>(null);
+  const [evaluationFormError, setEvaluationFormError] = useState<string | null>(
+    null,
+  );
+  const [analysisFormError, setAnalysisFormError] = useState<string | null>(
+    null,
+  );
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [deletingEvaluationId, setDeletingEvaluationId] = useState<number | null>(null);
-  const [deletingReferenceTrackId, setDeletingReferenceTrackId] = useState<number | null>(null);
-  const [deletingAssignmentId, setDeletingAssignmentId] = useState<number | null>(null);
+  const [deletingEvaluationId, setDeletingEvaluationId] = useState<
+    number | null
+  >(null);
+  const [deletingReferenceTrackId, setDeletingReferenceTrackId] = useState<
+    number | null
+  >(null);
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState<
+    number | null
+  >(null);
 
   const canCreateEvaluations = user?.role === "admin";
   const assignmentById = useMemo(() => {
     // Fast assignment lookup map used when rendering evaluation rows/details.
-    return new Map(assignments.map((assignment) => [assignment.id, assignment]));
+    return new Map(
+      assignments.map((assignment) => [assignment.id, assignment]),
+    );
   }, [assignments]);
 
   useEffect(() => {
@@ -128,7 +159,9 @@ const Evaluations: React.FC = () => {
       try {
         const [evalResponse, perfResponse] = await Promise.all([
           api.get("/evaluations"),
-          canCreateEvaluations ? api.get("/performances") : Promise.resolve({ data: [] }),
+          canCreateEvaluations
+            ? api.get("/performances")
+            : Promise.resolve({ data: [] }),
         ]);
         setEvaluations(evalResponse.data);
         if (isAdmin) {
@@ -188,7 +221,9 @@ const Evaluations: React.FC = () => {
       setSuccessMessage("Evaluation created successfully.");
     } catch (err: unknown) {
       console.error("Failed to create evaluation:", err);
-      setEvaluationFormError(getApiErrorMessage(err, "Failed to create evaluation"));
+      setEvaluationFormError(
+        getApiErrorMessage(err, "Failed to create evaluation"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -205,7 +240,10 @@ const Evaluations: React.FC = () => {
       setAnalysisFormError("Choose a reference audio file.");
       return;
     }
-    const referenceFileError = validateAudioFileSize(referenceFile, "Reference audio file");
+    const referenceFileError = validateAudioFileSize(
+      referenceFile,
+      "Reference audio file",
+    );
     if (referenceFileError) {
       setAnalysisFormError(referenceFileError);
       return;
@@ -233,7 +271,9 @@ const Evaluations: React.FC = () => {
       setSuccessMessage("Similarity analysis completed successfully.");
     } catch (err: unknown) {
       console.error("Failed to analyze performance:", err);
-      setAnalysisFormError(getApiErrorMessage(err, "Failed to analyze performance"));
+      setAnalysisFormError(
+        getApiErrorMessage(err, "Failed to analyze performance"),
+      );
     } finally {
       setAnalysisLoading(false);
     }
@@ -319,7 +359,9 @@ const Evaluations: React.FC = () => {
       setSuccessMessage("Assignment saved successfully.");
     } catch (err: unknown) {
       console.error("Failed to create assignment:", err);
-      setAssignmentError(getApiErrorMessage(err, "Failed to create assignment"));
+      setAssignmentError(
+        getApiErrorMessage(err, "Failed to create assignment"),
+      );
     } finally {
       setCreatingAssignment(false);
     }
@@ -339,17 +381,50 @@ const Evaluations: React.FC = () => {
 
     setAssignmentAnalysisLoading(true);
     setAssignmentAnalysisError(null);
+    setAssignmentAnalysisResult(null);
     setSuccessMessage(null);
     try {
       const response = await api.post(
         `/assignments/${selectedAssignmentId}/performances/${selectedPerformance}/analyze`,
       );
-      setAssignmentAnalysisResult(response.data);
+      const evaluationId: number = response.data.evaluation_id;
+
+      // Scoring runs as a background task, so poll the evaluation until it leaves "pending".
+      const maxAttempts = 40; // ~2 minutes at 3s intervals
+      let finalEvaluation = null;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        const evalStatusResponse = await api.get(
+          `/evaluations/${evaluationId}`,
+        );
+        if (evalStatusResponse.data.status !== "pending") {
+          finalEvaluation = evalStatusResponse.data;
+          break;
+        }
+      }
+
       const evalResponse = await api.get("/evaluations");
       setEvaluations(evalResponse.data);
-      setSelectedPerformance(0);
-      setSelectedAssignmentId(0);
-      setSuccessMessage("Assignment analysis completed successfully.");
+
+      if (finalEvaluation?.status === "completed") {
+        setAssignmentAnalysisResult({
+          evaluationId,
+          status: finalEvaluation.status,
+          score: finalEvaluation.score,
+          comments: finalEvaluation.comments,
+        });
+        setSelectedPerformance(0);
+        setSelectedAssignmentId(0);
+        setSuccessMessage("Assignment analysis completed successfully.");
+      } else if (finalEvaluation?.status === "cancelled") {
+        setAssignmentAnalysisError(
+          finalEvaluation.comments || "Analysis failed.",
+        );
+      } else {
+        setAssignmentAnalysisError(
+          "Analysis is taking longer than expected. Check the evaluations list shortly for the result.",
+        );
+      }
     } catch (err: unknown) {
       console.error("Failed to analyze with assignment:", err);
       setAssignmentAnalysisError(
@@ -370,7 +445,9 @@ const Evaluations: React.FC = () => {
     setSuccessMessage(null);
     try {
       await api.delete(`/evaluations/${evaluationId}`);
-      setEvaluations((current) => current.filter((evaluation) => evaluation.id !== evaluationId));
+      setEvaluations((current) =>
+        current.filter((evaluation) => evaluation.id !== evaluationId),
+      );
       setSuccessMessage("Evaluation deleted successfully.");
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Failed to delete evaluation"));
@@ -389,20 +466,28 @@ const Evaluations: React.FC = () => {
     setSuccessMessage(null);
     try {
       await api.delete(`/reference-tracks/${referenceTrackId}`);
-      setReferenceTracks((current) => current.filter((track) => track.id !== referenceTrackId));
+      setReferenceTracks((current) =>
+        current.filter((track) => track.id !== referenceTrackId),
+      );
       setSelectedReferenceTrackId((current) =>
         current === referenceTrackId ? 0 : current,
       );
       setSuccessMessage("Reference track deleted successfully.");
     } catch (err: unknown) {
-      setReferenceTrackError(getApiErrorMessage(err, "Failed to delete reference track"));
+      setReferenceTrackError(
+        getApiErrorMessage(err, "Failed to delete reference track"),
+      );
     } finally {
       setDeletingReferenceTrackId(null);
     }
   };
 
   const handleDeleteAssignment = async (assignmentId: number) => {
-    if (!window.confirm("Delete this assignment? Linked performances will be preserved.")) {
+    if (
+      !window.confirm(
+        "Delete this assignment? Linked performances will be preserved.",
+      )
+    ) {
       return;
     }
 
@@ -414,10 +499,14 @@ const Evaluations: React.FC = () => {
       setAssignments((current) =>
         current.filter((assignment) => assignment.id !== assignmentId),
       );
-      setSelectedAssignmentId((current) => (current === assignmentId ? 0 : current));
+      setSelectedAssignmentId((current) =>
+        current === assignmentId ? 0 : current,
+      );
       setSuccessMessage("Assignment deleted successfully.");
     } catch (err: unknown) {
-      setAssignmentError(getApiErrorMessage(err, "Failed to delete assignment"));
+      setAssignmentError(
+        getApiErrorMessage(err, "Failed to delete assignment"),
+      );
     } finally {
       setDeletingAssignmentId(null);
     }
@@ -499,7 +588,9 @@ const Evaluations: React.FC = () => {
         ) : null}
         <section className="px-4 sm:px-0 mb-6">
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Your workflow
+            </h2>
             <ol className="space-y-2 text-sm text-gray-700">
               {workflowSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -522,7 +613,9 @@ const Evaluations: React.FC = () => {
           <div className="px-4 py-6 sm:px-0 mb-6 space-y-6">
             {showCreateForm && (
               <div className="bg-white shadow rounded-md p-6">
-                <h2 className="text-lg font-semibold mb-4">Create Evaluation</h2>
+                <h2 className="text-lg font-semibold mb-4">
+                  Create Evaluation
+                </h2>
                 <form onSubmit={handleCreateEvaluation}>
                   <div className="mb-4">
                     <label
@@ -534,7 +627,9 @@ const Evaluations: React.FC = () => {
                     <select
                       id="create-evaluation-performance"
                       value={selectedPerformance}
-                      onChange={(e) => setSelectedPerformance(Number(e.target.value))}
+                      onChange={(e) =>
+                        setSelectedPerformance(Number(e.target.value))
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       required
                     >
@@ -588,13 +683,15 @@ const Evaluations: React.FC = () => {
                     {submitting ? "Submitting..." : "Submit Evaluation"}
                   </button>
                   {evaluationFormError && (
-                    <p className="mt-4 text-sm text-red-600">{evaluationFormError}</p>
+                    <p className="mt-4 text-sm text-red-600">
+                      {evaluationFormError}
+                    </p>
                   )}
                 </form>
               </div>
             )}
 
-              {isAdmin ? (
+            {isAdmin ? (
               <div className="bg-white shadow rounded-md p-6">
                 <h2 className="text-lg font-semibold mb-4">
                   Auto-score a performance from a reference audio track
@@ -610,7 +707,9 @@ const Evaluations: React.FC = () => {
                     <select
                       id="analysis-performance"
                       value={selectedPerformance}
-                      onChange={(e) => setSelectedPerformance(Number(e.target.value))}
+                      onChange={(e) =>
+                        setSelectedPerformance(Number(e.target.value))
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       required
                     >
@@ -636,7 +735,12 @@ const Evaluations: React.FC = () => {
                       onChange={(e) => {
                         const nextFile = e.target.files?.[0] ?? null;
                         setReferenceFile(nextFile);
-                        setAnalysisFormError(validateAudioFileSize(nextFile, "Reference audio file"));
+                        setAnalysisFormError(
+                          validateAudioFileSize(
+                            nextFile,
+                            "Reference audio file",
+                          ),
+                        );
                       }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2"
                       required
@@ -650,7 +754,9 @@ const Evaluations: React.FC = () => {
                     disabled={analysisLoading}
                     className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
                   >
-                    {analysisLoading ? "Analyzing..." : "Run similarity analysis"}
+                    {analysisLoading
+                      ? "Analyzing..."
+                      : "Run similarity analysis"}
                   </button>
                 </form>
                 {(analysisFormError || analysisError) && (
@@ -667,16 +773,21 @@ const Evaluations: React.FC = () => {
                       Reference: {analysisResult.reference_filename}
                     </p>
                     <div className="mt-2 grid gap-2 md:grid-cols-2">
-                      {Object.entries(analysisResult.breakdown).map(([label, value]) => (
-                        <div key={label} className="rounded bg-white px-3 py-2 shadow-sm">
-                          <div className="text-xs uppercase tracking-wide text-gray-500">
-                            {label.replace(/_/g, " ")}
+                      {Object.entries(analysisResult.breakdown).map(
+                        ([label, value]) => (
+                          <div
+                            key={label}
+                            className="rounded bg-white px-3 py-2 shadow-sm"
+                          >
+                            <div className="text-xs uppercase tracking-wide text-gray-500">
+                              {label.replace(/_/g, " ")}
+                            </div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {(value * 100).toFixed(1)}%
+                            </div>
                           </div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {(value * 100).toFixed(1)}%
-                          </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
@@ -684,273 +795,331 @@ const Evaluations: React.FC = () => {
             ) : null}
 
             {isAdmin ? (
-            <div className="bg-white shadow rounded-md p-6">
-              <h2 className="text-lg font-semibold mb-4">Manage reusable reference tracks</h2>
-              <form onSubmit={handleCreateReferenceTrack}>
-                <div className="mb-4">
-                  <label
-                    htmlFor="reference-track-title"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+              <div className="bg-white shadow rounded-md p-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  Manage reusable reference tracks
+                </h2>
+                <form onSubmit={handleCreateReferenceTrack}>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="reference-track-title"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Title
+                    </label>
+                    <input
+                      id="reference-track-title"
+                      type="text"
+                      value={newReferenceTrackTitle}
+                      onChange={(e) =>
+                        setNewReferenceTrackTitle(e.target.value)
+                      }
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="reference-track-description"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Description
+                    </label>
+                    <textarea
+                      id="reference-track-description"
+                      value={newReferenceTrackDescription}
+                      onChange={(e) =>
+                        setNewReferenceTrackDescription(e.target.value)
+                      }
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label
+                      htmlFor="reference-track-audio"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Reference audio file
+                    </label>
+                    <input
+                      id="reference-track-audio"
+                      type="file"
+                      accept={ACCEPTED_AUDIO_FILE_TYPES}
+                      onChange={(e) => {
+                        const nextFile = e.target.files?.[0] ?? null;
+                        setReferenceTrackFile(nextFile);
+                        setReferenceTrackError(
+                          validateAudioFileSize(
+                            nextFile,
+                            "Reference audio file",
+                          ),
+                        );
+                      }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={creatingReferenceTrack}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    Title
-                  </label>
-                  <input
-                    id="reference-track-title"
-                    type="text"
-                    value={newReferenceTrackTitle}
-                    onChange={(e) => setNewReferenceTrackTitle(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="reference-track-description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="reference-track-description"
-                    value={newReferenceTrackDescription}
-                    onChange={(e) => setNewReferenceTrackDescription(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    rows={3}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="reference-track-audio"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Reference audio file
-                  </label>
-                  <input
-                    id="reference-track-audio"
-                    type="file"
-                    accept={ACCEPTED_AUDIO_FILE_TYPES}
-                    onChange={(e) => {
-                      const nextFile = e.target.files?.[0] ?? null;
-                      setReferenceTrackFile(nextFile);
-                      setReferenceTrackError(
-                        validateAudioFileSize(nextFile, "Reference audio file"),
-                      );
-                    }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Maximum file size: {MAX_AUDIO_UPLOAD_SIZE_MB} MB.
-                  </p>
-                </div>
-                <button
-                  type="submit"
-                  disabled={creatingReferenceTrack}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {creatingReferenceTrack ? "Saving..." : "Save reference track"}
-                </button>
-                {referenceTrackError && (
-                  <p className="mt-4 text-sm text-red-600">{referenceTrackError}</p>
+                    {creatingReferenceTrack
+                      ? "Saving..."
+                      : "Save reference track"}
+                  </button>
+                  {referenceTrackError && (
+                    <p className="mt-4 text-sm text-red-600">
+                      {referenceTrackError}
+                    </p>
+                  )}
+                </form>
+                {referenceTracks.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-semibold text-gray-700">
+                      Saved reference tracks
+                    </h3>
+                    <ul className="mt-2 space-y-2">
+                      {referenceTracks.map((track) => (
+                        <li
+                          key={track.id}
+                          className="flex items-start justify-between gap-4 rounded border border-gray-200 px-3 py-2 text-sm text-gray-600"
+                        >
+                          <div>
+                            <span className="font-medium text-gray-900">
+                              {track.title}
+                            </span>
+                            {track.description ? ` — ${track.description}` : ""}
+                          </div>
+                          {user?.role === "admin" ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void handleDeleteReferenceTrack(track.id)
+                              }
+                              disabled={deletingReferenceTrackId === track.id}
+                              className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {deletingReferenceTrackId === track.id
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
-              </form>
-              {referenceTracks.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-semibold text-gray-700">Saved reference tracks</h3>
-                  <ul className="mt-2 space-y-2">
-                    {referenceTracks.map((track) => (
-                      <li
-                        key={track.id}
-                        className="flex items-start justify-between gap-4 rounded border border-gray-200 px-3 py-2 text-sm text-gray-600"
-                      >
-                        <div>
-                          <span className="font-medium text-gray-900">{track.title}</span>
-                          {track.description ? ` — ${track.description}` : ""}
-                        </div>
-                        {user?.role === "admin" ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteReferenceTrack(track.id)}
-                            disabled={deletingReferenceTrackId === track.id}
-                            className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                          >
-                            {deletingReferenceTrackId === track.id ? "Deleting..." : "Delete"}
-                          </button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+              </div>
             ) : null}
 
             {isAdmin ? (
               <>
-            <div className="bg-white shadow rounded-md p-6">
-              <h2 className="text-lg font-semibold mb-4">Create an assignment from a reference track</h2>
-              <form onSubmit={handleCreateAssignment}>
-                <div className="mb-4">
-                  <label
-                    htmlFor="assignment-title"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Assignment title
-                  </label>
-                  <input
-                    id="assignment-title"
-                    type="text"
-                    value={newAssignmentTitle}
-                    onChange={(e) => setNewAssignmentTitle(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="assignment-description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="assignment-description"
-                    value={newAssignmentDescription}
-                    onChange={(e) => setNewAssignmentDescription(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    rows={3}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="assignment-reference-track"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Reference track
-                  </label>
-                  <select
-                    id="assignment-reference-track"
-                    value={selectedReferenceTrackId}
-                    onChange={(e) => setSelectedReferenceTrackId(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  >
-                    <option value={0}>Select a reference track</option>
-                    {referenceTracks.map((track) => (
-                      <option key={track.id} value={track.id}>
-                        {track.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  disabled={creatingAssignment}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {creatingAssignment ? "Saving..." : "Save assignment"}
-                </button>
-                {assignmentError && <p className="mt-4 text-sm text-red-600">{assignmentError}</p>}
-              </form>
-              {assignments.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-semibold text-gray-700">Assignments</h3>
-                  <ul className="mt-2 space-y-2">
-                    {assignments.map((assignment) => (
-                      <li
-                        key={assignment.id}
-                        className="flex items-start justify-between gap-4 rounded border border-gray-200 px-3 py-2 text-sm text-gray-600"
+                <div className="bg-white shadow rounded-md p-6">
+                  <h2 className="text-lg font-semibold mb-4">
+                    Create an assignment from a reference track
+                  </h2>
+                  <form onSubmit={handleCreateAssignment}>
+                    <div className="mb-4">
+                      <label
+                        htmlFor="assignment-title"
+                        className="block text-sm font-medium text-gray-700 mb-1"
                       >
-                        <div>
-                          <span className="font-medium text-gray-900">{assignment.title}</span>
-                          {assignment.description ? ` — ${assignment.description}` : ""}
-                        </div>
-                        {user?.role === "admin" ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteAssignment(assignment.id)}
-                            disabled={deletingAssignmentId === assignment.id}
-                            className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        Assignment title
+                      </label>
+                      <input
+                        id="assignment-title"
+                        type="text"
+                        value={newAssignmentTitle}
+                        onChange={(e) => setNewAssignmentTitle(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label
+                        htmlFor="assignment-description"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Description
+                      </label>
+                      <textarea
+                        id="assignment-description"
+                        value={newAssignmentDescription}
+                        onChange={(e) =>
+                          setNewAssignmentDescription(e.target.value)
+                        }
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label
+                        htmlFor="assignment-reference-track"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Reference track
+                      </label>
+                      <select
+                        id="assignment-reference-track"
+                        value={selectedReferenceTrackId}
+                        onChange={(e) =>
+                          setSelectedReferenceTrackId(Number(e.target.value))
+                        }
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        required
+                      >
+                        <option value={0}>Select a reference track</option>
+                        {referenceTracks.map((track) => (
+                          <option key={track.id} value={track.id}>
+                            {track.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={creatingAssignment}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {creatingAssignment ? "Saving..." : "Save assignment"}
+                    </button>
+                    {assignmentError && (
+                      <p className="mt-4 text-sm text-red-600">
+                        {assignmentError}
+                      </p>
+                    )}
+                  </form>
+                  {assignments.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Assignments
+                      </h3>
+                      <ul className="mt-2 space-y-2">
+                        {assignments.map((assignment) => (
+                          <li
+                            key={assignment.id}
+                            className="flex items-start justify-between gap-4 rounded border border-gray-200 px-3 py-2 text-sm text-gray-600"
                           >
-                            {deletingAssignmentId === assignment.id ? "Deleting..." : "Delete"}
-                          </button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
+                            <div>
+                              <span className="font-medium text-gray-900">
+                                {assignment.title}
+                              </span>
+                              {assignment.description
+                                ? ` — ${assignment.description}`
+                                : ""}
+                            </div>
+                            {user?.role === "admin" ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleDeleteAssignment(assignment.id)
+                                }
+                                disabled={
+                                  deletingAssignmentId === assignment.id
+                                }
+                                className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                {deletingAssignmentId === assignment.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="bg-white shadow rounded-md p-6">
-              <h2 className="text-lg font-semibold mb-4">Analyze a performance with an assignment</h2>
-              <form onSubmit={handleAnalyzeWithAssignment}>
-                <div className="mb-4">
-                  <label
-                    htmlFor="assignment-analysis-performance"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Performance
-                  </label>
-                  <select
-                    id="assignment-analysis-performance"
-                    value={selectedPerformance}
-                    onChange={(e) => setSelectedPerformance(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  >
-                    <option value={0}>Select a performance</option>
-                    {performances.map((perf) => (
-                      <option key={perf.id} value={perf.id}>
-                        {perf.title} - {perf.status}
-                      </option>
-                    ))}
-                  </select>
+                <div className="bg-white shadow rounded-md p-6">
+                  <h2 className="text-lg font-semibold mb-4">
+                    Analyze a performance with an assignment
+                  </h2>
+                  <form onSubmit={handleAnalyzeWithAssignment}>
+                    <div className="mb-4">
+                      <label
+                        htmlFor="assignment-analysis-performance"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Performance
+                      </label>
+                      <select
+                        id="assignment-analysis-performance"
+                        value={selectedPerformance}
+                        onChange={(e) =>
+                          setSelectedPerformance(Number(e.target.value))
+                        }
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        required
+                      >
+                        <option value={0}>Select a performance</option>
+                        {performances.map((perf) => (
+                          <option key={perf.id} value={perf.id}>
+                            {perf.title} - {perf.status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-4">
+                      <label
+                        htmlFor="assignment-analysis-assignment"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Assignment
+                      </label>
+                      <select
+                        id="assignment-analysis-assignment"
+                        value={selectedAssignmentId}
+                        onChange={(e) =>
+                          setSelectedAssignmentId(Number(e.target.value))
+                        }
+                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        required
+                      >
+                        <option value={0}>Select an assignment</option>
+                        {assignments.map((assignment) => (
+                          <option key={assignment.id} value={assignment.id}>
+                            {assignment.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={assignmentAnalysisLoading}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {assignmentAnalysisLoading
+                        ? "Analyzing..."
+                        : "Analyze with assignment"}
+                    </button>
+                  </form>
+                  {assignmentAnalysisError && (
+                    <p className="mt-4 text-sm text-red-600">
+                      {assignmentAnalysisError}
+                    </p>
+                  )}
+                  {assignmentAnalysisResult && (
+                    <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                      <p className="font-semibold">
+                        Similarity score:{" "}
+                        {assignmentAnalysisResult.score !== null
+                          ? `${assignmentAnalysisResult.score.toFixed(2)} / 100`
+                          : "Pending"}
+                      </p>
+                      {assignmentAnalysisResult.comments && (
+                        <p className="mt-1">
+                          {assignmentAnalysisResult.comments}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="assignment-analysis-assignment"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Assignment
-                  </label>
-                  <select
-                    id="assignment-analysis-assignment"
-                    value={selectedAssignmentId}
-                    onChange={(e) => setSelectedAssignmentId(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                    required
-                  >
-                    <option value={0}>Select an assignment</option>
-                    {assignments.map((assignment) => (
-                      <option key={assignment.id} value={assignment.id}>
-                        {assignment.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  disabled={assignmentAnalysisLoading}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {assignmentAnalysisLoading ? "Analyzing..." : "Analyze with assignment"}
-                </button>
-              </form>
-              {assignmentAnalysisError && (
-                <p className="mt-4 text-sm text-red-600">{assignmentAnalysisError}</p>
-              )}
-              {assignmentAnalysisResult && (
-                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                  <p className="font-semibold">
-                    Similarity score: {assignmentAnalysisResult.score.toFixed(2)} / 100
-                  </p>
-                  <p className="mt-1">
-                    Reference: {assignmentAnalysisResult.reference_filename}
-                  </p>
-                </div>
-              )}
-              </div>
               </>
             ) : null}
           </div>
@@ -966,7 +1135,10 @@ const Evaluations: React.FC = () => {
                     : "No evaluations yet. Create an evaluation above or upload a performance to start building history."}
                 </p>
                 {isMusician ? (
-                  <Link to="/assignments" className="inline-block text-indigo-600 hover:text-indigo-500">
+                  <Link
+                    to="/assignments"
+                    className="inline-block text-indigo-600 hover:text-indigo-500"
+                  >
                     Go to Assignments
                   </Link>
                 ) : null}
@@ -995,7 +1167,9 @@ const Evaluations: React.FC = () => {
                             <div className="text-xs text-gray-400 mt-1">
                               Assignment:{" "}
                               {evaluation.performance.assignment_id
-                                ? assignmentById.get(evaluation.performance.assignment_id)?.title ||
+                                ? assignmentById.get(
+                                    evaluation.performance.assignment_id,
+                                  )?.title ||
                                   `Assignment #${evaluation.performance.assignment_id}`
                                 : "Direct review"}
                             </div>
@@ -1003,7 +1177,10 @@ const Evaluations: React.FC = () => {
                               Status: {evaluation.status}
                             </div>
                             <div className="text-xs font-medium text-indigo-600 mt-1">
-                              Score: {evaluation.score !== null ? `${evaluation.score.toFixed(1)} / 100` : "Pending"}
+                              Score:{" "}
+                              {evaluation.score !== null
+                                ? `${evaluation.score.toFixed(1)} / 100`
+                                : "Pending"}
                             </div>
                           </div>
                         </div>
@@ -1011,16 +1188,20 @@ const Evaluations: React.FC = () => {
                           {new Date(evaluation.created_at).toLocaleDateString()}
                         </div>
                       </div>
-                       {canCreateEvaluations ? (
-                         <button
-                           type="button"
-                           onClick={() => void handleDeleteEvaluation(evaluation.id)}
-                           disabled={deletingEvaluationId === evaluation.id}
-                           className="ml-4 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                         >
-                           {deletingEvaluationId === evaluation.id ? "Deleting..." : "Delete"}
-                         </button>
-                       ) : null}
+                      {canCreateEvaluations ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleDeleteEvaluation(evaluation.id)
+                          }
+                          disabled={deletingEvaluationId === evaluation.id}
+                          className="ml-4 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {deletingEvaluationId === evaluation.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      ) : null}
                     </div>
                   </li>
                 ))}
