@@ -2,7 +2,6 @@ import React from "react";
 import {
   BarChart3,
   LayoutDashboard,
-  Mic2,
   Music4,
   ShieldCheck,
   Trophy,
@@ -30,21 +29,65 @@ type JourneyPlan = {
 
 const journeyByRole: Record<string, JourneyPlan> = {
   admin: {
-    intro: "Upload reference audio per task, view AI-scored musician results, and manage user accounts.",
+    intro:
+      "Upload reference audio per task, view AI-scored musician results, and manage user accounts.",
     actions: [
-      { title: "Reference Upload", description: "Upload reference audio and create tasks for musicians", to: "/reference-upload", cta: "Open Upload", Icon: Upload },
-      { title: "Musician Results", description: "View all musicians with their AI-generated performance scores", to: "/musician-results", cta: "View Results", Icon: BarChart3 },
-      { title: "Rankings", description: "See the best musician per task based on AI scores", to: "/recommendations", cta: "View Rankings", Icon: Trophy },
-      { title: "User Management", description: "Manage user accounts and assign roles", to: "/admin", cta: "Open Admin Panel", Icon: Users },
+      {
+        title: "Reference Upload",
+        description: "Upload reference audio and create tasks for musicians",
+        to: "/reference-upload",
+        cta: "Open Upload",
+        Icon: Upload,
+      },
+      {
+        title: "Musician Results",
+        description:
+          "View all musicians with their AI-generated performance scores",
+        to: "/musician-results",
+        cta: "View Results",
+        Icon: BarChart3,
+      },
+      {
+        title: "Rankings",
+        description: "See the best musician per task based on AI scores",
+        to: "/recommendations",
+        cta: "View Rankings",
+        Icon: Trophy,
+      },
+      {
+        title: "User Management",
+        description: "Manage user accounts and assign roles",
+        to: "/admin",
+        cta: "Open Admin Panel",
+        Icon: Users,
+      },
     ],
   },
   musician: {
-    intro: "Find your assigned tasks, submit your performances, and track your progress and scores.",
+    intro:
+      "Find your assigned tasks, submit your performances, and track your progress and scores.",
     actions: [
-      { title: "My Tasks", description: "View active assignments and submit performances", to: "/assignments", cta: "Open Tasks", Icon: ShieldCheck },
-      { title: "Upload Performance", description: "Upload your recording to be scored by the AI", to: "/performances/upload", cta: "Upload Now", Icon: Mic2 },
-      { title: "My Scores", description: "View your evaluation history and feedback breakdown", to: "/evaluations", cta: "View Scores", Icon: BarChart3 },
-      { title: "Profile", description: "Update your instrument, skill level, and availability", to: "/profile", cta: "Edit Profile", Icon: UserCircle2 },
+      {
+        title: "My Tasks",
+        description: "View active assignments and submit performances",
+        to: "/assignments",
+        cta: "Open Tasks",
+        Icon: ShieldCheck,
+      },
+      {
+        title: "My Scores",
+        description: "View your evaluation history and feedback breakdown",
+        to: "/evaluations",
+        cta: "View Scores",
+        Icon: BarChart3,
+      },
+      {
+        title: "Profile",
+        description: "Update your instrument, skill level, and availability",
+        to: "/profile",
+        cta: "Edit Profile",
+        Icon: UserCircle2,
+      },
     ],
   },
 };
@@ -58,22 +101,41 @@ const Dashboard: React.FC = () => {
   const [primary, ...secondary] = journey.actions;
 
   return (
-    <div className="min-h-screen staff-bg" style={{ backgroundColor: 'var(--bg-page)' }}>
-      <AppHeader title="Perform Pro" subtitle={`Welcome back, ${user?.first_name || user?.username}!`} />
+    <div
+      className="min-h-screen staff-bg"
+      style={{ backgroundColor: "var(--bg-page)" }}
+    >
+      <AppHeader
+        title="Perform Pro"
+        subtitle={`Welcome back, ${user?.first_name || user?.username}!`}
+      />
 
       <main className="relative mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="perform-pro-hero mb-8 rounded-2xl p-5 text-white sm:p-8">
-          <Music4 className="absolute right-6 top-6 h-10 w-10 opacity-20 sm:right-8 sm:h-12 sm:w-12" aria-hidden="true" />
+          <Music4
+            className="absolute right-6 top-6 h-10 w-10 opacity-20 sm:right-8 sm:h-12 sm:w-12"
+            aria-hidden="true"
+          />
           <div className="flex items-center gap-3">
-            <LayoutDashboard className="h-8 w-8 text-rose-100" aria-hidden="true" />
-            <h2 className="text-2xl font-bold font-display sm:text-3xl">Dashboard</h2>
+            <LayoutDashboard
+              className="h-8 w-8 text-rose-100"
+              aria-hidden="true"
+            />
+            <h2 className="text-2xl font-bold font-display sm:text-3xl">
+              Dashboard
+            </h2>
           </div>
-          <p className="mt-2 max-w-xl text-sm text-cyan-100 sm:text-base">{journey.intro}</p>
+          <p className="mt-2 max-w-xl text-sm text-cyan-100 sm:text-base">
+            {journey.intro}
+          </p>
         </div>
 
         {primary ? (
           <div className="mb-8">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--color-accent)" }}>
+            <p
+              className="text-xs font-bold uppercase tracking-widest mb-3"
+              style={{ color: "var(--color-accent)" }}
+            >
               Start here
             </p>
             <Link
@@ -81,12 +143,21 @@ const Dashboard: React.FC = () => {
               className="music-card flex flex-col items-start gap-4 rounded-2xl border-l-4 bg-white p-5 shadow-md sm:flex-row sm:gap-5 sm:p-6"
               style={{ borderLeftColor: "var(--color-accent)" }}
             >
-              <primary.Icon className="mt-1 h-10 w-10 shrink-0" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
+              <primary.Icon
+                className="mt-1 h-10 w-10 shrink-0"
+                style={{ color: "var(--color-accent)" }}
+                aria-hidden="true"
+              />
               <div>
-                <h3 className="mb-1 text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                <h3
+                  className="mb-1 text-xl font-bold"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   {primary.title}
                 </h3>
-                <p className="mb-3 text-sm text-gray-500 sm:text-base">{primary.description}</p>
+                <p className="mb-3 text-sm text-gray-500 sm:text-base">
+                  {primary.description}
+                </p>
                 <span
                   className="inline-block rounded-full px-4 py-1.5 text-sm font-semibold text-white"
                   style={{ backgroundColor: "var(--color-accent)" }}
@@ -100,7 +171,9 @@ const Dashboard: React.FC = () => {
 
         {secondary.length > 0 ? (
           <>
-            <p className="text-xs font-bold uppercase tracking-widest mb-3 text-gray-400">More actions</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3 text-gray-400">
+              More actions
+            </p>
             <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {secondary.map((action) => (
                 <Link
@@ -108,13 +181,25 @@ const Dashboard: React.FC = () => {
                   to={action.to}
                   className="music-card flex items-start gap-4 bg-white rounded-2xl p-5 shadow-sm hover:shadow-md"
                 >
-                  <action.Icon className="mt-0.5 h-8 w-8" style={{ color: "var(--color-accent)" }} aria-hidden="true" />
+                  <action.Icon
+                    className="mt-0.5 h-8 w-8"
+                    style={{ color: "var(--color-accent)" }}
+                    aria-hidden="true"
+                  />
                   <div>
-                    <h4 className="font-semibold mb-1" style={{ color: "var(--color-primary)" }}>
+                    <h4
+                      className="font-semibold mb-1"
+                      style={{ color: "var(--color-primary)" }}
+                    >
                       {action.title}
                     </h4>
-                    <p className="text-sm text-gray-500 mb-2">{action.description}</p>
-                    <span className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>
+                    <p className="text-sm text-gray-500 mb-2">
+                      {action.description}
+                    </p>
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: "var(--color-accent)" }}
+                    >
                       {action.cta}
                     </span>
                   </div>
