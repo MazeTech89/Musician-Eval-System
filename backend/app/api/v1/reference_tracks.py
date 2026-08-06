@@ -1,14 +1,24 @@
 """Reference tracks and assignments API routes."""
 
+import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.core.audit import record_audit_event
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import SessionLocal, get_db
 from app.core.dependencies import get_current_active_user
 from app.core.upload_security import validate_audio_upload
 from app.models.evaluation import Evaluation, EvaluationStatus, Performance
@@ -28,6 +38,8 @@ from app.services.s3_storage import (
     materialize_audio_file,
     upload_performance_audio_to_s3,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["reference-tracks"])
 
@@ -66,13 +78,41 @@ def _resolve_local_audio_path(audio_file_url: str) -> Path:
     return candidate_path
 
 
+def _materialize_and_score(assignment: Assignment, performance: Performance) -> object:
+    """Resolve both audio files locally and compute similarity.
+
+    Raises S3StorageError, ValueError, or FileNotFoundError on failure.
+    """
+    # Materialize both audio URLs as local filesystem paths:
+    # - local URLs resolve directly
+    # - S3 URLs are downloaded to temporary files
+    reference_audio_path, reference_is_temporary = materialize_audio_file(
+        assignment.reference_track.audio_file_url
+    )
+    candidate_audio_path, candidate_is_temporary = materialize_audio_file(
+        performance.audio_file_url
+    )
+    try:
+        # Validate both files still exist before running feature extraction/scoring.
+        if not reference_audio_path.exists() or not candidate_audio_path.exists():
+            raise FileNotFoundError
+
+        return score_audio_similarity(reference_audio_path, candidate_audio_path)
+    finally:
+        # Temporary files are only created for S3 downloads and must be cleaned up.
+        if reference_is_temporary:
+            reference_audio_path.unlink(missing_ok=True)
+        if candidate_is_temporary:
+            candidate_audio_path.unlink(missing_ok=True)
+
+
 def _score_assignment_performance(
     db: Session,
     assignment: Assignment,
     performance: Performance,
     current_user: User,
 ) -> tuple[object, Evaluation]:
-    """Score a performance against an assignment reference track."""
+    """Score a performance against an assignment reference track (synchronous, admin re-analyze only)."""
     # Guardrails: scoring requires both uploaded candidate audio and a task reference.
     if not performance.audio_file_url:
         raise HTTPException(
@@ -87,15 +127,7 @@ def _score_assignment_performance(
         )
 
     try:
-        # Materialize both audio URLs as local filesystem paths:
-        # - local URLs resolve directly
-        # - S3 URLs are downloaded to temporary files
-        reference_audio_path, reference_is_temporary = materialize_audio_file(
-            assignment.reference_track.audio_file_url
-        )
-        candidate_audio_path, candidate_is_temporary = materialize_audio_file(
-            performance.audio_file_url
-        )
+        analysis = _materialize_and_score(assignment, performance)
     except S3StorageError as err:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -106,29 +138,11 @@ def _score_assignment_performance(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(err),
         ) from err
-
-    try:
-        # Validate both files still exist before running feature extraction/scoring.
-        if not reference_audio_path.exists() or not candidate_audio_path.exists():
-            raise FileNotFoundError
-
-        analysis = score_audio_similarity(reference_audio_path, candidate_audio_path)
     except FileNotFoundError as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Audio file could not be found",
         ) from err
-    except ValueError as err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(err),
-        ) from err
-    finally:
-        # Temporary files are only created for S3 downloads and must be cleaned up.
-        if reference_is_temporary:
-            reference_audio_path.unlink(missing_ok=True)
-        if candidate_is_temporary:
-            candidate_audio_path.unlink(missing_ok=True)
 
     performance.assignment_id = assignment.id
     evaluation = Evaluation(
@@ -143,6 +157,69 @@ def _score_assignment_performance(
     db.add(evaluation)
 
     return analysis, evaluation
+
+
+def _score_submission_in_background(
+    assignment_id: int, performance_id: int, evaluation_id: int
+) -> None:
+    """Run similarity scoring outside the request/response cycle.
+
+    Uses its own DB session since the request-scoped session is closed by
+    the time this runs. Never raises: failures are recorded on the
+    evaluation row so the frontend can surface them via polling.
+    """
+    db = SessionLocal()
+    try:
+        assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+        performance = db.query(Performance).filter(Performance.id == performance_id).first()
+        evaluation = db.query(Evaluation).filter(Evaluation.id == evaluation_id).first()
+        if not assignment or not performance or not evaluation:
+            logger.error(
+                "Background scoring skipped: missing record(s) for evaluation %s",
+                evaluation_id,
+            )
+            return
+
+        try:
+            analysis = _materialize_and_score(assignment, performance)
+        except FileNotFoundError:
+            evaluation.comments = (
+                "Upload succeeded, but automatic scoring failed because the "
+                "assignment reference audio file could not be found. Ask an admin "
+                "to replace the reference audio in Reference Upload, then re-run scoring."
+            )
+            db.commit()
+            return
+        except (S3StorageError, ValueError) as err:
+            evaluation.comments = f"Automatic scoring failed: {err}"
+            evaluation.status = EvaluationStatus.CANCELLED
+            db.commit()
+            return
+
+        performance.assignment_id = assignment.id
+        evaluation.score = analysis.score
+        evaluation.comments = (
+            f"Auto-generated similarity analysis against {assignment.reference_track.title}"
+        )
+        evaluation.status = EvaluationStatus.COMPLETED
+        db.commit()
+        record_audit_event(
+            "assignment.submission.scored",
+            assignment_id=assignment_id,
+            performance_id=performance_id,
+            evaluation_id=evaluation_id,
+            score=analysis.score,
+        )
+    except Exception:  # noqa: BLE001 - background task must never raise
+        logger.exception("Background scoring crashed for evaluation %s", evaluation_id)
+        db.rollback()
+        evaluation = db.query(Evaluation).filter(Evaluation.id == evaluation_id).first()
+        if evaluation:
+            evaluation.status = EvaluationStatus.CANCELLED
+            evaluation.comments = "Automatic scoring failed due to an internal error."
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.get("/reference-tracks", response_model=list[ReferenceTrackResponse])
@@ -511,13 +588,22 @@ async def delete_assignment(
 )
 async def submit_performance_for_assignment(
     assignment_id: int,
+    background_tasks: BackgroundTasks,
     title: str = Form(...),
     description: str | None = Form(None),
     audio_file: UploadFile = File(...),  # noqa: B008
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
-    """Create a performance submission against an assignment and score it immediately."""
+    """Create a performance submission against an assignment and score it in the background.
+
+    Scoring runs librosa/torch analysis that can take well over a minute for
+    longer recordings, which exceeds the proxy/edge timeout in production and
+    breaks the response before it can be returned. Instead, the request
+    returns immediately with a pending evaluation, and the heavy analysis
+    runs as a background task; the frontend polls the evaluation for the
+    final score.
+    """
     if current_user.role.name not in ["musician"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -559,42 +645,26 @@ async def submit_performance_for_assignment(
     db.add(performance)
     db.flush()
 
-    # Default path: attempt immediate AI scoring against assignment reference audio.
-    analysis = None
-    fallback_message = None
-    try:
-        analysis, evaluation = _score_assignment_performance(
-            db=db,
-            assignment=assignment,
-            performance=performance,
-            current_user=current_user,
-        )
-    except HTTPException as err:
-        if (
-            err.status_code != status.HTTP_404_NOT_FOUND
-            or err.detail != "Audio file could not be found"
-        ):  # noqa: E501
-            raise
-
-        # Graceful fallback: keep submission and create pending evaluation when
-        # reference media is temporarily unavailable.
-        fallback_message = (
-            "Upload succeeded, but automatic scoring is pending because the "
-            "assignment reference audio file could not be found. Ask an admin "
-            "to replace the reference audio in Reference Upload, then re-run scoring."
-        )
-        evaluation = Evaluation(
-            performance_id=performance.id,
-            evaluator_id=assignment.created_by_id or current_user.id,
-            score=None,
-            comments=fallback_message,
-            status=EvaluationStatus.PENDING,
-        )
-        db.add(evaluation)
-
+    # Scoring runs out-of-band so heavy librosa/torch analysis can't time out the upload request.
+    evaluation = Evaluation(
+        performance_id=performance.id,
+        evaluator_id=current_user.id,
+        score=None,
+        comments="Automatic scoring is running in the background.",
+        status=EvaluationStatus.PENDING,
+    )
+    db.add(evaluation)
     db.commit()
     db.refresh(performance)
     db.refresh(evaluation)
+
+    background_tasks.add_task(
+        _score_submission_in_background,
+        assignment_id=assignment.id,
+        performance_id=performance.id,
+        evaluation_id=evaluation.id,
+    )
+
     record_audit_event(
         "assignment.submission.created",
         assignment_id=assignment.id,
@@ -602,37 +672,15 @@ async def submit_performance_for_assignment(
         evaluation_id=evaluation.id,
         user_id=current_user.id,
         username=current_user.username,
-        scoring_pending=analysis is None,
+        scoring_pending=True,
     )
 
-    # Return both persisted entities and explainable analysis payload for the UI.
+    # Return the persisted entities immediately; analysis is filled in later via polling.
     return {
         "performance": performance,
         "evaluation": evaluation,
-        "analysis": (
-            {
-                "performance_id": performance.id,
-                "score": analysis.score,
-                "reference_filename": assignment.reference_track.title,
-                "created_evaluation_id": evaluation.id,
-                "breakdown": {
-                    "pitch_accuracy": analysis.pitch_accuracy,
-                    "tempo_stability": analysis.tempo_stability,
-                    "rhythm_consistency": analysis.rhythm_consistency,
-                    "dynamics_similarity": analysis.dynamics_similarity,
-                    "timbre_similarity": analysis.timbre_similarity,
-                    "duration_similarity": analysis.duration_similarity,
-                    "energy_similarity": analysis.energy_similarity,
-                    "reference_tempo_bpm": analysis.reference_tempo_bpm,
-                    "candidate_tempo_bpm": analysis.candidate_tempo_bpm,
-                    "reference_pitch_hz": analysis.reference_pitch_hz,
-                    "candidate_pitch_hz": analysis.candidate_pitch_hz,
-                },
-            }
-            if analysis is not None
-            else None
-        ),
-        "message": fallback_message,
+        "analysis": None,
+        "message": "Upload succeeded. Scoring is running in the background — check back shortly.",
     }
 
 
