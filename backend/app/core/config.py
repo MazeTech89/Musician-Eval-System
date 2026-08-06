@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     security_alert_email: str | None = None
     login_lockout_max_attempts: int = 5
     login_lockout_minutes: int = 1
+    password_reset_cooldown_seconds: int = 60
     # RSA keys for RS256 (should be set in production environment)
     rsa_private_key: str = ""
     rsa_public_key: str = ""

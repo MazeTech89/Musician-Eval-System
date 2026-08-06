@@ -1,5 +1,6 @@
 """Security utilities for JWT and password handling."""
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -50,6 +51,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return True
     except (VerifyMismatchError, InvalidHashError):
         return False
+
+
+def hash_token(token: str) -> str:
+    """Hash an opaque one-time token (e.g. password reset) for at-rest storage.
+
+    Uses SHA-256 rather than Argon2: the token is already high-entropy random
+    data (not a low-entropy user-chosen secret), so a fast cryptographic hash
+    is sufficient and lets lookups use a simple equality query.
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 # JWT token handling

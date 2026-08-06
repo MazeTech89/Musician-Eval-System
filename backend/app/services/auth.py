@@ -16,6 +16,7 @@ from app.core.security import (
     create_refresh_token,
     decode_refresh_token,
     hash_password,
+    hash_token,
     verify_password,
 )
 from app.models.evaluation import Evaluation, Performance
@@ -445,9 +446,23 @@ class AuthService:
         if not user:
             return False
 
+        now = datetime.now(UTC)
+        cooldown = timedelta(seconds=settings.password_reset_cooldown_seconds)
+        last_requested = user.password_reset_last_requested_at
+        if last_requested is not None and last_requested.tzinfo is None:
+            # SQLite round-trips DateTime columns as naive; our values are always UTC.
+            last_requested = last_requested.replace(tzinfo=UTC)
+        if last_requested and now - last_requested < cooldown:
+            # Within cooldown: don't rotate a still-valid token or spam the inbox.
+            record_audit_event(
+                "auth.password_reset.rate_limited", user_id=user.id, username=user.username
+            )
+            return True
+
         token = token_urlsafe(24)
-        user.password_reset_token = token
-        user.password_reset_token_expires_at = datetime.now(UTC) + timedelta(hours=2)
+        user.password_reset_token = hash_token(token)
+        user.password_reset_token_expires_at = now + timedelta(hours=2)
+        user.password_reset_last_requested_at = now
         db.commit()
 
         reset_url = f"/reset-password?token={token}"
@@ -461,18 +476,20 @@ class AuthService:
     @staticmethod
     def reset_password(db: Session, token: str, new_password: str) -> bool:
         """Reset a password using a token."""
-        user = db.query(User).filter(User.password_reset_token == token).first()
+        user = db.query(User).filter(User.password_reset_token == hash_token(token)).first()
         if not user:
             return False
-        if (
-            user.password_reset_token_expires_at
-            and user.password_reset_token_expires_at < datetime.now(UTC)
-        ):  # noqa: E501
+        expires_at = user.password_reset_token_expires_at
+        if expires_at is not None and expires_at.tzinfo is None:
+            # SQLite round-trips DateTime columns as naive; our values are always UTC.
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at and expires_at < datetime.now(UTC):
             return False
 
         user.hashed_password = hash_password(new_password)
         user.password_reset_token = None
         user.password_reset_token_expires_at = None
+        user.password_reset_last_requested_at = None
         user.failed_login_count = 0
         user.lockout_until = None
         db.commit()
