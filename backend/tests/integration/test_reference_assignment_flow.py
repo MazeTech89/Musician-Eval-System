@@ -571,7 +571,9 @@ def test_musician_can_submit_assignment_and_receive_score(
     assert assignment_response.status_code == 201
     assignment_id = assignment_response.json()["id"]
 
-    list_response = client.get("/api/v1/assignments?limit=500", headers=_auth_headers(musician_user))
+    list_response = client.get(
+        "/api/v1/assignments?limit=500", headers=_auth_headers(musician_user)
+    )
     assert list_response.status_code == 200
     assert any(item["id"] == assignment_id for item in list_response.json())
 
@@ -591,7 +593,9 @@ def test_musician_can_submit_assignment_and_receive_score(
 
     assert submission_response.status_code == 201
     submission_payload = submission_response.json()
-    assert submission_payload["analysis"]["score"] > 0.0
+    # Scoring now runs as a background task, so the immediate response has no analysis yet.
+    assert submission_payload["analysis"] is None
+    assert submission_payload["evaluation"]["status"] == EvaluationStatus.PENDING.value
 
     db = SessionLocal()
     try:
@@ -609,6 +613,11 @@ def test_musician_can_submit_assignment_and_receive_score(
         assert performance.assignment_id == assignment_id
         assert evaluation is not None
         assert evaluation.performance_id == performance.id
+        # TestClient runs FastAPI background tasks synchronously before the
+        # request returns, so the score should already be persisted here.
+        assert evaluation.status == EvaluationStatus.COMPLETED
+        assert evaluation.score is not None
+        assert evaluation.score > 0.0
     finally:
         db.close()
 
@@ -633,7 +642,9 @@ def test_musician_submission_survives_missing_reference_audio(
     assert reference_response.status_code == 201
     reference_payload = reference_response.json()
 
-    missing_reference_path = Path.cwd() / settings.local_upload_dir / Path(reference_payload["audio_file_url"]).name
+    missing_reference_path = (
+        Path.cwd() / settings.local_upload_dir / Path(reference_payload["audio_file_url"]).name
+    )
     missing_reference_path.unlink(missing_ok=True)
 
     assignment_response = client.post(
@@ -666,7 +677,7 @@ def test_musician_submission_survives_missing_reference_audio(
     assert submission_response.status_code == 201
     submission_payload = submission_response.json()
     assert submission_payload["analysis"] is None
-    assert "automatic scoring is pending" in submission_payload["message"].lower()
+    assert "background" in submission_payload["message"].lower()
     assert submission_payload["evaluation"]["status"] == EvaluationStatus.PENDING.value
 
     db = SessionLocal()

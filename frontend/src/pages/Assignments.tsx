@@ -80,15 +80,25 @@ const Assignments: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | "">("");
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | "">(
+    "",
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [submissionResult, setSubmissionResult] = useState<SubmissionResponse | null>(null);
-  const [historyEvaluations, setHistoryEvaluations] = useState<EvaluationHistory[]>([]);
-  const [fieldErrors, setFieldErrors] = useState<{ assignment?: string; audioFile?: string }>({});
+  const [submissionResult, setSubmissionResult] =
+    useState<SubmissionResponse | null>(null);
+  const [historyEvaluations, setHistoryEvaluations] = useState<
+    EvaluationHistory[]
+  >([]);
+  const [fieldErrors, setFieldErrors] = useState<{
+    assignment?: string;
+    audioFile?: string;
+  }>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [deletingPerformanceId, setDeletingPerformanceId] = useState<number | null>(null);
+  const [deletingPerformanceId, setDeletingPerformanceId] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     // Load active tasks plus evaluation history used for the musician history panel.
@@ -105,7 +115,9 @@ const Assignments: React.FC = () => {
         ]);
         setAssignments(assignmentResponse.data);
         setHistoryEvaluations(evaluationResponse.data);
-        setSelectedAssignmentId((current) => current || assignmentResponse.data[0]?.id || "");
+        setSelectedAssignmentId(
+          (current) => current || assignmentResponse.data[0]?.id || "",
+        );
       } catch (err: unknown) {
         console.error("Failed to fetch assignments:", err);
         setError(getApiErrorMessage(err, "Failed to load assignments"));
@@ -117,21 +129,73 @@ const Assignments: React.FC = () => {
     fetchAssignments();
   }, [user]);
 
+  useEffect(() => {
+    // Scoring runs as a background task, so poll the evaluation until it leaves "pending".
+    if (!submissionResult || submissionResult.evaluation.status !== "pending") {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const evaluationId = submissionResult.evaluation.id;
+    const maxAttempts = 40; // ~2 minutes at 3s intervals
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const response = await api.get<EvaluationHistory>(
+          `/evaluations/${evaluationId}`,
+        );
+        if (cancelled) {
+          return;
+        }
+        if (response.data.status !== "pending") {
+          setSubmissionResult((current) =>
+            current && current.evaluation.id === evaluationId
+              ? { ...current, evaluation: response.data }
+              : current,
+          );
+          const historyResponse = await api.get("/evaluations");
+          if (!cancelled) {
+            setHistoryEvaluations(historyResponse.data);
+          }
+          return;
+        }
+      } catch (err: unknown) {
+        console.error("Failed to poll evaluation status:", err);
+      }
+      if (!cancelled && attempts < maxAttempts) {
+        timeoutId = window.setTimeout(poll, 3000);
+      }
+    };
+
+    let timeoutId = window.setTimeout(poll, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [submissionResult?.evaluation.id, submissionResult?.evaluation.status]);
+
   const selectedAssignment = useMemo(
     // Resolve the currently selected task object for display/submit defaults.
-    () => assignments.find((assignment) => assignment.id === selectedAssignmentId),
+    () =>
+      assignments.find((assignment) => assignment.id === selectedAssignmentId),
     [assignments, selectedAssignmentId],
   );
 
   const assignmentNameById = useMemo(() => {
-    return new Map(assignments.map((assignment) => [assignment.id, assignment.title]));
+    return new Map(
+      assignments.map((assignment) => [assignment.id, assignment.title]),
+    );
   }, [assignments]);
 
   const rankedHistory = useMemo(() => {
     // Show newest feedback first for a clearer musician journey.
     return [...historyEvaluations].sort(
       (left, right) =>
-        new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+        new Date(right.created_at).getTime() -
+        new Date(left.created_at).getTime(),
     );
   }, [historyEvaluations]);
 
@@ -140,19 +204,28 @@ const Assignments: React.FC = () => {
     // Validate task and audio inputs before posting submission payload.
 
     if (!selectedAssignmentId) {
-      setFieldErrors((current) => ({ ...current, assignment: "Select an assignment first." }));
+      setFieldErrors((current) => ({
+        ...current,
+        assignment: "Select an assignment first.",
+      }));
       setError("Please fix the highlighted fields.");
       return;
     }
 
     if (!audioFile) {
-      setFieldErrors((current) => ({ ...current, audioFile: "Choose an audio file to upload." }));
+      setFieldErrors((current) => ({
+        ...current,
+        audioFile: "Choose an audio file to upload.",
+      }));
       setError("Please fix the highlighted fields.");
       return;
     }
 
     const nextFieldErrors: { assignment?: string; audioFile?: string } = {};
-    const assignmentError = validateRequired(String(selectedAssignmentId), "Assignment");
+    const assignmentError = validateRequired(
+      String(selectedAssignmentId),
+      "Assignment",
+    );
     if (assignmentError) {
       nextFieldErrors.assignment = assignmentError;
     }
@@ -177,7 +250,10 @@ const Assignments: React.FC = () => {
     setSubmissionResult(null);
 
     const formData = new FormData();
-    formData.append("title", title || `${selectedAssignment?.title ?? "Assignment"} submission`);
+    formData.append(
+      "title",
+      title || `${selectedAssignment?.title ?? "Assignment"} submission`,
+    );
     formData.append("description", description);
     formData.append("audio_file", audioFile);
 
@@ -204,7 +280,9 @@ const Assignments: React.FC = () => {
 
   const handleDeletePerformance = async (performanceId: number) => {
     // Removes uploaded audio and associated evaluation record from the musician history.
-    if (!window.confirm("Delete this uploaded performance and its related score?")) {
+    if (
+      !window.confirm("Delete this uploaded performance and its related score?")
+    ) {
       return;
     }
 
@@ -215,29 +293,44 @@ const Assignments: React.FC = () => {
     try {
       await api.delete(`/performances/${performanceId}`);
       setHistoryEvaluations((current) =>
-        current.filter((evaluation) => evaluation.performance.id !== performanceId),
+        current.filter(
+          (evaluation) => evaluation.performance.id !== performanceId,
+        ),
       );
       setSubmissionResult((current) =>
         current?.performance.id === performanceId ? null : current,
       );
       setSuccessMessage("Uploaded performance deleted successfully.");
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, "Failed to delete uploaded performance"));
+      setError(
+        getApiErrorMessage(err, "Failed to delete uploaded performance"),
+      );
     } finally {
       setDeletingPerformanceId(null);
     }
   };
 
   if (isLoading || loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
   }
 
   if (!user) {
-    return <div className="flex justify-center items-center h-screen">Please log in.</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Please log in.
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen staff-bg" style={{ backgroundColor: "var(--bg-page)" }}>
+    <div
+      className="min-h-screen staff-bg"
+      style={{ backgroundColor: "var(--bg-page)" }}
+    >
       <AppHeader
         title="Perform Pro"
         subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}
@@ -249,7 +342,10 @@ const Assignments: React.FC = () => {
           <section className="rounded-2xl bg-white p-4 shadow-md sm:p-6">
             <div className="mb-4 flex items-center gap-2">
               <Music2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
-              <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+              <h2
+                className="text-xl font-bold"
+                style={{ color: "var(--color-primary)" }}
+              >
                 Active Tasks
               </h2>
             </div>
@@ -267,7 +363,10 @@ const Assignments: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setSelectedAssignmentId(assignment.id);
-                      setFieldErrors((current) => ({ ...current, assignment: undefined }));
+                      setFieldErrors((current) => ({
+                        ...current,
+                        assignment: undefined,
+                      }));
                     }}
                     className={`text-left rounded-xl border-2 p-4 transition music-card ${
                       selectedAssignmentId === assignment.id
@@ -275,7 +374,10 @@ const Assignments: React.FC = () => {
                         : "border-gray-200 bg-white hover:border-amber-300"
                     }`}
                   >
-                    <div className="font-semibold text-sm" style={{ color: "var(--color-primary)" }}>
+                    <div
+                      className="font-semibold text-sm"
+                      style={{ color: "var(--color-primary)" }}
+                    >
                       {assignment.title}
                     </div>
                     <div className="text-sm text-gray-500 mt-1">
@@ -294,32 +396,50 @@ const Assignments: React.FC = () => {
           {isMusician ? (
             <section className="bg-white rounded-2xl shadow-md p-6">
               <div className="mb-4 flex items-center gap-2">
-                <FileAudio2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
-                <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                <FileAudio2
+                  className="h-5 w-5 text-amber-600"
+                  aria-hidden="true"
+                />
+                <h2
+                  className="text-xl font-bold"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   Submit a Performance
                 </h2>
               </div>
               {selectedAssignment ? (
                 <p className="text-sm text-gray-600 mb-4">
-                  Submitting against <span className="font-semibold">{selectedAssignment.title}</span>
+                  Submitting against{" "}
+                  <span className="font-semibold">
+                    {selectedAssignment.title}
+                  </span>
                 </p>
               ) : (
                 <p className="text-sm text-gray-500 mb-4">
-                  Select a task above then upload your recording. The AI will score it automatically.
+                  Select a task above then upload your recording. The AI will
+                  score it automatically.
                 </p>
               )}
 
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
-                  <label htmlFor="assignment-select" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="assignment-select"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Task
                   </label>
                   <select
                     id="assignment-select"
                     value={selectedAssignmentId}
                     onChange={(event) => {
-                      setSelectedAssignmentId(event.target.value ? Number(event.target.value) : "");
-                      setFieldErrors((current) => ({ ...current, assignment: undefined }));
+                      setSelectedAssignmentId(
+                        event.target.value ? Number(event.target.value) : "",
+                      );
+                      setFieldErrors((current) => ({
+                        ...current,
+                        assignment: undefined,
+                      }));
                     }}
                     className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                   >
@@ -331,13 +451,21 @@ const Assignments: React.FC = () => {
                     ))}
                   </select>
                   {fieldErrors.assignment ? (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.assignment}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.assignment}
+                    </p>
                   ) : null}
                 </div>
 
                 <div>
-                  <label htmlFor="submission-title" className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Type className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                  <label
+                    htmlFor="submission-title"
+                    className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700"
+                  >
+                    <Type
+                      className="h-4 w-4 text-amber-600"
+                      aria-hidden="true"
+                    />
                     <span>Submission title</span>
                   </label>
                   <input
@@ -351,7 +479,10 @@ const Assignments: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="submission-description" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="submission-description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Description
                   </label>
                   <textarea
@@ -365,7 +496,10 @@ const Assignments: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="submission-audio-file" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="submission-audio-file"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Audio file
                   </label>
                   <input
@@ -382,9 +516,13 @@ const Assignments: React.FC = () => {
                     }}
                     className="block w-full text-sm text-gray-500"
                   />
-                  <p className="mt-1 text-xs text-gray-400">Max {MAX_AUDIO_UPLOAD_SIZE_MB} MB</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Max {MAX_AUDIO_UPLOAD_SIZE_MB} MB
+                  </p>
                   {fieldErrors.audioFile ? (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.audioFile}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {fieldErrors.audioFile}
+                    </p>
                   ) : null}
                 </div>
 
@@ -398,8 +536,12 @@ const Assignments: React.FC = () => {
                 </button>
               </form>
 
-              {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-              {successMessage ? <p className="mt-4 text-sm text-green-600">{successMessage}</p> : null}
+              {error ? (
+                <p className="mt-4 text-sm text-red-600">{error}</p>
+              ) : null}
+              {successMessage ? (
+                <p className="mt-4 text-sm text-green-600">{successMessage}</p>
+              ) : null}
             </section>
           ) : null}
 
@@ -407,39 +549,75 @@ const Assignments: React.FC = () => {
           {isMusician && submissionResult ? (
             <section className="bg-white rounded-2xl shadow-md p-6">
               <div className="mb-4 flex items-center gap-2">
-                <FileAudio2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
-                <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                <FileAudio2
+                  className="h-5 w-5 text-amber-600"
+                  aria-hidden="true"
+                />
+                <h2
+                  className="text-xl font-bold"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   Latest Score
                 </h2>
               </div>
               <p className="text-gray-700 mb-2">
-                <span className="font-medium">Performance:</span> {submissionResult.performance.title}
+                <span className="font-medium">Performance:</span>{" "}
+                {submissionResult.performance.title}
               </p>
               {submissionResult.analysis ? (
                 <>
                   <p className="text-gray-700 mb-4">
                     <span className="font-medium">Score:</span>{" "}
-                    <span className="text-2xl font-bold" style={{ color: "var(--color-accent)" }}>
+                    <span
+                      className="text-2xl font-bold"
+                      style={{ color: "var(--color-accent)" }}
+                    >
                       {submissionResult.analysis.score.toFixed(1)}
                     </span>{" "}
                     / 100
                   </p>
                   <div className="grid gap-2 md:grid-cols-3">
-                    {Object.entries(submissionResult.analysis.breakdown).map(([label, value]) => (
-                      <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                          {label.replace(/_/g, " ")}
+                    {Object.entries(submissionResult.analysis.breakdown).map(
+                      ([label, value]) => (
+                        <div
+                          key={label}
+                          className="rounded-xl border border-gray-100 bg-gray-50 p-3"
+                        >
+                          <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                            {label.replace(/_/g, " ")}
+                          </div>
+                          <div
+                            className="font-bold"
+                            style={{ color: "var(--color-primary)" }}
+                          >
+                            {value.toFixed(2)}
+                          </div>
                         </div>
-                        <div className="font-bold" style={{ color: "var(--color-primary)" }}>
-                          {value.toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 </>
-              ) : (
+              ) : submissionResult.evaluation.status === "completed" ? (
+                <p className="text-gray-700 mb-2">
+                  <span className="font-medium">Score:</span>{" "}
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: "var(--color-accent)" }}
+                  >
+                    {submissionResult.evaluation.score?.toFixed(1) ?? "N/A"}
+                  </span>{" "}
+                  / 100
+                </p>
+              ) : submissionResult.evaluation.status === "pending" ? (
                 <p className="text-sm text-amber-700">
-                  {submissionResult.message || "Upload succeeded. Automatic scoring is pending."}
+                  Scoring is running in the background — this can take up to a
+                  couple of minutes for longer recordings. This card will update
+                  automatically.
+                </p>
+              ) : (
+                <p className="text-sm text-red-600">
+                  {submissionResult.evaluation.comments ||
+                    "Automatic scoring did not complete."}
                 </p>
               )}
             </section>
@@ -449,8 +627,14 @@ const Assignments: React.FC = () => {
           {isMusician ? (
             <section className="bg-white rounded-2xl shadow-md p-6">
               <div className="mb-4 flex items-center gap-2">
-                <History className="h-5 w-5 text-amber-600" aria-hidden="true" />
-                <h2 className="text-xl font-bold" style={{ color: "var(--color-primary)" }}>
+                <History
+                  className="h-5 w-5 text-amber-600"
+                  aria-hidden="true"
+                />
+                <h2
+                  className="text-xl font-bold"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   My Submission History
                 </h2>
               </div>
@@ -466,13 +650,18 @@ const Assignments: React.FC = () => {
                       className="rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-4"
                     >
                       <div>
-                        <div className="font-semibold text-sm" style={{ color: "var(--color-primary)" }}>
+                        <div
+                          className="font-semibold text-sm"
+                          style={{ color: "var(--color-primary)" }}
+                        >
                           {evaluation.performance.title}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
                           Task:{" "}
                           {evaluation.performance.assignment_id
-                            ? assignmentNameById.get(evaluation.performance.assignment_id) ||
+                            ? assignmentNameById.get(
+                                evaluation.performance.assignment_id,
+                              ) ||
                               `Task #${evaluation.performance.assignment_id}`
                             : "Direct upload"}
                         </div>
@@ -482,24 +671,39 @@ const Assignments: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <div className="text-lg font-bold" style={{ color: "var(--color-accent)" }}>
+                          <div
+                            className="text-lg font-bold"
+                            style={{ color: "var(--color-accent)" }}
+                          >
                             {evaluation.score !== null
                               ? `${evaluation.score.toFixed(1)} / 100`
                               : "Pending"}
                           </div>
-                          <div className="text-xs uppercase text-gray-400">{evaluation.status}</div>
+                          <div className="text-xs uppercase text-gray-400">
+                            {evaluation.status}
+                          </div>
                         </div>
                         <button
                           type="button"
-                          onClick={() => void handleDeletePerformance(evaluation.performance.id)}
-                          disabled={deletingPerformanceId === evaluation.performance.id}
+                          onClick={() =>
+                            void handleDeletePerformance(
+                              evaluation.performance.id,
+                            )
+                          }
+                          disabled={
+                            deletingPerformanceId === evaluation.performance.id
+                          }
                           className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
                         >
-                          {deletingPerformanceId === evaluation.performance.id ? "..." : "Delete"}
+                          {deletingPerformanceId === evaluation.performance.id
+                            ? "..."
+                            : "Delete"}
                         </button>
                       </div>
                       {evaluation.comments ? (
-                        <p className="mt-2 text-sm text-gray-600 col-span-full">{evaluation.comments}</p>
+                        <p className="mt-2 text-sm text-gray-600 col-span-full">
+                          {evaluation.comments}
+                        </p>
                       ) : null}
                     </div>
                   ))}
