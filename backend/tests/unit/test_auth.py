@@ -358,25 +358,6 @@ class TestRoleBasedAccess:
 
         assert response.status_code == 403
 
-    def test_admin_requires_mfa_for_admin_endpoints(self, test_admin_user, db_session):
-        """Admin users without MFA enabled should be blocked from admin routes."""
-        test_admin_user.mfa_enabled = False
-        db_session.commit()
-        db_session.refresh(test_admin_user)
-
-        token, _ = create_access_token(
-            {
-                "sub": test_admin_user.id,
-                "username": test_admin_user.username,
-                "role": "admin",
-            }
-        )
-
-        response = client.get("/api/v1/auth/users", headers={"Authorization": f"Bearer {token}"})
-
-        assert response.status_code == 403
-        assert "MFA setup is required for admin accounts" in response.json()["detail"]
-
 
 class TestUserManagement:
     """Test user management endpoints."""

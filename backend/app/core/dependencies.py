@@ -158,19 +158,5 @@ def require_permission(*permissions: str):
 async def get_current_admin(
     current_user: User = Depends(require_role(RoleEnum.ADMIN)),
 ) -> User:
-    """Dependency for admin-only endpoints. Requires MFA to be enabled."""
-    ensure_admin_mfa_verified(current_user)
+    """Dependency for admin-only endpoints."""
     return current_user
-
-
-def ensure_admin_mfa_verified(user: User) -> None:
-    """Block admin actions until the admin account has MFA enabled.
-
-    No-op for non-admin roles; admins must enable MFA (see /auth/mfa/setup and
-    /auth/mfa/enable) before they can use admin-only functionality.
-    """
-    if user.role.name == RoleEnum.ADMIN and not user.mfa_enabled:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="MFA setup is required for admin accounts. Enable MFA in your profile to continue.",
-        )
