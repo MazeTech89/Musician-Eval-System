@@ -18,7 +18,8 @@ celery==5.4.0
 redis==5.1.1
 pyotp==2.9.0
 # AI / Audio Processing
+# torch is installed separately (CPU-only wheel) in the Dockerfile to avoid
+# pulling in multi-GB CUDA dependencies that OOM small production instances.
 numpy>=1.24.0
 soundfile>=0.12.1
 librosa>=0.10.0
-torch>=2.0.0

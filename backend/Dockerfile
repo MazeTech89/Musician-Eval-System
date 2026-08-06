@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 COPY requirements.txt ./requirements.txt
+# Install CPU-only torch first: the default PyPI wheel bundles CUDA runtime
+# libraries (multi-GB, high memory footprint) that aren't needed here and
+# can OOM small production instances during audio similarity scoring.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . ./
