@@ -1,0 +1,15 @@
+# Month 5 Reflective Journal – Requirements Engineering and Threat Modelling
+
+*February 2026 — Final Year Project, Cybersecurity Specialisation*
+
+## From Concept to Formal Requirements
+
+Having committed to the Intelligent Musician Task Management and Performance Evaluation System in December and settled on Agile Scrum with DevSecOps as my working methodology, February was the month I turned that commitment into something concrete. I went back to my original problem statement — the difficulty churches, bands, and ensembles have in fairly and consistently assessing musicians against a reference performance — and broke it down into functional user stories for the three roles I had envisaged at the time: administrator, evaluator, and musician. Writing these stories forced me to be honest about scope, and I quickly realised my first draft was too ambitious for a single academic year.
+
+Alongside the functional work, I spent a significant amount of time reading around AI-driven audio comparison techniques, since this sits at the core of the system's value proposition. I looked into spectral similarity measures, MFCC-based comparison, and libraries such as Librosa, which gave me confidence that audio-only analysis was achievable within my timeframe, whereas the video-analysis element I had originally considered was not. Narrowing the MVP to audio comparison was a difficult but necessary decision, and one I recorded clearly in my requirements documentation so the rationale would be visible later in the project.
+
+Because the system processes personal recordings of real musicians, I also reviewed relevant standards early rather than leaving security as an afterthought: OWASP ASVS, the OWASP Top 10, and basic GDPR principles around consent and data minimisation for uploaded audio. This reading directly shaped several non-functional requirements — encrypted storage and transmission, strict role-based access control, audit logging of who accessed or modified evaluation data, and validation of anything a user uploads.
+
+To make those requirements concrete rather than aspirational, I ran a lightweight STRIDE threat-modelling exercise against the core data flows I expected to build: audio upload, evaluation scoring, and credential storage. This surfaced specific risks I hadn't fully considered on paper, such as insecure direct object references on performance recordings and the risk of brute-force login attempts, and gave me a mitigation list — JWT-based authentication, strong password hashing, upload validation, and rate limiting — that I could carry directly into design and, eventually, into the codebase in later months.
+
+Reflecting on the month, I think the biggest lesson was the value of doing this thinking before writing any code. My cybersecurity specialisation naturally pushes me toward secure-by-design thinking, but this was the first time I forced myself to formalise it into requirements and a threat model rather than treating security as something to bolt on afterwards. It also gave me a much clearer, more defensible scope to take into supervisor discussions and into the architecture and design work planned for March.
