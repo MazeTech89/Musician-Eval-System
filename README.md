@@ -189,3 +189,44 @@ Set these backend environment variables to enable object-store uploads:
 - optional `S3_ENDPOINT_URL` (for LocalStack/custom endpoints)
 
 If these values are not provided, the backend automatically falls back to local disk storage so the MVP flow still works.
+
+## Git workflow: single active branch
+
+Keep the repository easy to manage by using a simple branch model:
+
+- `main` is the stable/default branch
+- keep only one active feature or fix branch at a time
+- merge work into `main` when it is ready
+- delete old branches after they have been merged or are no longer useful
+- run `git fetch --prune` regularly to remove stale remote references
+
+Recommended workflow:
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git checkout -b auth-ui-backend-fix-from-main-clean
+# do your work
+git add .
+git commit -m "fix: describe your change"
+git push -u origin auth-ui-backend-fix-from-main-clean
+```
+
+When the fix is ready:
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git merge --no-ff auth-ui-backend-fix-from-main-clean
+git push origin main
+git branch -d auth-ui-backend-fix-from-main-clean
+```
+
+After branch cleanup, keep the repo tidy with:
+
+```bash
+git fetch --prune
+git branch -avv
+```
+
+This keeps the repo aligned, prevents branch clutter, and makes it easier to know which branch is the real active work stream.

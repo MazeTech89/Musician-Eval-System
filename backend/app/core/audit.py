@@ -27,7 +27,8 @@ def record_audit_event(event: str, **details: Any) -> None:
 
 def record_security_alert(event: str, **details: Any) -> None:
     """Write a security alert and notify the configured recipient if present."""
-    # warning level: anomalous/suspicious events (rate limiting, lockouts) worth a human's attention.
+    # Warning level: anomalous/suspicious events (rate limiting, lockouts) deserve
+    # human attention and can be escalated to email when configured.
     message = _serialize_details({"event": event, **details})
     logger.warning("%s", message)
 
