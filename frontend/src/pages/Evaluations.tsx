@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import AppHeader from "../components/AppHeader";
+import PageNav from "../components/PageNav";
 
 interface Performance {
   id: number;
@@ -138,11 +140,14 @@ const Evaluations: React.FC = () => {
   }
 
   return (
-    <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Evaluations</h2>
-          {isEvaluator && (
+    <>
+      <AppHeader title="Evaluations" subtitle="View your evaluation results and feedback" />
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <PageNav title="Evaluations" showBackButton={true} backTo="/" />
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Evaluations</h2>
+            {isEvaluator && (
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
@@ -256,6 +261,7 @@ const Evaluations: React.FC = () => {
         </div>
       </div>
     </main>
+    </>
   );
 };
 

@@ -3,6 +3,8 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import AppHeader from "../components/AppHeader";
+import PageNav from "../components/PageNav";
 
 interface Performance {
   id: number;
@@ -255,11 +257,14 @@ const Performances: React.FC = () => {
   }
 
   return (
-    <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Performances</h2>
-          {canCreate && (
+    <>
+      <AppHeader title="Performances" subtitle="Upload and manage your performance submissions" />
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <PageNav title="Your Performances" showBackButton={true} backTo="/" />
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Performances</h2>
+            {canCreate && (
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
@@ -267,7 +272,7 @@ const Performances: React.FC = () => {
               {showForm ? "Cancel" : "New Performance"}
             </button>
           )}
-        </div>
+          </div>
         {error && (
           <div className="mb-6 bg-red-100 border border-red-300 text-red-700 rounded-md p-4">
             {error}
@@ -454,6 +459,7 @@ const Performances: React.FC = () => {
         </div>
       </div>
     </main>
+    </>
   );
 };
 
