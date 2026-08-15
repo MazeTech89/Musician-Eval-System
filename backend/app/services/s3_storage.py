@@ -17,6 +17,30 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _is_s3_configured() -> bool:
+    """Return whether the app has enough S3 configuration for uploads."""
+    required_fields = (
+        settings.aws_region,
+        settings.aws_access_key_id,
+        settings.aws_secret_access_key,
+        settings.s3_bucket_name,
+    )
+    return all(field for field in required_fields)
+
+
+def _build_s3_client():
+    """Create the boto3 S3 client from the active settings.
+
+    This helper is intentionally module-level so tests can patch it without
+    depending on private instance state.
+    """
+    if not _is_s3_configured():
+        raise S3StorageError("S3 storage is not fully configured")
+
+    s3_config = settings.get_s3_config()
+    return boto3.client("s3", **s3_config)
+
+
 class S3StorageError(RuntimeError):
     """Raised when audio storage operations fail."""
 
@@ -26,9 +50,12 @@ class S3StorageService:
 
     def __init__(self):
         """Initialize S3 client and bucket configuration."""
+        if not _is_s3_configured():
+            raise S3StorageError("S3 storage is not fully configured")
+
         s3_config = settings.get_s3_config()
         logger.info(f"Initializing S3StorageService with config: {s3_config}")
-        self.s3_client = boto3.client("s3", **s3_config)
+        self.s3_client = _build_s3_client()
         self.bucket_name = settings.s3_bucket_name_with_env
         self.allowed_formats = settings.s3_allowed_audio_formats
         self.max_file_size = settings.s3_max_file_size_mb * 1024 * 1024  # Convert to bytes
@@ -394,6 +421,9 @@ def upload_performance_audio_to_s3(audio_file: UploadFile, musician_id: int) -> 
             return f"/uploads/{output_path.name}"
         except Exception as exc:  # noqa: BLE001
             raise S3StorageError(f"Local upload failed: {exc}") from exc
+
+    if not _is_s3_configured():
+        raise S3StorageError("S3 storage is not fully configured")
 
     try:
         service = get_s3_service()

@@ -23,6 +23,16 @@ from app.schemas.auth import UserUpdate
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def clear_client_auth_state():
+    """Ensure each auth test starts without any leftover cookies or headers."""
+    client.cookies.clear()
+    client.headers.clear()
+    yield
+    client.cookies.clear()
+    client.headers.clear()
+
+
 @pytest.fixture
 def db_session():
     """Create a test database session."""
