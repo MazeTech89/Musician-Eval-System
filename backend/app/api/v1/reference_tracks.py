@@ -30,7 +30,6 @@ from app.schemas.reference_tracks import (
     AssignmentWithReferenceResponse,
     ReferenceTrackResponse,
 )
-from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import (
     S3StorageError,
     delete_audio_file,
@@ -120,6 +119,8 @@ def _materialize_and_score(assignment: Assignment, performance: Performance) -> 
         # Validate both files still exist before running feature extraction/scoring.
         if not reference_audio_path.exists() or not candidate_audio_path.exists():
             raise FileNotFoundError
+
+        from app.services.audio_similarity import score_audio_similarity
 
         return score_audio_similarity(reference_audio_path, candidate_audio_path)
     finally:

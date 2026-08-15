@@ -18,7 +18,6 @@ from app.schemas.evaluation import (
     PerformanceUpdate,
     SimilarityAnalysisResponse,
 )
-from app.services.audio_similarity import score_audio_similarity
 from app.services.s3_storage import (
     S3StorageError,
     delete_audio_file,
@@ -206,9 +205,10 @@ async def analyze_performance_audio(
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, object]:
     """Create a similarity evaluation by comparing a performance against a reference audio file."""
-    # NOTE: unlike the assignment-based re-score flow, this endpoint runs librosa/torch
-    # analysis synchronously and can be slow for long tracks; acceptable here because it's an
-    # ad-hoc admin tool, but a candidate for the same background-task pattern if it starts timing out.
+    # NOTE: unlike the assignment-based re-score flow, this endpoint runs
+    # librosa/torch analysis synchronously and can be slow for long tracks.
+    # It is acceptable here because it's an ad-hoc admin tool, but it is a
+    # candidate for the same background-task pattern if it starts timing out.
     if current_user.role.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -269,6 +269,8 @@ async def analyze_performance_audio(
 
         try:
             # Core AI scoring: PyTorch + Librosa feature comparison.
+            from app.services.audio_similarity import score_audio_similarity
+
             analysis = score_audio_similarity(candidate_audio_path, temp_reference_path)
         except ValueError as err:
             raise HTTPException(

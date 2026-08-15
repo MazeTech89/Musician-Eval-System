@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
@@ -27,6 +28,32 @@ interface PerformanceAnalysis {
   error_message: string | null;
 }
 
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error)) {
+    const responseData = error.response?.data as
+      | { detail?: string; message?: string }
+      | undefined;
+
+    if (responseData?.detail) {
+      return responseData.detail;
+    }
+
+    if (responseData?.message) {
+      return responseData.message;
+    }
+
+    if (error.message) {
+      return error.message;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 const Performances: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [performances, setPerformances] = useState<Performance[]>([]);
@@ -35,8 +62,12 @@ const Performances: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [audioUrl, setAudioUrl] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadStage, setUploadStage] = useState<
+    "idle" | "creating" | "uploading" | "refreshing"
+  >("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [analyzingPerformanceId, setAnalyzingPerformanceId] = useState<
     number | null
   >(null);
@@ -60,7 +91,7 @@ const Performances: React.FC = () => {
 
     const fetchPerformances = async () => {
       try {
-        const response = await api.get("/performances");
+        const response = await api.get("/performances/");
         setPerformances(response.data);
       } catch (err: unknown) {
         const message =
@@ -120,28 +151,66 @@ const Performances: React.FC = () => {
 
   const handleCreatePerformance = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !audioUrl) return;
+    if (!title || !audioFile) {
+      setError("Please provide a title and select an audio file.");
+      return;
+    }
 
     setSubmitting(true);
+    setUploadStage("creating");
+    setUploadProgress(0);
+    setError(null);
+
     try {
-      await api.post("/performances", {
+      const createResponse = await api.post("/performances/", {
         title,
         description,
-        audio_file_url: audioUrl,
+        audio_file_url: null,
       });
-      const response = await api.get("/performances");
+
+      const createdPerformance = createResponse.data as Performance;
+      const formData = new FormData();
+      formData.append("file", audioFile);
+
+      setUploadStage("uploading");
+      await api.post(
+        `/performances/${createdPerformance.id}/upload-audio`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (progressEvent) => {
+            if (!progressEvent.total) {
+              return;
+            }
+
+            const percent = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+            setUploadProgress(percent);
+          },
+        },
+      );
+
+      setUploadStage("refreshing");
+      const response = await api.get("/performances/");
       setPerformances(response.data);
       setTitle("");
       setDescription("");
-      setAudioUrl("");
+      setAudioFile(null);
       setShowForm(false);
       setError(null);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create performance";
+      const message = getApiErrorMessage(
+        err,
+        "Failed to create performance and upload audio",
+      );
       setError(message);
     } finally {
       setSubmitting(false);
+      setUploadStage("idle");
+      setUploadProgress(0);
     }
   };
 
@@ -155,8 +224,7 @@ const Performances: React.FC = () => {
         prev.map((p) => (p.id === performanceId ? { ...p, analysis } : p)),
       );
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to analyze performance";
+      const message = getApiErrorMessage(err, "Failed to analyze performance");
       setError(message);
     } finally {
       setAnalyzingPerformanceId(null);
@@ -205,6 +273,18 @@ const Performances: React.FC = () => {
             {error}
           </div>
         )}
+        {submitting && (
+          <div
+            className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 rounded-md p-4"
+            role="status"
+            aria-live="polite"
+          >
+            {uploadStage === "creating" && "Creating performance record..."}
+            {uploadStage === "uploading" &&
+              `Uploading audio file... ${uploadProgress}%`}
+            {uploadStage === "refreshing" && "Refreshing performance list..."}
+          </div>
+        )}
 
         {showForm && canCreate && (
           <div className="mb-6 bg-white shadow rounded-md p-6">
@@ -236,15 +316,20 @@ const Performances: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Audio URL
+                  Audio File
                 </label>
                 <input
-                  value={audioUrl}
-                  onChange={(e) => setAudioUrl(e.target.value)}
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  placeholder="https://example.com/audio.mp3"
                   required
                 />
+                {audioFile && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Selected: {audioFile.name}
+                  </p>
+                )}
               </div>
               <div>
                 <button
@@ -252,7 +337,11 @@ const Performances: React.FC = () => {
                   disabled={submitting}
                   className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {submitting ? "Submitting..." : "Create Performance"}
+                  {submitting
+                    ? uploadStage === "uploading"
+                      ? "Uploading Audio..."
+                      : "Submitting..."
+                    : "Create Performance"}
                 </button>
               </div>
             </form>

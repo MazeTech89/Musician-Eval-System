@@ -175,7 +175,7 @@ const Assignments: React.FC = () => {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [submissionResult?.evaluation.id, submissionResult?.evaluation.status]);
+  }, [submissionResult]);
 
   const selectedAssignment = useMemo(
     // Resolve the currently selected task object for display/submit defaults.

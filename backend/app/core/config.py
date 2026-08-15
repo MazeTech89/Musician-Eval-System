@@ -12,13 +12,19 @@ class Settings(BaseSettings):
     app_name: str = "Musician Evaluation API"
     app_version: str = "0.1.0"
     debug: bool = False
+    environment: str = "development"
 
     # Server
     host: str = "0.0.0.0"  # noqa: S104  # nosec B104 - Intentional for container networking
     port: int = 8000
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
     cors_allow_credentials: bool = True
     cors_allow_methods: list[str] = ["*"]
     cors_allow_headers: list[str] = ["*"]
@@ -67,6 +73,34 @@ class Settings(BaseSettings):
     aws_secret_access_key: str | None = None
     s3_bucket_name: str | None = None
     s3_endpoint_url: str | None = None
+    s3_allowed_audio_formats: list[str] = ["mp3", "wav", "m4a", "ogg", "flac"]
+    s3_max_file_size_mb: int = 300
+    s3_signed_url_expiry_seconds: int = 3600
+
+    @property
+    def s3_bucket_name_with_env(self) -> str:
+        """Return the resolved S3 bucket name, including the environment prefix when needed."""
+        bucket_name = self.s3_bucket_name or "musician-eval-uploads"
+        env_name = (self.environment or "development").lower()
+        if env_name in {"production", "prod", "staging"}:
+            return bucket_name
+        prefix = f"{env_name}-"
+        if bucket_name.startswith(prefix):
+            return bucket_name
+        return f"{prefix}{bucket_name}"
+
+    def get_s3_config(self) -> dict[str, str]:
+        """Build boto3 S3 client config from the active settings."""
+        config: dict[str, str] = {}
+        if self.aws_region:
+            config["region_name"] = self.aws_region
+        if self.aws_access_key_id:
+            config["aws_access_key_id"] = self.aws_access_key_id
+        if self.aws_secret_access_key:
+            config["aws_secret_access_key"] = self.aws_secret_access_key
+        if self.s3_endpoint_url:
+            config["endpoint_url"] = self.s3_endpoint_url
+        return config
 
 
 settings = Settings()
