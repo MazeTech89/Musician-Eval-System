@@ -193,279 +193,278 @@ const Profile: React.FC = () => {
   ];
 
   return (
-    <ProtectedLayout title="Profile" subtitle="Check your account details, profile fields, and security settings.">
+    <ProtectedLayout
+      title="Profile"
+      subtitle="Check your account details, profile fields, and security settings."
+    >
       <div className="px-4 py-6 sm:px-0 space-y-6">
         <PageNav title="Profile Settings" showBackButton={true} backTo="/" />
-          <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">
-              Your workflow
-            </h2>
-            <ol className="space-y-2 text-sm text-gray-700">
-              {workflowSteps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          </section>
+        <section className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+            Your workflow
+          </h2>
+          <ol className="space-y-2 text-sm text-gray-700">
+            {workflowSteps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </section>
 
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6 space-y-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                User Information
-              </h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Username
-                  </label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
-                    {user.username}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Role
-                  </label>
-                  <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 capitalize">
-                    {user.role}
-                  </div>
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-email"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="profile-email"
-                    name="email"
-                    type="email"
-                    value={profileForm.email}
-                    onChange={handleProfileChange}
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-first-name"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    First Name
-                  </label>
-                  <input
-                    id="profile-first-name"
-                    name="first_name"
-                    type="text"
-                    value={profileForm.first_name}
-                    onChange={handleProfileChange}
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-last-name"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Last Name
-                  </label>
-                  <input
-                    id="profile-last-name"
-                    name="last_name"
-                    type="text"
-                    value={profileForm.last_name}
-                    onChange={handleProfileChange}
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-instrument-type"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Instrument Type
-                  </label>
-                  <input
-                    id="profile-instrument-type"
-                    name="instrument_type"
-                    type="text"
-                    value={profileForm.instrument_type}
-                    onChange={handleProfileChange}
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="e.g. Piano, Guitar, Violin"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="profile-skill-level"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Skill Level
-                  </label>
-                  <select
-                    id="profile-skill-level"
-                    name="skill_level"
-                    value={profileForm.skill_level}
-                    onChange={handleProfileChange}
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
-                  >
-                    {SKILL_LEVEL_OPTIONS.map((option) => (
-                      <option
-                        key={option.value || "blank"}
-                        value={option.value}
-                      >
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="profile-availability"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Availability
-                  </label>
-                  <textarea
-                    id="profile-availability"
-                    name="availability"
-                    rows={3}
-                    value={profileForm.availability}
-                    onChange={handleProfileChange}
-                    className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
-                    placeholder="Share your typical availability window"
-                  />
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6 space-y-4">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              User Information
+            </h3>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
+                  {user.username}
                 </div>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <button
-                  type="button"
-                  onClick={() => void handleSaveProfile()}
-                  disabled={isSavingProfile}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {isSavingProfile ? "Saving..." : "Save profile"}
-                </button>
-                <div className="text-sm text-gray-600">
-                  Status: {user.is_active ? "Active" : "Inactive"}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Role
+                </label>
+                <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 capitalize">
+                  {user.role}
                 </div>
               </div>
-              {profileError ? (
-                <p className="text-sm text-red-600">{profileError}</p>
-              ) : null}
-              {profileMessage ? (
-                <p className="text-sm text-green-600">{profileMessage}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Security
-              </h3>
-              <p className="text-sm text-gray-600">
-                Multi-factor authentication status:{" "}
-                <span
-                  className={
-                    mfaEnabled
-                      ? "text-green-700 font-medium"
-                      : "text-gray-700 font-medium"
-                  }
+              <div>
+                <label
+                  htmlFor="profile-email"
+                  className="block text-sm font-medium text-gray-700"
                 >
-                  {mfaEnabled ? "Enabled" : "Disabled"}
-                </span>
-              </p>
-
-              {!mfaEnabled ? (
-                <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={handleSetupMfa}
-                    disabled={isSubmitting}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    Generate MFA setup
-                  </button>
-
-                  {mfaSecret ? (
-                    <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
-                      <p className="text-sm text-gray-700 break-all">
-                        <span className="font-medium">Secret:</span> {mfaSecret}
-                      </p>
-                      <p className="text-sm text-gray-700 break-all mt-1">
-                        <span className="font-medium">OTP URL:</span> {mfaUrl}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  <div>
-                    <label
-                      htmlFor="mfa-enable-code"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      MFA code
-                    </label>
-                    <input
-                      id="mfa-enable-code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      value={enableCode}
-                      onChange={(e) => setEnableCode(e.target.value)}
-                      className="w-full max-w-xs border border-gray-300 rounded-md px-3 py-2"
-                      placeholder="6-digit code"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleEnableMfa}
-                    disabled={isSubmitting}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Enable MFA
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label
-                      htmlFor="mfa-disable-code"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      MFA code to disable
-                    </label>
-                    <input
-                      id="mfa-disable-code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      value={disableCode}
-                      onChange={(e) => setDisableCode(e.target.value)}
-                      className="w-full max-w-xs border border-gray-300 rounded-md px-3 py-2"
-                      placeholder="6-digit code"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleDisableMfa}
-                    disabled={isSubmitting}
-                    className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
-                  >
-                    Disable MFA
-                  </button>
-                </div>
-              )}
-
-              {securityError ? (
-                <p className="text-sm text-red-600">{securityError}</p>
-              ) : null}
-              {securityMessage ? (
-                <p className="text-sm text-green-600">{securityMessage}</p>
-              ) : null}
+                  Email
+                </label>
+                <input
+                  id="profile-email"
+                  name="email"
+                  type="email"
+                  value={profileForm.email}
+                  onChange={handleProfileChange}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="profile-first-name"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  First Name
+                </label>
+                <input
+                  id="profile-first-name"
+                  name="first_name"
+                  type="text"
+                  value={profileForm.first_name}
+                  onChange={handleProfileChange}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="profile-last-name"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Last Name
+                </label>
+                <input
+                  id="profile-last-name"
+                  name="last_name"
+                  type="text"
+                  value={profileForm.last_name}
+                  onChange={handleProfileChange}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="profile-instrument-type"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Instrument Type
+                </label>
+                <input
+                  id="profile-instrument-type"
+                  name="instrument_type"
+                  type="text"
+                  value={profileForm.instrument_type}
+                  onChange={handleProfileChange}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="e.g. Piano, Guitar, Violin"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="profile-skill-level"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Skill Level
+                </label>
+                <select
+                  id="profile-skill-level"
+                  name="skill_level"
+                  value={profileForm.skill_level}
+                  onChange={handleProfileChange}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                >
+                  {SKILL_LEVEL_OPTIONS.map((option) => (
+                    <option key={option.value || "blank"} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label
+                  htmlFor="profile-availability"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Availability
+                </label>
+                <textarea
+                  id="profile-availability"
+                  name="availability"
+                  rows={3}
+                  value={profileForm.availability}
+                  onChange={handleProfileChange}
+                  className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
+                  placeholder="Share your typical availability window"
+                />
+              </div>
             </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <button
+                type="button"
+                onClick={() => void handleSaveProfile()}
+                disabled={isSavingProfile}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isSavingProfile ? "Saving..." : "Save profile"}
+              </button>
+              <div className="text-sm text-gray-600">
+                Status: {user.is_active ? "Active" : "Inactive"}
+              </div>
+            </div>
+            {profileError ? (
+              <p className="text-sm text-red-600">{profileError}</p>
+            ) : null}
+            {profileMessage ? (
+              <p className="text-sm text-green-600">{profileMessage}</p>
+            ) : null}
           </div>
         </div>
-      </main>
+
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+              Security
+            </h3>
+            <p className="text-sm text-gray-600">
+              Multi-factor authentication status:{" "}
+              <span
+                className={
+                  mfaEnabled
+                    ? "text-green-700 font-medium"
+                    : "text-gray-700 font-medium"
+                }
+              >
+                {mfaEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </p>
+
+            {!mfaEnabled ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleSetupMfa}
+                  disabled={isSubmitting}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  Generate MFA setup
+                </button>
+
+                {mfaSecret ? (
+                  <div className="p-3 rounded-md bg-gray-50 border border-gray-200">
+                    <p className="text-sm text-gray-700 break-all">
+                      <span className="font-medium">Secret:</span> {mfaSecret}
+                    </p>
+                    <p className="text-sm text-gray-700 break-all mt-1">
+                      <span className="font-medium">OTP URL:</span> {mfaUrl}
+                    </p>
+                  </div>
+                ) : null}
+
+                <div>
+                  <label
+                    htmlFor="mfa-enable-code"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    MFA code
+                  </label>
+                  <input
+                    id="mfa-enable-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={enableCode}
+                    onChange={(e) => setEnableCode(e.target.value)}
+                    className="w-full max-w-xs border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="6-digit code"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEnableMfa}
+                  disabled={isSubmitting}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                  Enable MFA
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label
+                    htmlFor="mfa-disable-code"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    MFA code to disable
+                  </label>
+                  <input
+                    id="mfa-disable-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={disableCode}
+                    onChange={(e) => setDisableCode(e.target.value)}
+                    className="w-full max-w-xs border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="6-digit code"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDisableMfa}
+                  disabled={isSubmitting}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  Disable MFA
+                </button>
+              </div>
+            )}
+
+            {securityError ? (
+              <p className="text-sm text-red-600">{securityError}</p>
+            ) : null}
+            {securityMessage ? (
+              <p className="text-sm text-green-600">{securityMessage}</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </ProtectedLayout>
   );
 };

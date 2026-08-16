@@ -328,384 +328,379 @@ const Assignments: React.FC = () => {
   }
 
   return (
-    <ProtectedLayout title="Perform Pro" subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}>
+    <ProtectedLayout
+      title="Perform Pro"
+      subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}
+    >
       <div className="space-y-6">
         <PageNav title="Active Tasks" showBackButton={true} backTo="/" />
-          {/* Active assignments */}
-          <section className="rounded-2xl bg-white p-4 shadow-md sm:p-6">
+        {/* Active assignments */}
+        <section className="rounded-2xl bg-white p-4 shadow-md sm:p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Music2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
+            <h2
+              className="text-xl font-bold"
+              style={{ color: "var(--color-primary)" }}
+            >
+              Active Tasks
+            </h2>
+          </div>
+          {assignments.length === 0 ? (
+            <p className="text-gray-500 italic">
+              {isMusician
+                ? "No active tasks yet. Check back after an admin publishes one."
+                : "No active tasks yet. Go to Reference Upload to create a task."}
+            </p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {assignments.map((assignment) => (
+                <button
+                  key={assignment.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedAssignmentId(assignment.id);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      assignment: undefined,
+                    }));
+                  }}
+                  className={`text-left rounded-xl border-2 p-4 transition music-card ${
+                    selectedAssignmentId === assignment.id
+                      ? "border-amber-500 bg-amber-50"
+                      : "border-gray-200 bg-white hover:border-amber-300"
+                  }`}
+                >
+                  <div
+                    className="font-semibold text-sm"
+                    style={{ color: "var(--color-primary)" }}
+                  >
+                    {assignment.title}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {assignment.description || "No description"}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    Reference: {assignment.reference_track.title}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Performance submission — musicians only */}
+        {isMusician ? (
+          <section className="bg-white rounded-2xl shadow-md p-6">
             <div className="mb-4 flex items-center gap-2">
-              <Music2 className="h-5 w-5 text-amber-600" aria-hidden="true" />
+              <FileAudio2
+                className="h-5 w-5 text-amber-600"
+                aria-hidden="true"
+              />
               <h2
                 className="text-xl font-bold"
                 style={{ color: "var(--color-primary)" }}
               >
-                Active Tasks
+                Submit a Performance
               </h2>
             </div>
-            {assignments.length === 0 ? (
-              <p className="text-gray-500 italic">
-                {isMusician
-                  ? "No active tasks yet. Check back after an admin publishes one."
-                  : "No active tasks yet. Go to Reference Upload to create a task."}
+            {selectedAssignment ? (
+              <p className="text-sm text-gray-600 mb-4">
+                Submitting against{" "}
+                <span className="font-semibold">
+                  {selectedAssignment.title}
+                </span>
               </p>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {assignments.map((assignment) => (
-                  <button
-                    key={assignment.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAssignmentId(assignment.id);
-                      setFieldErrors((current) => ({
-                        ...current,
-                        assignment: undefined,
-                      }));
-                    }}
-                    className={`text-left rounded-xl border-2 p-4 transition music-card ${
-                      selectedAssignmentId === assignment.id
-                        ? "border-amber-500 bg-amber-50"
-                        : "border-gray-200 bg-white hover:border-amber-300"
-                    }`}
-                  >
-                    <div
-                      className="font-semibold text-sm"
-                      style={{ color: "var(--color-primary)" }}
-                    >
-                      {assignment.title}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      {assignment.description || "No description"}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-2">
-                      Reference: {assignment.reference_track.title}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Performance submission — musicians only */}
-          {isMusician ? (
-            <section className="bg-white rounded-2xl shadow-md p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <FileAudio2
-                  className="h-5 w-5 text-amber-600"
-                  aria-hidden="true"
-                />
-                <h2
-                  className="text-xl font-bold"
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  Submit a Performance
-                </h2>
-              </div>
-              {selectedAssignment ? (
-                <p className="text-sm text-gray-600 mb-4">
-                  Submitting against{" "}
-                  <span className="font-semibold">
-                    {selectedAssignment.title}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-sm text-gray-500 mb-4">
-                  Select a task above then upload your recording. The AI will
-                  score it automatically.
-                </p>
-              )}
-
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div>
-                  <label
-                    htmlFor="assignment-select"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Task
-                  </label>
-                  <select
-                    id="assignment-select"
-                    value={selectedAssignmentId}
-                    onChange={(event) => {
-                      setSelectedAssignmentId(
-                        event.target.value ? Number(event.target.value) : "",
-                      );
-                      setFieldErrors((current) => ({
-                        ...current,
-                        assignment: undefined,
-                      }));
-                    }}
-                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  >
-                    <option value="">Select a task...</option>
-                    {assignments.map((assignment) => (
-                      <option key={assignment.id} value={assignment.id}>
-                        {assignment.title}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldErrors.assignment ? (
-                    <p className="mt-1 text-sm text-red-600">
-                      {fieldErrors.assignment}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="submission-title"
-                    className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700"
-                  >
-                    <Type
-                      className="h-4 w-4 text-amber-600"
-                      aria-hidden="true"
-                    />
-                    <span>Submission title</span>
-                  </label>
-                  <input
-                    id="submission-title"
-                    type="text"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    placeholder="My recorded submission"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="submission-description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id="submission-description"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    rows={3}
-                    placeholder="Notes about this recording"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="submission-audio-file"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Audio file
-                  </label>
-                  <input
-                    id="submission-audio-file"
-                    type="file"
-                    accept={ACCEPTED_AUDIO_FILE_TYPES}
-                    onChange={(event) => {
-                      const nextFile = event.target.files?.[0] ?? null;
-                      setAudioFile(nextFile);
-                      setFieldErrors((current) => ({
-                        ...current,
-                        audioFile: validateAudioFileSize(nextFile) ?? undefined,
-                      }));
-                    }}
-                    className="block w-full text-sm text-gray-500"
-                  />
-                  <p className="mt-1 text-xs text-gray-400">
-                    Max {MAX_AUDIO_UPLOAD_SIZE_MB} MB
-                  </p>
-                  {fieldErrors.audioFile ? (
-                    <p className="mt-1 text-sm text-red-600">
-                      {fieldErrors.audioFile}
-                    </p>
-                  ) : null}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ backgroundColor: "var(--color-accent)" }}
-                >
-                  {submitting ? "Submitting..." : "Submit and score"}
-                </button>
-              </form>
-
-              {error ? (
-                <p className="mt-4 text-sm text-red-600">{error}</p>
-              ) : null}
-              {successMessage ? (
-                <p className="mt-4 text-sm text-green-600">{successMessage}</p>
-              ) : null}
-            </section>
-          ) : null}
-
-          {/* Latest score result */}
-          {isMusician && submissionResult ? (
-            <section className="bg-white rounded-2xl shadow-md p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <FileAudio2
-                  className="h-5 w-5 text-amber-600"
-                  aria-hidden="true"
-                />
-                <h2
-                  className="text-xl font-bold"
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  Latest Score
-                </h2>
-              </div>
-              <p className="text-gray-700 mb-2">
-                <span className="font-medium">Performance:</span>{" "}
-                {submissionResult.performance.title}
+              <p className="text-sm text-gray-500 mb-4">
+                Select a task above then upload your recording. The AI will
+                score it automatically.
               </p>
-              {submissionResult.analysis ? (
-                <>
-                  <p className="text-gray-700 mb-4">
-                    <span className="font-medium">Score:</span>{" "}
-                    <span
-                      className="text-2xl font-bold"
-                      style={{ color: "var(--color-accent)" }}
-                    >
-                      {submissionResult.analysis.score.toFixed(1)}
-                    </span>{" "}
-                    / 100
+            )}
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <label
+                  htmlFor="assignment-select"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Task
+                </label>
+                <select
+                  id="assignment-select"
+                  value={selectedAssignmentId}
+                  onChange={(event) => {
+                    setSelectedAssignmentId(
+                      event.target.value ? Number(event.target.value) : "",
+                    );
+                    setFieldErrors((current) => ({
+                      ...current,
+                      assignment: undefined,
+                    }));
+                  }}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="">Select a task...</option>
+                  {assignments.map((assignment) => (
+                    <option key={assignment.id} value={assignment.id}>
+                      {assignment.title}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.assignment ? (
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.assignment}
                   </p>
-                  <div className="grid gap-2 md:grid-cols-3">
-                    {Object.entries(submissionResult.analysis.breakdown).map(
-                      ([label, value]) => (
-                        <div
-                          key={label}
-                          className="rounded-xl border border-gray-100 bg-gray-50 p-3"
-                        >
-                          <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                            {label.replace(/_/g, " ")}
-                          </div>
-                          <div
-                            className="font-bold"
-                            style={{ color: "var(--color-primary)" }}
-                          >
-                            {value.toFixed(2)}
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                </>
-              ) : submissionResult.evaluation.status === "completed" ? (
-                <p className="text-gray-700 mb-2">
+                ) : null}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="submission-title"
+                  className="mb-1 inline-flex items-center gap-2 text-sm font-medium text-gray-700"
+                >
+                  <Type className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                  <span>Submission title</span>
+                </label>
+                <input
+                  id="submission-title"
+                  type="text"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="My recorded submission"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="submission-description"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="submission-description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  rows={3}
+                  placeholder="Notes about this recording"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="submission-audio-file"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Audio file
+                </label>
+                <input
+                  id="submission-audio-file"
+                  type="file"
+                  accept={ACCEPTED_AUDIO_FILE_TYPES}
+                  onChange={(event) => {
+                    const nextFile = event.target.files?.[0] ?? null;
+                    setAudioFile(nextFile);
+                    setFieldErrors((current) => ({
+                      ...current,
+                      audioFile: validateAudioFileSize(nextFile) ?? undefined,
+                    }));
+                  }}
+                  className="block w-full text-sm text-gray-500"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Max {MAX_AUDIO_UPLOAD_SIZE_MB} MB
+                </p>
+                {fieldErrors.audioFile ? (
+                  <p className="mt-1 text-sm text-red-600">
+                    {fieldErrors.audioFile}
+                  </p>
+                ) : null}
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-lg px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: "var(--color-accent)" }}
+              >
+                {submitting ? "Submitting..." : "Submit and score"}
+              </button>
+            </form>
+
+            {error ? (
+              <p className="mt-4 text-sm text-red-600">{error}</p>
+            ) : null}
+            {successMessage ? (
+              <p className="mt-4 text-sm text-green-600">{successMessage}</p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {/* Latest score result */}
+        {isMusician && submissionResult ? (
+          <section className="bg-white rounded-2xl shadow-md p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <FileAudio2
+                className="h-5 w-5 text-amber-600"
+                aria-hidden="true"
+              />
+              <h2
+                className="text-xl font-bold"
+                style={{ color: "var(--color-primary)" }}
+              >
+                Latest Score
+              </h2>
+            </div>
+            <p className="text-gray-700 mb-2">
+              <span className="font-medium">Performance:</span>{" "}
+              {submissionResult.performance.title}
+            </p>
+            {submissionResult.analysis ? (
+              <>
+                <p className="text-gray-700 mb-4">
                   <span className="font-medium">Score:</span>{" "}
                   <span
                     className="text-2xl font-bold"
                     style={{ color: "var(--color-accent)" }}
                   >
-                    {submissionResult.evaluation.score?.toFixed(1) ?? "N/A"}
+                    {submissionResult.analysis.score.toFixed(1)}
                   </span>{" "}
                   / 100
                 </p>
-              ) : submissionResult.evaluation.status === "pending" ? (
-                <p className="text-sm text-amber-700">
-                  Scoring is running in the background — this can take up to a
-                  couple of minutes for longer recordings. This card will update
-                  automatically.
-                </p>
-              ) : (
-                <p className="text-sm text-red-600">
-                  {submissionResult.evaluation.comments ||
-                    "Automatic scoring did not complete."}
-                </p>
-              )}
-            </section>
-          ) : null}
-
-          {/* Submission history — musicians only */}
-          {isMusician ? (
-            <section className="bg-white rounded-2xl shadow-md p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <History
-                  className="h-5 w-5 text-amber-600"
-                  aria-hidden="true"
-                />
-                <h2
-                  className="text-xl font-bold"
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  My Submission History
-                </h2>
-              </div>
-              {rankedHistory.length === 0 ? (
-                <p className="text-gray-500 italic">
-                  No submissions yet. Upload your first performance above.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {rankedHistory.map((evaluation) => (
-                    <div
-                      key={evaluation.id}
-                      className="rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-4"
-                    >
-                      <div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {Object.entries(submissionResult.analysis.breakdown).map(
+                    ([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-xl border border-gray-100 bg-gray-50 p-3"
+                      >
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                          {label.replace(/_/g, " ")}
+                        </div>
                         <div
-                          className="font-semibold text-sm"
+                          className="font-bold"
                           style={{ color: "var(--color-primary)" }}
                         >
-                          {evaluation.performance.title}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-0.5">
-                          Task:{" "}
-                          {evaluation.performance.assignment_id
-                            ? assignmentNameById.get(
-                                evaluation.performance.assignment_id,
-                              ) ||
-                              `Task #${evaluation.performance.assignment_id}`
-                            : "Direct upload"}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(evaluation.created_at).toLocaleString()}
+                          {value.toFixed(2)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div
-                            className="text-lg font-bold"
-                            style={{ color: "var(--color-accent)" }}
-                          >
-                            {evaluation.score !== null
-                              ? `${evaluation.score.toFixed(1)} / 100`
-                              : "Pending"}
-                          </div>
-                          <div className="text-xs uppercase text-gray-400">
-                            {evaluation.status}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            void handleDeletePerformance(
-                              evaluation.performance.id,
-                            )
-                          }
-                          disabled={
-                            deletingPerformanceId === evaluation.performance.id
-                          }
-                          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
-                        >
-                          {deletingPerformanceId === evaluation.performance.id
-                            ? "..."
-                            : "Delete"}
-                        </button>
-                      </div>
-                      {evaluation.comments ? (
-                        <p className="mt-2 text-sm text-gray-600 col-span-full">
-                          {evaluation.comments}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
-              )}
-            </section>
-          ) : null}
-        </div>
-      </main>
+              </>
+            ) : submissionResult.evaluation.status === "completed" ? (
+              <p className="text-gray-700 mb-2">
+                <span className="font-medium">Score:</span>{" "}
+                <span
+                  className="text-2xl font-bold"
+                  style={{ color: "var(--color-accent)" }}
+                >
+                  {submissionResult.evaluation.score?.toFixed(1) ?? "N/A"}
+                </span>{" "}
+                / 100
+              </p>
+            ) : submissionResult.evaluation.status === "pending" ? (
+              <p className="text-sm text-amber-700">
+                Scoring is running in the background — this can take up to a
+                couple of minutes for longer recordings. This card will update
+                automatically.
+              </p>
+            ) : (
+              <p className="text-sm text-red-600">
+                {submissionResult.evaluation.comments ||
+                  "Automatic scoring did not complete."}
+              </p>
+            )}
+          </section>
+        ) : null}
+
+        {/* Submission history — musicians only */}
+        {isMusician ? (
+          <section className="bg-white rounded-2xl shadow-md p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <History className="h-5 w-5 text-amber-600" aria-hidden="true" />
+              <h2
+                className="text-xl font-bold"
+                style={{ color: "var(--color-primary)" }}
+              >
+                My Submission History
+              </h2>
+            </div>
+            {rankedHistory.length === 0 ? (
+              <p className="text-gray-500 italic">
+                No submissions yet. Upload your first performance above.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {rankedHistory.map((evaluation) => (
+                  <div
+                    key={evaluation.id}
+                    className="rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-4"
+                  >
+                    <div>
+                      <div
+                        className="font-semibold text-sm"
+                        style={{ color: "var(--color-primary)" }}
+                      >
+                        {evaluation.performance.title}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        Task:{" "}
+                        {evaluation.performance.assignment_id
+                          ? assignmentNameById.get(
+                              evaluation.performance.assignment_id,
+                            ) || `Task #${evaluation.performance.assignment_id}`
+                          : "Direct upload"}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(evaluation.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div
+                          className="text-lg font-bold"
+                          style={{ color: "var(--color-accent)" }}
+                        >
+                          {evaluation.score !== null
+                            ? `${evaluation.score.toFixed(1)} / 100`
+                            : "Pending"}
+                        </div>
+                        <div className="text-xs uppercase text-gray-400">
+                          {evaluation.status}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleDeletePerformance(
+                            evaluation.performance.id,
+                          )
+                        }
+                        disabled={
+                          deletingPerformanceId === evaluation.performance.id
+                        }
+                        className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        {deletingPerformanceId === evaluation.performance.id
+                          ? "..."
+                          : "Delete"}
+                      </button>
+                    </div>
+                    {evaluation.comments ? (
+                      <p className="mt-2 text-sm text-gray-600 col-span-full">
+                        {evaluation.comments}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
+      </div>
     </ProtectedLayout>
   );
 };

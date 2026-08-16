@@ -60,7 +60,10 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
 
     # Upload storage
-    use_local_upload_storage: bool = False
+    # Local disk upload storage is the default for development and tests. This matches
+    # the Docker/dev configuration and keeps the app functional without requiring S3
+    # credentials for everyday local work.
+    use_local_upload_storage: bool = True
     local_upload_dir: str = "uploads"
     max_audio_upload_size_mb: int = 300
     s3_fallback_to_local: bool = (
