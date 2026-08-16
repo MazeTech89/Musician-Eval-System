@@ -46,7 +46,9 @@ interface AppHeaderProps {
 const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const navItems = navItemsByRole[user?.role || ""] || [
+  // Normalize role to lowercase to tolerate backend role casing (e.g. "ADMIN" / "admin")
+  const roleKey = user?.role?.toLowerCase() || "";
+  const navItems = navItemsByRole[roleKey] || [
     { to: "/", label: "Dashboard", Icon: LayoutDashboard },
   ];
 
