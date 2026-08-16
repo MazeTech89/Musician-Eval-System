@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FileAudio2, History, Music2, Type } from "lucide-react";
 import api from "../api/axios";
-import AppHeader from "../components/AppHeader";
+import ProtectedLayout from "../components/ProtectedLayout";
+import PageNav from "../components/PageNav";
 import { useAuth } from "../contexts/AuthContext";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 import {
@@ -327,17 +328,9 @@ const Assignments: React.FC = () => {
   }
 
   return (
-    <div
-      className="min-h-screen staff-bg"
-      style={{ backgroundColor: "var(--bg-page)" }}
-    >
-      <AppHeader
-        title="Perform Pro"
-        subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}
-      />
-
-      <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="space-y-6">
+    <ProtectedLayout title="Perform Pro" subtitle={isMusician ? "Active Tasks" : "Tasks Overview"}>
+      <div className="space-y-6">
+        <PageNav title="Active Tasks" showBackButton={true} backTo="/" />
           {/* Active assignments */}
           <section className="rounded-2xl bg-white p-4 shadow-md sm:p-6">
             <div className="mb-4 flex items-center gap-2">
@@ -713,7 +706,7 @@ const Assignments: React.FC = () => {
           ) : null}
         </div>
       </main>
-    </div>
+    </ProtectedLayout>
   );
 };
 

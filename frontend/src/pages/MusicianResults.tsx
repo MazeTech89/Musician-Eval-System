@@ -8,7 +8,8 @@ import {
   Search,
 } from "lucide-react";
 import api from "../api/axios";
-import AppHeader from "../components/AppHeader";
+import ProtectedLayout from "../components/ProtectedLayout";
+import PageNav from "../components/PageNav";
 
 interface MusicianUser {
   id: number;
@@ -240,13 +241,9 @@ const MusicianResults: React.FC = () => {
   );
 
   return (
-    <div
-      className="min-h-screen staff-bg"
-      style={{ backgroundColor: "var(--bg-page)" }}
-    >
-      <AppHeader title="Perform Pro" subtitle="Musician Results" />
-
+    <ProtectedLayout title="Perform Pro" subtitle="Musician Results">
       <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <PageNav title="Musician Results" showBackButton={true} backTo="/" />
         {/* Hero */}
         <div className="perform-pro-hero rounded-2xl p-8 mb-8 text-white">
           <BarChart3
@@ -563,7 +560,7 @@ const MusicianResults: React.FC = () => {
           </>
         )}
       </main>
-    </div>
+    </ProtectedLayout>
   );
 };
 

@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import ProtectedLayout from "../components/ProtectedLayout";
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -102,12 +103,12 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
-        {getDashboardContent()}
-      </div>
-    </main>
+    <ProtectedLayout
+      title="Dashboard"
+      subtitle={`Welcome, ${user?.first_name || "Guest"}!`}
+    >
+      <div className="px-4 py-6 sm:px-0">{getDashboardContent()}</div>
+    </ProtectedLayout>
   );
 };
 

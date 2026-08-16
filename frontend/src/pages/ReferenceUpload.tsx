@@ -10,7 +10,8 @@ import {
   Upload,
 } from "lucide-react";
 import api from "../api/axios";
-import AppHeader from "../components/AppHeader";
+import ProtectedLayout from "../components/ProtectedLayout";
+import PageNav from "../components/PageNav";
 import { getApiErrorMessage, validateRequired } from "../utils/form";
 import {
   ACCEPTED_AUDIO_FILE_TYPES,
@@ -280,13 +281,9 @@ const ReferenceUpload: React.FC = () => {
   };
 
   return (
-    <div
-      className="min-h-screen staff-bg"
-      style={{ backgroundColor: "var(--bg-page)" }}
-    >
-      <AppHeader title="Perform Pro" subtitle="Reference Upload" />
-
+    <ProtectedLayout title="Perform Pro" subtitle="Reference Upload">
       <main className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+        <PageNav title="Reference Upload" showBackButton={true} backTo="/" />
         {/* Hero */}
         <div className="perform-pro-hero rounded-2xl p-8 text-white">
           <Music4
@@ -736,7 +733,7 @@ const ReferenceUpload: React.FC = () => {
           </div>
         )}
       </main>
-    </div>
+    </ProtectedLayout>
   );
 };
 

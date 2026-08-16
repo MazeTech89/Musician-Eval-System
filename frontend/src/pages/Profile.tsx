@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
-import AppHeader from "../components/AppHeader";
+import ProtectedLayout from "../components/ProtectedLayout";
+import PageNav from "../components/PageNav";
 import { useAuth } from "../contexts/AuthContext";
-import { getApiErrorMessage, validateEmail, validateRequired } from "../utils/form";
+import {
+  getApiErrorMessage,
+  validateEmail,
+  validateRequired,
+} from "../utils/form";
 
 const SKILL_LEVEL_OPTIONS = [
   { value: "", label: "Select skill level" },
@@ -63,7 +68,9 @@ const Profile: React.FC = () => {
   };
 
   const handleProfileChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     setProfileForm((current) => ({
       ...current,
@@ -74,11 +81,19 @@ const Profile: React.FC = () => {
   const handleSaveProfile = async () => {
     // Validate required identity fields and email format before persistence.
     const emailError = validateEmail(profileForm.email);
-    const firstNameError = validateRequired(profileForm.first_name, "First name");
+    const firstNameError = validateRequired(
+      profileForm.first_name,
+      "First name",
+    );
     const lastNameError = validateRequired(profileForm.last_name, "Last name");
 
     if (emailError || firstNameError || lastNameError) {
-      setProfileError(emailError || firstNameError || lastNameError || "Please fix the profile fields.");
+      setProfileError(
+        emailError ||
+          firstNameError ||
+          lastNameError ||
+          "Please fix the profile fields.",
+      );
       return;
     }
 
@@ -112,9 +127,13 @@ const Profile: React.FC = () => {
       const response = await api.post("/auth/mfa/setup");
       setMfaSecret(response.data.secret);
       setMfaUrl(response.data.otpauth_url);
-      setSecurityMessage("MFA secret generated. Add it to your authenticator and verify with a code.");
+      setSecurityMessage(
+        "MFA secret generated. Add it to your authenticator and verify with a code.",
+      );
     } catch (err: unknown) {
-      setSecurityError(getApiErrorMessage(err, "Unable to generate MFA setup details."));
+      setSecurityError(
+        getApiErrorMessage(err, "Unable to generate MFA setup details."),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -174,13 +193,13 @@ const Profile: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Profile" subtitle="Check your account details, profile fields, and security settings." />
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0 space-y-6">
+    <ProtectedLayout title="Profile" subtitle="Check your account details, profile fields, and security settings.">
+      <div className="px-4 py-6 sm:px-0 space-y-6">
+        <PageNav title="Profile Settings" showBackButton={true} backTo="/" />
           <section className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Your workflow</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">
+              Your workflow
+            </h2>
             <ol className="space-y-2 text-sm text-gray-700">
               {workflowSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -190,22 +209,31 @@ const Profile: React.FC = () => {
 
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6 space-y-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">User Information</h3>
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                User Information
+              </h3>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Username</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Username
+                  </label>
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500">
                     {user.username}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Role
+                  </label>
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 capitalize">
                     {user.role}
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="profile-email"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Email
                   </label>
                   <input
@@ -281,7 +309,10 @@ const Profile: React.FC = () => {
                     className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2"
                   >
                     {SKILL_LEVEL_OPTIONS.map((option) => (
-                      <option key={option.value || "blank"} value={option.value}>
+                      <option
+                        key={option.value || "blank"}
+                        value={option.value}
+                      >
                         {option.label}
                       </option>
                     ))}
@@ -318,19 +349,27 @@ const Profile: React.FC = () => {
                   Status: {user.is_active ? "Active" : "Inactive"}
                 </div>
               </div>
-              {profileError ? <p className="text-sm text-red-600">{profileError}</p> : null}
-              {profileMessage ? <p className="text-sm text-green-600">{profileMessage}</p> : null}
+              {profileError ? (
+                <p className="text-sm text-red-600">{profileError}</p>
+              ) : null}
+              {profileMessage ? (
+                <p className="text-sm text-green-600">{profileMessage}</p>
+              ) : null}
             </div>
           </div>
 
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Security</h3>
+              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                Security
+              </h3>
               <p className="text-sm text-gray-600">
                 Multi-factor authentication status:{" "}
                 <span
                   className={
-                    mfaEnabled ? "text-green-700 font-medium" : "text-gray-700 font-medium"
+                    mfaEnabled
+                      ? "text-green-700 font-medium"
+                      : "text-gray-700 font-medium"
                   }
                 >
                   {mfaEnabled ? "Enabled" : "Disabled"}
@@ -417,13 +456,17 @@ const Profile: React.FC = () => {
                 </div>
               )}
 
-              {securityError ? <p className="text-sm text-red-600">{securityError}</p> : null}
-              {securityMessage ? <p className="text-sm text-green-600">{securityMessage}</p> : null}
+              {securityError ? (
+                <p className="text-sm text-red-600">{securityError}</p>
+              ) : null}
+              {securityMessage ? (
+                <p className="text-sm text-green-600">{securityMessage}</p>
+              ) : null}
             </div>
           </div>
         </div>
       </main>
-    </div>
+    </ProtectedLayout>
   );
 };
 

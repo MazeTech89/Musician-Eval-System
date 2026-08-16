@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
-import AppHeader from "../components/AppHeader";
+import ProtectedLayout from "../components/ProtectedLayout";
 import PageNav from "../components/PageNav";
 
 interface Performance {
@@ -11,50 +10,11 @@ interface Performance {
   title: string;
   description: string | null;
   musician_id: number;
-  audio_file_url: string | null;
   submitted_at: string;
   status: string;
-  analysis?: PerformanceAnalysis | null;
+  audio_file_url?: string | null;
+  analysis?: any | null;
 }
-
-interface PerformanceAnalysis {
-  id: number;
-  performance_id: number;
-  status: string;
-  technique_score: number | null;
-  timing_score: number | null;
-  intonation_score: number | null;
-  overall_ai_score: number | null;
-  ai_feedback: string | null;
-  analyzed_at: string | null;
-  error_message: string | null;
-}
-
-const getApiErrorMessage = (error: unknown, fallback: string): string => {
-  if (axios.isAxiosError(error)) {
-    const responseData = error.response?.data as
-      | { detail?: string; message?: string }
-      | undefined;
-
-    if (responseData?.detail) {
-      return responseData.detail;
-    }
-
-    if (responseData?.message) {
-      return responseData.message;
-    }
-
-    if (error.message) {
-      return error.message;
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 const Performances: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -64,28 +24,14 @@ const Performances: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadStage, setUploadStage] = useState<
-    "idle" | "creating" | "uploading" | "refreshing"
-  >("idle");
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [analyzingPerformanceId, setAnalyzingPerformanceId] = useState<
-    number | null
-  >(null);
 
-  const canCreate = user?.role === "musician" || user?.role === "admin";
-  const canAnalyze =
-    user?.role === "musician" ||
-    user?.role === "admin" ||
-    user?.role === "evaluator" ||
-    user?.role === "moderator";
+  const canCreate =
+    user?.role?.toLowerCase() === "musician" ||
+    user?.role?.toLowerCase() === "admin";
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-
+    if (isLoading) return;
     if (!user) {
       setLoading(false);
       return;
@@ -93,12 +39,12 @@ const Performances: React.FC = () => {
 
     const fetchPerformances = async () => {
       try {
-        const response = await api.get("/performances/");
-        setPerformances(response.data);
+        const resp = await api.get("/performances/");
+        setPerformances(resp.data || []);
       } catch (err: unknown) {
-        const message =
+        const msg =
           err instanceof Error ? err.message : "Failed to load performances";
-        setError(message);
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -107,133 +53,28 @@ const Performances: React.FC = () => {
     fetchPerformances();
   }, [user, isLoading]);
 
-  useEffect(() => {
-    const activeAnalysisIds = performances
-      .filter((performance) => {
-        const status = performance.analysis?.status;
-        return status === "running" || status === "pending";
-      })
-      .map((performance) => performance.id);
-
-    if (activeAnalysisIds.length === 0) {
-      return;
-    }
-
-    const interval = window.setInterval(async () => {
-      const updates = await Promise.all(
-        activeAnalysisIds.map(async (performanceId) => {
-          try {
-            const response = await api.get(
-              `/performances/${performanceId}/analysis`,
-            );
-            return {
-              performanceId,
-              analysis: response.data as PerformanceAnalysis,
-            };
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      setPerformances((prev) =>
-        prev.map((performance) => {
-          const update = updates.find(
-            (item) => item?.performanceId === performance.id,
-          );
-          return update
-            ? { ...performance, analysis: update.analysis }
-            : performance;
-        }),
-      );
-    }, 3000);
-
-    return () => window.clearInterval(interval);
-  }, [performances]);
-
   const handleCreatePerformance = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !audioFile) {
-      setError("Please provide a title and select an audio file.");
-      return;
-    }
-
+    if (!title) return;
     setSubmitting(true);
-    setUploadStage("creating");
-    setUploadProgress(0);
     setError(null);
-
     try {
-      const createResponse = await api.post("/performances/", {
-        title,
-        description,
-        audio_file_url: null,
-      });
-
-      const createdPerformance = createResponse.data as Performance;
-      const formData = new FormData();
-      formData.append("file", audioFile);
-
-      setUploadStage("uploading");
-      await api.post(
-        `/performances/${createdPerformance.id}/upload-audio`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          onUploadProgress: (progressEvent) => {
-            if (!progressEvent.total) {
-              return;
-            }
-
-            const percent = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total,
-            );
-            setUploadProgress(percent);
-          },
-        },
-      );
-
-      setUploadStage("refreshing");
-      const response = await api.get("/performances/");
-      setPerformances(response.data);
+      await api.post("/performances", { title, description });
+      const resp = await api.get("/performances/");
+      setPerformances(resp.data || []);
+      setShowForm(false);
       setTitle("");
       setDescription("");
-      setAudioFile(null);
-      setShowForm(false);
-      setError(null);
     } catch (err: unknown) {
-      const message = getApiErrorMessage(
-        err,
-        "Failed to create performance and upload audio",
-      );
-      setError(message);
+      const msg =
+        err instanceof Error ? err.message : "Failed to create performance";
+      setError(msg);
     } finally {
       setSubmitting(false);
-      setUploadStage("idle");
-      setUploadProgress(0);
     }
   };
 
-  const handleAnalyzePerformance = async (performanceId: number) => {
-    setAnalyzingPerformanceId(performanceId);
-    setError(null);
-    try {
-      const response = await api.post(`/performances/${performanceId}/analyze`);
-      const analysis = response.data as PerformanceAnalysis;
-      setPerformances((prev) =>
-        prev.map((p) => (p.id === performanceId ? { ...p, analysis } : p)),
-      );
-    } catch (err: unknown) {
-      const message = getApiErrorMessage(err, "Failed to analyze performance");
-      setError(message);
-    } finally {
-      setAnalyzingPerformanceId(null);
-    }
-  };
-
-  if (isLoading || loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         Loading...
@@ -256,15 +97,25 @@ const Performances: React.FC = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
   return (
-    <>
-      <AppHeader title="Performances" subtitle="Upload and manage your performance submissions" />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <PageNav title="Your Performances" showBackButton={true} backTo="/" />
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Performances</h2>
-            {canCreate && (
+    <ProtectedLayout
+      title="Performances"
+      subtitle="Upload and manage your performance submissions"
+    >
+      <div className="px-4 py-6 sm:px-0">
+        <PageNav title="Your Performances" showBackButton={true} backTo="/" />
+
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Performances</h2>
+          {canCreate && (
             <button
               onClick={() => setShowForm(!showForm)}
               className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
@@ -272,22 +123,11 @@ const Performances: React.FC = () => {
               {showForm ? "Cancel" : "New Performance"}
             </button>
           )}
-          </div>
+        </div>
+
         {error && (
           <div className="mb-6 bg-red-100 border border-red-300 text-red-700 rounded-md p-4">
             {error}
-          </div>
-        )}
-        {submitting && (
-          <div
-            className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 rounded-md p-4"
-            role="status"
-            aria-live="polite"
-          >
-            {uploadStage === "creating" && "Creating performance record..."}
-            {uploadStage === "uploading" &&
-              `Uploading audio file... ${uploadProgress}%`}
-            {uploadStage === "refreshing" && "Refreshing performance list..."}
           </div>
         )}
 
@@ -302,7 +142,7 @@ const Performances: React.FC = () => {
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                   placeholder="Performance title"
                   required
                 />
@@ -314,27 +154,10 @@ const Performances: React.FC = () => {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                   rows={3}
                   placeholder="Optional description"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Audio File
-                </label>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  required
-                />
-                {audioFile && (
-                  <p className="mt-2 text-sm text-gray-500">
-                    Selected: {audioFile.name}
-                  </p>
-                )}
               </div>
               <div>
                 <button
@@ -342,11 +165,7 @@ const Performances: React.FC = () => {
                   disabled={submitting}
                   className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {submitting
-                    ? uploadStage === "uploading"
-                      ? "Uploading Audio..."
-                      : "Submitting..."
-                    : "Create Performance"}
+                  {submitting ? "Submitting..." : "Create Performance"}
                 </button>
               </div>
             </form>
@@ -355,9 +174,9 @@ const Performances: React.FC = () => {
 
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900">
               Your Performances
-            </h2>
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
               {canCreate
                 ? "Create and review your performance submissions."
@@ -370,85 +189,40 @@ const Performances: React.FC = () => {
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">
-              {performances.map((performance) => (
-                <li key={performance.id}>
+              {performances.map((p) => (
+                <li key={p.id}>
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <div className="text-lg font-medium text-gray-900">
-                          {performance.title}
+                          {p.title}
                         </div>
                         <div className="mt-1 text-sm text-gray-500">
-                          {performance.description ||
-                            "No description provided."}
+                          {p.description || "No description provided."}
                         </div>
                         <div className="mt-2 text-sm text-gray-500">
                           <span className="font-medium">Status:</span>{" "}
-                          {performance.status}
+                          {p.status}
                         </div>
                         <div className="mt-1 text-sm text-gray-500">
                           <span className="font-medium">Submitted:</span>{" "}
-                          {new Date(performance.submitted_at).toLocaleString()}
+                          {new Date(p.submitted_at).toLocaleString()}
                         </div>
-                        <div className="mt-1 text-sm text-gray-500">
-                          <a
-                            href={performance.audio_file_url ?? "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-indigo-600 hover:text-indigo-500"
-                          >
-                            View audio
-                          </a>
-                        </div>
-
-                        {canAnalyze && (
-                          <div className="mt-3">
-                            <button
-                              onClick={() =>
-                                handleAnalyzePerformance(performance.id)
-                              }
-                              disabled={
-                                analyzingPerformanceId === performance.id
-                              }
-                              className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 py-1.5 px-3 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                        {p.audio_file_url && (
+                          <div className="mt-1 text-sm text-gray-500">
+                            <a
+                              href={p.audio_file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-indigo-600 hover:text-indigo-500"
                             >
-                              {analyzingPerformanceId === performance.id
-                                ? "Analyzing..."
-                                : "Run AI Analysis"}
-                            </button>
-                          </div>
-                        )}
-
-                        {performance.analysis && (
-                          <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                            <div className="font-semibold">
-                              AI Analysis: {performance.analysis.status}
-                            </div>
-                            {performance.analysis.overall_ai_score !== null && (
-                              <div className="mt-1">
-                                Overall: {performance.analysis.overall_ai_score}{" "}
-                                | Technique:{" "}
-                                {performance.analysis.technique_score} | Timing:{" "}
-                                {performance.analysis.timing_score} |
-                                Intonation:{" "}
-                                {performance.analysis.intonation_score}
-                              </div>
-                            )}
-                            {performance.analysis.ai_feedback && (
-                              <div className="mt-1">
-                                {performance.analysis.ai_feedback}
-                              </div>
-                            )}
-                            {performance.analysis.error_message && (
-                              <div className="mt-1 text-red-700">
-                                {performance.analysis.error_message}
-                              </div>
-                            )}
+                              View audio
+                            </a>
                           </div>
                         )}
                       </div>
                       <div className="text-sm text-gray-500 text-right">
-                        <div>Musician ID: {performance.musician_id}</div>
+                        <div>Musician ID: {p.musician_id}</div>
                       </div>
                     </div>
                   </div>
@@ -458,8 +232,7 @@ const Performances: React.FC = () => {
           )}
         </div>
       </div>
-    </main>
-    </>
+    </ProtectedLayout>
   );
 };
 
