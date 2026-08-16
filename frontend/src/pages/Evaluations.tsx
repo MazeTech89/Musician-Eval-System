@@ -140,7 +140,10 @@ const Evaluations: React.FC = () => {
   }
 
   return (
-    <ProtectedLayout title="Evaluations" subtitle="View your evaluation results and feedback">
+    <ProtectedLayout
+      title="Evaluations"
+      subtitle="View your evaluation results and feedback"
+    >
       <div className="px-4 py-6 sm:px-0">
         <PageNav title="Evaluations" showBackButton={true} backTo="/" />
         <div className="flex justify-between items-center mb-6">
@@ -160,21 +163,29 @@ const Evaluations: React.FC = () => {
               <h2 className="text-lg font-semibold mb-4">Create Evaluation</h2>
               <form onSubmit={handleCreateEvaluation}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Performance</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Performance
+                  </label>
                   <select
                     value={selectedPerformance}
-                    onChange={(e) => setSelectedPerformance(Number(e.target.value))}
+                    onChange={(e) =>
+                      setSelectedPerformance(Number(e.target.value))
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2"
                     required
                   >
                     <option value={0}>Select a performance</option>
                     {performances.map((perf) => (
-                      <option key={perf.id} value={perf.id}>{perf.title} - {perf.status}</option>
+                      <option key={perf.id} value={perf.id}>
+                        {perf.title} - {perf.status}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Score (0-100)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Score (0-100)
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -185,72 +196,71 @@ const Evaluations: React.FC = () => {
                     required
                   />
                 </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Comments
-                    </label>
-                    <textarea
-                      value={comments}
-                      onChange={(e) => setComments(e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2"
-                      rows={3}
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    {submitting ? "Submitting..." : "Submit Evaluation"}
-                  </button>
-                </form>
-              </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Comments
+                  </label>
+                  <textarea
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    rows={3}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {submitting ? "Submitting..." : "Submit Evaluation"}
+                </button>
+              </form>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            {evaluations.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">
-                No evaluations found
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-200">
-                {evaluations.map((evaluation) => (
-                  <li key={evaluation.id}>
-                    <div className="px-4 py-4 sm:px-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
-                              <span className="text-white font-semibold">
-                                {evaluation.score ?? "?"}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {evaluation.performance.title}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {evaluation.comments || "No comments"}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1">
-                              Status: {evaluation.status}
-                            </div>
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          {evaluations.length === 0 ? (
+            <div className="p-6 text-center text-gray-500">
+              No evaluations found
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              {evaluations.map((evaluation) => (
+                <li key={evaluation.id}>
+                  <div className="px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center">
+                            <span className="text-white font-semibold">
+                              {evaluation.score ?? "?"}
+                            </span>
                           </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {new Date(evaluation.created_at).toLocaleDateString()}
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {evaluation.performance.title}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {evaluation.comments || "No comments"}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            Status: {evaluation.status}
+                          </div>
                         </div>
                       </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(evaluation.created_at).toLocaleDateString()}
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      </main>
+      </div>
     </ProtectedLayout>
   );
 };

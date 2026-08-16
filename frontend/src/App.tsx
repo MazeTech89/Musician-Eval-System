@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
 import TaskRecommendations from "./pages/TaskRecommendations";
 import ReferenceUpload from "./pages/ReferenceUpload";
+import Performances from "./pages/Performances";
 import MusicianResults from "./pages/MusicianResults";
 import "./App.css";
 
@@ -49,6 +50,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Assignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/performances"
+              element={
+                <ProtectedRoute requiredRole="musician">
+                  <Performances />
                 </ProtectedRoute>
               }
             />

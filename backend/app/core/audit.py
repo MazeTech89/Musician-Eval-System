@@ -22,7 +22,30 @@ def _serialize_details(details: dict[str, Any]) -> str:
 def record_audit_event(event: str, **details: Any) -> None:
     """Write a structured audit log entry."""
     # info level: routine/expected events (e.g. successful login, resource created).
-    logger.info("%s %s", event, _serialize_details(details))
+    # Defensive: ensure serialization or logging failures never propagate to callers.
+    try:
+        payload = _serialize_details(details)
+    except Exception:
+        # Fallback: try a best-effort conversion of values to strings, then re-serialize.
+        try:
+            safe = {k: str(v) for k, v in details.items()}
+            payload = _serialize_details(safe)
+        except Exception:
+            # Last-resort: record minimal payload and continue.
+            logger.exception("Failed to serialize audit details; emitting minimal audit entry")
+            try:
+                payload = json.dumps(
+                    {"timestamp": datetime.now(UTC).isoformat(), "event": event}, sort_keys=True
+                )
+            except Exception:
+                # If json.dumps somehow fails, fall back to a simple string.
+                payload = f"event={event} timestamp={datetime.now(UTC).isoformat()}"
+
+    try:
+        logger.info("%s %s", event, payload)
+    except Exception:
+        # Ensure logging errors are swallowed and reported to the default logger so callers don't fail.
+        logging.getLogger("app.audit").exception("Failed to write audit log entry for %s", event)
 
 
 def record_security_alert(event: str, **details: Any) -> None:
