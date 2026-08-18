@@ -3,7 +3,7 @@ uvicorn[standard]>=0.30.0
 starlette>=0.47.2
 pydantic==2.9.2
 pydantic-settings==2.5.2
-sqlalchemy==2.0.35
+sqlalchemy==2.0.52
 alembic==1.13.3
 psycopg[binary]==3.3.4
 psycopg2-binary==2.9.12
