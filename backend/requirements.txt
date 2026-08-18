@@ -13,7 +13,7 @@ argon2-cffi==23.1.0
 python-multipart==0.0.31
 slowapi==0.1.9
 python-magic==0.4.27
-boto3==1.35.36
+boto3==1.43.72
 celery==5.4.0
 redis==5.1.1
 pyotp==2.9.0
