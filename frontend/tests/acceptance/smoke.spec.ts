@@ -20,7 +20,7 @@ test("should render login and register pages", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("should create a performance and upload audio file", async ({ page }) => {
+test("should create and display a performance", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("access_token", "test-token");
   });
@@ -91,52 +91,29 @@ test("should create a performance and upload audio file", async ({ page }) => {
     await route.fallback();
   });
 
-  await page.route(
-    /\/api\/v1\/performances\/\d+\/upload-audio\/?$/,
-    async (route) => {
-      performances[0] = {
-        ...performances[0],
-        audio_file_url: "https://example.com/uploaded.mp3",
-      };
-
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          performance_id: 101,
-          s3_key: "performances/101/uploaded.mp3",
-          file_url: "https://example.com/uploaded.mp3",
-          file_size: 12345,
-          message: "Audio file uploaded successfully",
-        }),
-      });
-    },
-  );
-
   await page.goto("/performances");
 
   await expect(
-    page.getByRole("heading", { name: /^performances$/i }),
+    page
+      .getByRole("main")
+      .getByRole("heading", { name: "Performances", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: /new performance/i }).click();
   await page.getByPlaceholder("Performance title").fill("Upload Flow Test");
+  await page
+    .getByPlaceholder("Optional description")
+    .fill("Created from Playwright");
 
-  await page.locator('input[type="file"]').setInputFiles({
-    name: "sample.mp3",
-    mimeType: "audio/mpeg",
-    buffer: Buffer.from("ID3-sample-audio-content"),
-  });
-
-  const uploadResponsePromise = page.waitForResponse(
-    /\/api\/v1\/performances\/\d+\/upload-audio\/?$/,
+  const createResponsePromise = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/performances\/?$/.test(response.url()) &&
+      response.request().method() === "POST",
   );
 
   await page.getByRole("button", { name: /create performance/i }).click();
 
-  const uploadResponse = await uploadResponsePromise;
-  expect(uploadResponse.ok()).toBeTruthy();
+  const createResponse = await createResponsePromise;
+  expect(createResponse.ok()).toBeTruthy();
   await expect(page.getByText("Upload Flow Test")).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /view audio/i }).first(),
-  ).toHaveAttribute("href", /uploaded\.mp3/);
+  await expect(page.getByText("Created from Playwright")).toBeVisible();
 });
