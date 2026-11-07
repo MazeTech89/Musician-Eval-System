@@ -1,0 +1,16 @@
+services:
+  backend:
+    environment:
+      # Switch to S3-backed uploads (do NOT put secrets in this file).
+      USE_LOCAL_UPLOAD_STORAGE: "false"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      # Optional endpoint for S3-compatible services (leave empty for AWS S3)
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-}
+      # Set environment so the code does not prefix the bucket name in dev
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+    # Keep the same port mapping as compose file
+    ports:
+      - "8000:8000"

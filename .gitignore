@@ -25,6 +25,7 @@ build/
 # Environment
 .env
 .env.local
+.env.aws
 .env.*.local
 *.pem
 *.key
