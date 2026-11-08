@@ -1,6 +1,6 @@
 # Musician Evaluation System
 
-Final-year cybersecurity capstone: an AI-driven musician performance evaluation platform with security-by-design.
+Final-year cybersecurity capstone: an AI-driven musician performance evaluation platform with security-by-design. Just to commit
 
 ## Stack
 - Backend: FastAPI · PostgreSQL · Celery · Redis · Librosa
